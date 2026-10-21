@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCU Plugin 回归定位"
+  short_description: "定位插件的精度、graph、分布式卡死与性能回归并留下最小复现。"
+  default_prompt: "使用 $hcu-plugin-triage，根据给定仓库与环境完成任务并记录验证证据。"

@@ -1,0 +1,64 @@
+# Python bytecode, environments and tool caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+
+# Build products and native extension binaries
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+*.so
+
+# Coverage output
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Local audit, validation and profiling output (keep docs/templates tracked)
+/artifacts/
+/outputs/
+/runs/
+/upstream_watch/
+*.log
+*.prof
+*.nsys-rep
+*.ncu-rep
+
+# Reconstructed source trees and temporary checkouts
+/sglang-das-embedded/
+/sglang-das-embedded-*/
+/reconstructed/
+/worktrees/
+/tmp/
+/tmp_fetch/
+
+# Local environments; sanitized examples may be versioned
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Editor, OS and backup files
+.vscode/
+.idea/
+.DS_Store
+._*
+*~
+*.swp
+*.swo
+*.bak
+*.awq_bak
+
+# Legacy per-run probe results used by the reference adapter
+.payload.json
+.r.json
+.bridge_result.json

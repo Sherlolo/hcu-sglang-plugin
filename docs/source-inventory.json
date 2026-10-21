@@ -1,0 +1,230 @@
+{
+  "source_head": "f315216140b16b55ca249cfb07516128fa0949ef",
+  "skills": [
+    {
+      "name": "add-jit-kernel",
+      "source": "sglang-das/.claude/skills/add-jit-kernel/SKILL.md",
+      "source_sha256": "dce0427ee99df8ba7d2509e699673cab93772c4e275b9502b47c2a5122630fb9",
+      "description": "Step-by-step tutorial for adding a new lightweight JIT CUDA kernel to sglang's jit_kernel module",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "直接实现 kernel 属后续实现任务；本次只提取 graph/数值契约。"
+    },
+    {
+      "name": "add-sgl-kernel",
+      "source": "sglang-das/.claude/skills/add-sgl-kernel/SKILL.md",
+      "source_sha256": "1560d3d9f4c9e70da9d82cfffd27dfe42fdb60c2f648ce8ed34a27aad3381202",
+      "description": "Step-by-step tutorial for adding a heavyweight AOT CUDA/C++ kernel to sgl-kernel (including tests & benchmarks)",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "影子库和已有 ABI 补齐应先分到 adapter。"
+    },
+    {
+      "name": "babysit-pr-to-pass-ci",
+      "source": "sglang-das/.claude/skills/babysit-pr-to-pass-ci/SKILL.md",
+      "source_sha256": "d7399e80252cb2e244778e37dc4e0afdaa86f96f5a5d913b906cabe70316a310",
+      "description": "Start and persistently pursue a goal to babysit an SGLang pull request until selected GitHub Actions workflows pass on the latest PR head. Use when asked to monitor, babysit, retry, or fix PR CI for lint.yml, pr-test.yml, pr-test-extra.yml, AMD, or other named workflows; classify failures as PR-related versus flaky or infrastructural, auto-fix and push only small clean fixes, rerun failed jobs only up to 10 times, and ignore unselected workflows.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "远端 PR 管理超出本地方法抽取范围。"
+    },
+    {
+      "name": "ci-workflow-guide",
+      "source": "sglang-das/.claude/skills/ci-workflow-guide/SKILL.md",
+      "source_sha256": "6b3ee541c2759874d8f0197f48283496126faaedf04e15ad4de74750745dc5f3",
+      "description": "Guide to SGLang CI workflow orchestration — stage ordering, fast-fail, gating, partitioning, execution modes, and debugging CI failures. Use when modifying CI workflows, adding stages, debugging CI pipeline issues, or understanding how tests are dispatched and gated across stages.",
+      "disposition": "adapted",
+      "destination": "docs/ci.md",
+      "reason": "抽取层级证据与平台适配；不复制上游 GitHub 工作流。"
+    },
+    {
+      "name": "clean-startup-log",
+      "source": "sglang-das/.claude/skills/clean-startup-log/SKILL.md",
+      "source_sha256": "bead524743d18aa2b9b0dc72d3522a7cc9069915be1e23d7279cd04f0eb566e7",
+      "description": "Clean up noisy startup warnings and spurious prints in SGLang server logs. Use when users ask to clean up unwanted warnings, deprecation messages, or third-party noise in the server startup output.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "启动日志重构不是本次交付能力。"
+    },
+    {
+      "name": "compute-mamba-ratio",
+      "source": "sglang-das/.claude/skills/compute-mamba-ratio/SKILL.md",
+      "source_sha256": "55827de7e89dbbc14a8af705780d55bcb43033eecd8bdf1a7c540551a529e8c7",
+      "description": "Compute the optimal --mamba-full-memory-ratio (or --max-mamba-cache-size pin) for a hybrid attention + linear-attention (Mamba / GDN / KDA) model's two serving memory pools, from the workload and serving config. Use when a user asks what ratio to set, why concurrency is clamped, or how to size the state vs KV pools for a hybrid model.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "模型特定计算不是通用 plugin 方法。"
+    },
+    {
+      "name": "cookbook-add-model",
+      "source": "sglang-das/.claude/skills/cookbook-add-model/SKILL.md",
+      "source_sha256": "b6e7035fbb17bd1eec67f07f95beac1f873f0ee56fc6e75f1512a444ff59bfde",
+      "description": "Add a new model to the SGLang Cookbook (docs/, Mintlify), config-driven format — instantiate the model-agnostic template into a per-model config (+ benchmarks) JSX under src/snippets/configs/, an MDX page, the docs.json nav entry, NEW-tag hygiene, and the homepage vendor card. Interactive, multi-phase. Run with /cookbook-add-model.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "cookbook 仓库写作流程为独立任务。"
+    },
+    {
+      "name": "cookbook-migrate-model",
+      "source": "sglang-das/.claude/skills/cookbook-migrate-model/SKILL.md",
+      "source_sha256": "87ee0c52d14dc76d340f16d02bef4053922ab804cda245bb2c173a30b6b53ab1",
+      "description": "Migrate a legacy-template SGLang cookbook page (monolithic per-model generator under docs/src/snippets/autoregressive/) onto the config-driven template (shared _deployment.jsx / _playground.jsx engines + per-model config). Use when asked to migrate, convert, or port an existing cookbook page — NOT for brand-new models (use cookbook-add-model for those). Run with /cookbook-migrate-model <Model page name, e.g. GLM-5.1>.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "cookbook 模型文档迁移为独立任务。"
+    },
+    {
+      "name": "cookbook-review-pr",
+      "source": "sglang-das/.claude/skills/cookbook-review-pr/SKILL.md",
+      "source_sha256": "4dcd6f75a36920cb843980e4832d10dcdb942b1e4016d1aa952de57baf32ad97",
+      "description": "Review a pull request against the SGLang Cookbook (docs/, Mintlify) contribution checklist — the config-driven format (per-model config + benchmarks JSX consumed by the shared _deployment.jsx / _playground.jsx engines). Run with /cookbook-review-pr <PR number>.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "文档 PR 审阅为独立任务。"
+    },
+    {
+      "name": "debug-cuda-crash",
+      "source": "sglang-das/.claude/skills/debug-cuda-crash/SKILL.md",
+      "source_sha256": "748f8a4449b43db6036f485195ec35be6ebf8aaa97382648fd1fc352e0e66f9c",
+      "description": "Call this skill when you need to debug CUDA crashes in SGLang using kernel API logging",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/precision-and-graph.md",
+      "reason": "抽取调用前 metadata/dump 和 capture 限制；不把 CUDA 命令当作 HIP 通用命令。"
+    },
+    {
+      "name": "debug-distributed-hang",
+      "source": "sglang-das/.claude/skills/debug-distributed-hang/SKILL.md",
+      "source_sha256": "b2287588e589b9c698392d89e2ebc2c6d88228d62639946cbc39c3f77dfb78c1",
+      "description": "Debug hanging issues in SGLang distributed inference (TP/PP/DP/EP). Covers identifying hang locations via py-spy/watchdog/cuda coredump, per-rank logging to find state divergence, binary-search methodology for locating the first diverge point, and fix patterns. Use when a multi-GPU SGLang run hangs, freezes, or times out during collective operations.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/distributed-and-performance.md",
+      "reason": "抽取各 rank 首次分叉、collective shape/顺序和 OOM 排除。"
+    },
+    {
+      "name": "env-var-conventions",
+      "source": "sglang-das/.claude/skills/env-var-conventions/SKILL.md",
+      "source_sha256": "977a40ecca1b87b8d3f53205d2f8cac401b34f4de6cc36a9c6576cbd631e8c5e",
+      "description": "Conventions for SGLang environment variables — where to define, how to access, how to name, and how to deprecate. Use when adding, renaming, or reviewing any `SGLANG_*` environment variable (or migrating a legacy `SGL_*` alias), or when touching `python/sglang/srt/environ.py`.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-dev/references/runtime-and-env.md",
+      "reason": "保留 typed env、归属和 override，约束到 pinned 版本。"
+    },
+    {
+      "name": "generate-profile",
+      "source": "sglang-das/.claude/skills/generate-profile/SKILL.md",
+      "source_sha256": "0fcd80691c8c35c48ff53c6d20e3e5edc179ba122cf705c6f002cfe9328dafa4",
+      "description": "Generate an e2e profiling trace of an SGLang server run. Launches a server, validates accuracy, captures a Chrome-compatible trace, and returns the profile path.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/distributed-and-performance.md",
+      "reason": "抽取环境固定、采集与测量分离；不复制服务启动逻辑。"
+    },
+    {
+      "name": "kl-consistency-test",
+      "source": "sglang-das/.claude/skills/kl-consistency-test/SKILL.md",
+      "source_sha256": "248b5f6e5d34299b16210703cb091965e949a9c051a399fea76d46e1b013a074",
+      "description": "Write, calibrate, and debug the prefill-vs-decode logprob (KL) consistency tests in sglang -- the two independent conditions a zero requires (every operator batch-invariant, and the two paths computing the same function), which helper separates them, how to pick a threshold once they hold, and how to localize a divergence to a single operator. Use when adding a KL test to a model, picking or defending a kl_div threshold, or investigating a KL number that is too high.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/precision-and-graph.md",
+      "reason": "抽取 batch-invariance/state-equivalence、cache-hit、token 对齐和 graph 探针。"
+    },
+    {
+      "name": "large-class-style",
+      "source": "sglang-das/.claude/skills/large-class-style/SKILL.md",
+      "source_sha256": "e4c7ffb53e47e226bc8c80b263ff8b44cf8287922332cb14737de96e05d61b9e",
+      "description": "'Code style for SGLang large classes `Scheduler`, `TokenizerManager`, and `ModelRunner`: frozen-code conventions and `__init__` orchestration style. Use when modifying any of these three classes or reviewing changes to them.'",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "通用风格不重复打包成 plugin 专用 skill。"
+    },
+    {
+      "name": "llm-torch-profiler-analysis",
+      "source": "sglang-das/.claude/skills/llm-torch-profiler-analysis/SKILL.md",
+      "source_sha256": "90c70c1616e94a229d29cae6c8ce5f9ef433e7f5de6143e40c206ff561a594f7",
+      "description": "\"Unified LLM torch-profiler triage skill for `sglang`, `vllm`, `TensorRT-LLM`, and `TokenSpeed`. Use it to inspect an existing `trace.json(.gz)` or profile directory, or to drive live profiling against a running server when supported and return one three-table report with kernel, overlap-opportunity, and fuse-pattern tables.\"",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/distributed-and-performance.md",
+      "reason": "抽取 profile 和正常基准分开记录。"
+    },
+    {
+      "name": "mechanical-refactor-verify",
+      "source": "sglang-das/.claude/skills/mechanical-refactor-verify/SKILL.md",
+      "source_sha256": "418574f046067541fcd1f9a55ae69793a4cacb851c4b380fffcc7bcef09ed6be",
+      "description": "Make mechanical refactoring (file splits, function moves, module extractions, renames) machine-checkable instead of eyeballed. Reproduce a relocation commit byte-for-byte from faithful primitives, and split an extraction into a verifiable prepare + move + postpare. Use when doing or reviewing such changes.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-dev/references/test-contract.md",
+      "reason": "抽取机械搬移与语义修改分开及可重放证明；不复制大型 proof 引擎。"
+    },
+    {
+      "name": "scripted-runtime-notes",
+      "source": "sglang-das/.claude/skills/scripted-runtime-notes/SKILL.md",
+      "source_sha256": "9d35487900f6c8b751ec18581736d273b2ba10488a849c81c5720a4961ea46dc",
+      "description": "Requirements for the SGLang scripted runtime, chiefly when to add (vs not add) a harness API. Use for anything related to the scripted runtime.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "scripted runtime 专项机制不在当前方法工具范围。"
+    },
+    {
+      "name": "sglang-bisect-ci-regression",
+      "source": "sglang-das/.claude/skills/sglang-bisect-ci-regression/SKILL.md",
+      "source_sha256": "8807e22391ab80ca9f9720d88caec205a501a011c08746b8adfa952b7a47699a",
+      "description": "Investigate consistently failing SGLang CI tests by extracting the failure signature from scheduled or rerun workflows, bisecting the passing/failing commit window, checking runner or hardware specificity, and optionally reproducing on a remote GPU host.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/distributed-and-performance.md",
+      "reason": "抽取相同失败签名的 pass/fail 边界与硬件/依赖排除，不附带 gh 操作权限。"
+    },
+    {
+      "name": "sglang-cherrypick",
+      "source": "sglang-das/.claude/skills/sglang-cherrypick/SKILL.md",
+      "source_sha256": "5aaa7b381b64365b1cd9da3ab9499659b642ee0663f167af17c1f9759e699264",
+      "description": "Trigger the bot-cherry-pick workflow for a batch of merged PRs onto a release branch and monitor each run to completion. Use when an SGLang release manager asks to cherry-pick a list of PRs to a release branch.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "版本审计使用源码证据；不自动带入 cherry-pick/提交操作。"
+    },
+    {
+      "name": "sglang-prod-incident-triage",
+      "source": "sglang-das/.claude/skills/sglang-prod-incident-triage/SKILL.md",
+      "source_sha256": "7f0cfc4c682909a0ea2506357a62fdf6348571fd5dd074a2c685d25476041af5",
+      "description": "Replay-first debug flow for SGLang serving problems. Use when a live or recent server shows health-check failures, latency or throughput regressions, queue growth, timeouts, distributed stalls, crash dumps, wrong outputs after deploys, or PD/EP/HiCache issues, and the job is to turn the problem into a replay plus the right next debug tool.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "线上事件运维超出 plugin 工具库；不继承重启等动作。"
+    },
+    {
+      "name": "sglang-profile-analyse",
+      "source": "sglang-das/.claude/skills/sglang-profile-analyse/SKILL.md",
+      "source_sha256": "7cef8cbe186f297ecd6310c53a1ae4443df51bae24a5e9f704599b95e00d8ea6",
+      "description": "Analyze SGLang model serving performance from startup logs, benchmark commands, and torch profiler traces or screenshots. Use when diagnosing SGLang prefill/decode/profile bottlenecks, GPU utilization, CUDA kernels, KV cache, attention, sampling, memory, or throughput/latency regressions.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-triage/references/distributed-and-performance.md",
+      "reason": "抽取 CPU/kernel/communication/sync 占比分解。"
+    },
+    {
+      "name": "sglang-runtime-context",
+      "source": "sglang-das/.claude/skills/sglang-runtime-context/SKILL.md",
+      "source_sha256": "631201c8be9247df4148bf0d25e78dcea9ab9a20e65d2bfc015576ccba82b9e3",
+      "description": "How SGLang's runtime configuration and process-global state are organized (RuntimeContext tiers, publish + namespace config bags, the pristine ServerArgs seed, override entry points, resource/stream/buffer leases, per-forward flags), the CI guardrails that enforce the design, and the idioms for developing and testing against it. Load this before touching server_args, model overrides, module-level state, or per-forward state in sglang.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-dev/references/runtime-and-env.md",
+      "reason": "抽取配置/资源/per-forward 生命周期，不将 fork API 当作所有官方版本 API。"
+    },
+    {
+      "name": "speculative-naming",
+      "source": "sglang-das/.claude/skills/speculative-naming/SKILL.md",
+      "source_sha256": "f419c34469d1eece939aafc5cbb1a6236e0d3c6e8e24cb57b733e7be56c81992",
+      "description": "Naming conventions for SGLang speculative decoding identifiers. Use when adding, renaming, or reviewing identifiers in speculative decoding code — anything under `python/sglang/srt/speculative/`, related attention backends, scheduler accumulators, IPC fields, observability metrics, or CLI flags.",
+      "disposition": "indexed-only",
+      "destination": null,
+      "reason": "投机解码专项命名在对应实现任务中再用。"
+    },
+    {
+      "name": "write-sglang-test",
+      "source": "sglang-das/.claude/skills/write-sglang-test/SKILL.md",
+      "source_sha256": "9a916274d5d0d97f1953875df896d79d5aac3e825e382c1e7c13eef67138f3cd",
+      "description": "Guide for writing SGLang CI/UT tests. Covers CustomTestCase, CI registration, server fixtures, model selection, mock testing, and test placement. Always read test/README.md for the full CI layout, how to run tests, and extra tips. Use when creating new tests, adding CI test cases, writing unit tests, or when the user asks to add tests for SGLang features.",
+      "disposition": "adapted",
+      "destination": "skills/hcu-plugin-dev/references/test-contract.md",
+      "reason": "外部实现采用适用 fixture；独立工具库保持标准 unittest。"
+    }
+  ]
+}

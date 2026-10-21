@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCU Plugin 开发"
+  short_description: "为 SGLang 新增能力选择 Hook、回退和状态契约，并维护开发验证。"
+  default_prompt: "使用 $hcu-plugin-dev，根据给定仓库与环境完成任务并记录验证证据。"
