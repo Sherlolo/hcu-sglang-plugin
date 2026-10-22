@@ -1,4 +1,8 @@
-# 方法库门禁
+# CI 与质量门禁：当前工具库及未来运行时
+
+> **本文用途**：给出当前可执行的检查命令、它们能证明的范围、失败处理方式，以及未来运行时和跨仓组合的门禁规划。验收断言见 [验证手册](validation.md)，提交清单见 [协作流程](contributing.md)。
+
+## 1. 当前已实现的检查
 
 Python 3.10+，仓库根目录执行：
 
@@ -7,8 +11,46 @@ python3 ci/l0_gate.py
 python3 -m unittest discover -s tests -v
 ```
 
-L0 检查所有 Python 的语法、skill 名称/描述/UI 元信息、相对文件链接及业务代码排除；它不导入 SGLang 或触发 GPU。`.workflow/l0-gate.yml` 是通用 runner 命令配置，沿用 adapter 的目录组织，尚未绑定任何远端 CI 平台，不宣称自动触发。当前库不需要构建 wheel。
+| 检查 | 实际覆盖 | 不覆盖 |
+|---|---|---|
+| L0 Python | 仓库 Python AST 语法，不导入运行时 | 运行语义、外部依赖或数值结果 |
+| L0 skill | 名称/描述、名称与目录一致、agents prompt 与资源文件链接 | 完整 YAML 语义或 agent 行为质量 |
+| L0 文档 | Markdown 相对文件链接存在性 | 锚点有效性、HTML 链接、Mermaid 渲染或可读性 |
+| L0 阶段边界 | 禁止当前列出的运行时/构建路径 | 所有可能包名的通用业务代码检测 |
+| unittest | 14 项隔离 Git fixture 工具契约 | 外部 plugin 的模型与 GPU 可用性 |
 
-工具测试仅在 TemporaryDirectory 创建 Git 仓库验证行为，不动真实来源仓库。新增或修改脚本要运行相应行为验证；签名脚本和方法同步脚本依赖外部实现仓，离线只验证 CLI 入口/语法，实际覆盖范围见迁移手册。
+新增文档除执行 L0 外，还要人工/工具核对标题锚点、图文、HTML 导览和当前/规划标注。修改 skill 后使用维护环境的 skill validator 核对 frontmatter 与元信息；这些额外工具不成为本库的运行依赖。
 
-外部实现仓的 GPU/服务 gate 依据 [validation](validation.md) 维护；本库没有 L1 GPU gate，不能把 CPU 工具检查包装为推理验收。
+## 2. 自动化接入现状
+
+[.workflow/l0-gate.yml](../.workflow/l0-gate.yml) 目前仅保存 runner-neutral 命令配方，**未绑定托管 CI 平台**。本仓不声称已经在 push/MR 时自动执行，也没有常驻 watcher 或 GPU runner。
+
+接入时需明确平台、触发事件、Python 版本、工作目录、凭据使用方式、日志与退出码，再做一次真实触发验证。参考 adapter 的分层思路，不直接复制其镜像、硬件占用策略和已有门禁脚本。
+
+## 3. 后续运行时门禁规划
+
+| 层 | 内容 | 条件 | 当前状态 |
+|---|---|---|---|
+| L0 | 结构、资源、配置/声明一致性 | CPU | 当前方法库版本已实现；运行时规则待扩展 |
+| CPU 运行时契约 | entry point、注册集合、target、配置/依赖门控与 fallback | 对应业务包和可控依赖/mock | 规划 |
+| 组合集成 | official + plugin、official + adapter + plugin 等声明组合 | 固定 SHA、明确加载顺序与接口 | 规划，按能力适用性选择 |
+| HCU 数值与 graph | reference 对拍、cache/状态、变输入 replay | 合适设备与依赖 | 规划 |
+| 服务与性能 | 模型加载、prefill/decode、拓扑、精度、预热 A/B | 明确资源窗口、模型/数据 | 规划 |
+
+首次引入 `pyproject.toml` 或运行时目录时，要先更新 [架构阶段](architecture.md#4-未来运行时目录规划)、L0 的当前排除约束与相应测试。不能只删除禁止规则而不增加运行时质量约束。
+
+## 4. 失败与缺失条件的处理
+
+| 情况 | 处理方式 |
+|---|---|
+| L0 文件链接/语法失败 | 修复对应路径/语法；不靠移除文件规避 |
+| fixture 测试失败 | 保留失败日志和命令，核查输入保护或工具行为变化 |
+| 缺外部依赖或 GPU | lane 记 pending，说明解除条件；不记 passed |
+| 能力明确不支持某组合 | 记 not-applicable，关联设计/支持范围 |
+| 历史已知失败 | 固定版本和签名、记录风险；不自动增加宽松阈值 |
+
+工具测试仅在临时目录创建小型 Git 仓库。运行服务或探针时按 [共享资源约定](contributing.md#5-共享节点与产物管理) 限定本任务资源，不能为自动门禁无条件抢占设备。
+
+## 5. 证据留存
+
+短期日志放 `artifacts/<task>/`；交付文档记录实际命令、解释器/镜像、SHA、断言和汇总。长期证据需要稳定存放位置，因为 ignored 日志不会随 Git 提交。当前及历史结果见 [交付记录](delivery-validation.md)，记录格式见 [validation-record](../templates/validation-record.md)。

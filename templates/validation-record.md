@@ -1,13 +1,33 @@
 # 能力验证记录模板
 
-日期、执行人、能力 ID、输入各仓 SHA/dirty、模型/数据版本、容器/解释器、卡型/驱动/DTK、依赖版本、日志目录。
+> **用途**：复制后填写一次能力/版本组合的真实结果；不要把空白或历史记录当作本次通过。状态使用 passed / failed / pending / not-applicable，后两者注明原因。
 
-| Lane | 命令 | 环境/配置 | 断言/阈值与来源 | 状态 | 日志/结果 | 未覆盖条件 |
+## 1. 基线与环境
+
+| 项 | 本次值 |
+|---|---|
+| 日期 / 执行人 / 能力 ID | |
+| official / plugin 的路径、branch、SHA、dirty | |
+| adapter（使用时）的路径、SHA、声明依赖 | |
+| 运行组合与实际 import 来源 | |
+| 镜像 / 挂载 / Python / torch / DTK / vendor 版本 | |
+| 卡型 / 模型与数据版本 / 参数 / 日志目录 | |
+
+## 2. 目标与组合契约
+
+| 目标/配置 | 实现所有者 | 装配/包装顺序 | 当前有效基线 | 停用后的行为 | 兼容依赖 |
+|---|---|---|---|---|---|
+
+## 3. 验证结果
+
+| Lane / 运行组合 | 命令 | 配置 | 断言/阈值与来源 | 状态 | 日志/结果 | 未覆盖条件 |
 |---|---|---|---|---|---|---|
 
-接线：预期 targets / 注册 targets / apply 成功 targets，重复/组合顺序与缺失数。
-数值：reference、shape/dtype/mode、误差、cache/conv/Mamba 状态、fallback。
-graph：capture/replay 后输入变化与状态变化；collective rank 一致性。
-服务：模型加载/prefill/decode、TP/DP/EP/PP/PD、量化/KV、准确率/KL。
-性能：预热/测量次数、并发和输入输出长度、TTFT/ITL/吞吐/显存、相对基线。
-处置：passed / failed / pending / not-applicable，各有证据或原因；不要空填通过。
+接线分别记 AST / 注册 / apply / 实际命中与缺失，不合并成一个“active”数字。
+数值覆盖 reference、shape/dtype/mode、cache/conv/Mamba、fallback；graph 覆盖变输入和状态 replay。
+服务记录加载/prefill/decode、并行/量化/KV；性能分开编译、预热、测量，给相对基线与正确性。
+组合验证说明 plugin 停用后 adapter 基线是否保留，以及不适用组合的设计理由。
+
+## 4. 结论与下一步
+
+本次支持范围、失败签名、pending 的解除条件、证据长期保存位置与需更新的文档/skill。
