@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>SGLang HCU 插件 · 方法与开发手册</title>
+<style>
+:root{--bg:#f5f7f8;--paper:#fff;--ink:#20342f;--muted:#62736f;--line:#dce5e1;--green:#176b52;--soft:#eaf4ee;--nav:#183b31;--radius:14px}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:24px}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.75 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}a{color:var(--green);text-underline-offset:4px}a:hover{text-decoration:underline}button,input,select{font:inherit}button,a,input,select,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid #d09835;outline-offset:3px}[hidden]{display:none!important}.sr-only{position:absolute;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.skip{position:fixed;left:16px;top:-100px;z-index:10;padding:12px;background:#fff}.skip:focus{top:12px}
+.sidebar{position:fixed;inset:0 auto 0 0;width:236px;background:var(--nav);color:#eaf4ee;padding:32px 22px;z-index:5;display:flex;flex-direction:column;overflow-y:auto}.brand{display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;font-weight:750;font-size:16px;line-height:1.4}.brand-mark{display:grid;place-items:center;width:38px;height:38px;background:#fff1;border:1px solid #ffffff38;border-radius:10px;flex:none;font-size:13px;letter-spacing:1px}.brand small{display:block;color:#acc7bc;font-size:11px;font-weight:400;margin-top:4px}.nav-label{color:#a7c0b5;font-size:11px;letter-spacing:2px;margin:38px 12px 12px}.nav-links{display:grid;gap:5px}.nav-links a{color:#d5e7df;padding:10px 12px;text-decoration:none;border-radius:8px;font-size:14px}.nav-links a:hover,.nav-links a[aria-current]{background:#ffffff13;color:#fff}.nav-links a span{display:inline-block;width:28px;color:#9ab9ab;font-size:11px}.sidebar-foot{margin-top:auto;padding:30px 12px 0;color:#aac4b8;font-size:12px}.sidebar-foot p{margin:5px 0}.sidebar-foot a{color:#d5e7df}.backdrop{position:fixed;inset:0;background:#112b2180;z-index:4}.shell{margin-left:236px;padding:30px 44px 64px;max-width:1660px}.topbar{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:26px;color:var(--muted);font-size:12px}.topbar b{font-weight:600;color:var(--ink)}.topbar a{font-size:12px}.menu-button{display:none}.search-form{display:flex;align-items:center;gap:12px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:11px 15px;box-shadow:0 3px 14px #183b3104}.search-icon{color:var(--green);font-size:19px}.search-form input{border:0;outline:0;background:transparent;width:100%;min-width:0;font-size:14px;color:var(--ink)}.search-form input:focus-visible{outline:0}.search-form:focus-within{outline:2px solid var(--green);outline-offset:2px}.search-form select{border:0;border-left:1px solid var(--line);background:transparent;max-width:130px;color:var(--muted);padding-left:12px;font-size:12px}.search-hint{color:var(--muted);font-size:12px;margin:8px 3px 0}.hero{padding:44px 0 24px}.eyebrow{margin:0 0 12px;font-size:11px;color:var(--green);letter-spacing:2px;font-weight:750}.hero h1{font-size:clamp(30px,3.5vw,44px);line-height:1.35;letter-spacing:-1px;margin:0 0 17px;max-width:800px}.lead{max-width:850px;color:var(--muted);font-size:16px;margin:0}.metrics{display:flex;gap:20px;flex-wrap:wrap;margin-top:26px}.metric{font-size:12px;color:var(--muted);padding-right:24px;border-right:1px solid var(--line)}.metric:last-child{border:0}.metric b{color:var(--ink);font-size:20px;display:block}.section{margin-top:38px;scroll-margin-top:24px}.section-head{display:flex;justify-content:space-between;align-items:baseline;gap:15px;margin-bottom:16px}.section-head h2{font-size:20px;margin:0}.section-head p,.section-head a{font-size:12px;margin:0;color:var(--muted)}.primary{background:var(--nav);color:#eaf4ee;border-radius:var(--radius);padding:26px 28px}.primary h2{font-size:21px;margin:0 0 6px;color:white}.primary>p{font-size:14px;color:#c8ded2;margin:0 0 16px}.prompt-box{position:relative}.prompt-box pre{background:#ffffff09;border:1px solid #ffffff25;color:#eaf4ee;padding:17px 110px 17px 18px;white-space:pre-wrap;overflow-wrap:anywhere;margin:0;border-radius:9px;font:13px/1.9 ui-monospace,SFMono-Regular,Consolas,monospace}.copy-button{border:1px solid #ffffff50;background:#ffffff15;color:#fff;border-radius:6px;padding:7px 12px;position:absolute;right:12px;top:12px;font-size:12px}.copy-button:hover{background:#ffffff25}.primary .fine{font-size:12px;color:#b9d4c5;margin:14px 0 0}.primary a{color:#eaf4ee}.status{min-height:1.5em;font-size:12px;color:var(--muted);margin:7px 0 0}.primary .status{color:#d7e8dc}.task-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.task{background:var(--paper);border:1px solid var(--line);padding:22px;border-radius:var(--radius);min-width:0;transition:border-color .15s,box-shadow .15s}.task:hover{border-color:#91bba8;box-shadow:0 5px 18px #183b3106}.task-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.task h3{font-size:16px;margin:0}.task-number{font-size:12px;color:#789386}.task p{font-size:13px;color:var(--muted);margin:9px 0 14px}.task-links{display:flex;gap:18px;flex-wrap:wrap;font-size:12px}.task-links a{text-decoration:none}.task-links a:hover{text-decoration:underline}.task .skill-name{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:11px;color:var(--muted);display:block;margin-top:12px;overflow-wrap:anywhere}.panel{background:var(--paper);border:1px solid var(--line);padding:25px;border-radius:var(--radius);min-width:0}.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel h3{margin:0 0 10px;font-size:15px}.panel p{font-size:13px;color:var(--muted);margin:0 0 14px}.tree{font:12px/2 ui-monospace,SFMono-Regular,Consolas,monospace;color:#466456;white-space:pre;overflow:auto;margin:0}.roles{display:grid;grid-template-columns:1fr 1fr;gap:12px}.role{background:var(--soft);border:1px solid #cfe1d6;border-radius:10px;padding:18px}.role h3{margin:0 0 7px;font-size:14px;overflow-wrap:anywhere}.role p{font-size:12px;margin:0;color:var(--muted)}.runtime{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:10px;text-align:center;font-size:13px;background:#f8faf9}.steps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.step{border-top:2px solid var(--green);background:#fff;padding:18px;border-radius:0 0 9px 9px}.step b{display:block;font-size:14px;margin-bottom:7px}.step span{font-size:12px;color:var(--muted)}.notice{background:#edf2f0;border-left:3px solid #97b4a5;padding:13px 16px;color:#526b60;font-size:12px;margin-top:16px}.doc-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.doc-link{display:block;background:#fff;border:1px solid var(--line);border-radius:9px;padding:17px;text-decoration:none;font-size:13px}.doc-link span{display:block;color:var(--muted);font-size:11px;margin-top:5px}.table-scroll{overflow:auto;max-width:100%;margin:18px 0}table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}th{background:#edf3ef;font-weight:600}footer{margin-top:46px;border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:11px;display:flex;gap:14px;justify-content:space-between;flex-wrap:wrap}.search-results{margin-top:22px}.search-results h2{font-size:16px;margin:0 0 8px}.result-list{padding:0;list-style:none;display:grid;gap:8px;margin:0}.result a{display:block;padding:16px 18px;border:1px solid var(--line);background:#fff;border-radius:9px;text-decoration:none}.result a:hover{border-color:#91bba8}.result-title{font-size:14px;font-weight:650}.result-meta{font:11px/1.7 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--muted);overflow-wrap:anywhere}.result-snippet{font-size:12px;color:var(--muted);margin:7px 0 0;overflow-wrap:anywhere}.empty{border:1px dashed #a9bcb2;border-radius:9px;padding:22px;font-size:14px;color:var(--muted)}.reader{margin-top:28px}.reader-bar{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:18px;font-size:12px}.reader-actions{display:flex;gap:18px}.reader-path{color:var(--muted);overflow-wrap:anywhere;min-width:0}.reader-layout{display:grid;grid-template-columns:minmax(0,1fr) 200px;gap:24px;align-items:start}.reader-body{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:30px;min-width:0;overflow-wrap:anywhere}.reader-body h1{font-size:26px;line-height:1.4;margin:0 0 24px}.reader-body h2{font-size:20px;margin:32px 0 13px;border-bottom:1px solid var(--line);padding-bottom:9px}.reader-body h3{font-size:16px;margin:24px 0 10px}.reader-body h4{font-size:14px}.reader-body p{margin:12px 0;font-size:14px}.reader-body li{font-size:14px;margin:5px 0}.reader-body ul,.reader-body ol{padding-left:25px}.reader-body pre{background:#f2f5f3;border:1px solid #e3e9e5;padding:16px;border-radius:8px;overflow:auto;white-space:pre;margin:16px 0;line-height:1.8;max-width:100%}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.88em}p code,li code,td code{background:#edf2ee;border-radius:4px;padding:2px 4px}.reader-body blockquote{margin:18px 0;padding:12px 17px;border-left:3px solid #7ca28d;background:#f0f6f2;font-size:13px;color:#4b6858}.reader-body .table-scroll{margin:20px 0}.reader-body th,.reader-body td{min-width:115px}.reader-toc{position:sticky;top:24px;max-height:calc(100vh - 48px);overflow:auto;font-size:12px;padding:8px 0}.reader-toc h2{font-size:12px;margin:0 0 9px}.reader-toc a{display:block;padding:5px 0;color:var(--muted);text-decoration:none;line-height:1.7}.reader-toc a:hover{color:var(--green)}.reader-toc a.subheading{padding-left:12px}.diagram-source{border:1px solid var(--line);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--muted);margin:18px 0}.diagram-source summary{cursor:pointer}.reader-note{font-size:11px;color:var(--muted);margin:15px 0 0}.reader-body [tabindex="-1"]{scroll-margin-top:22px}
+@media(min-width:1500px){.shell{padding-left:64px;padding-right:64px}}@media(max-width:1150px){.shell{padding:26px 28px 50px}.reader-layout{grid-template-columns:minmax(0,1fr)}.reader-toc{position:static;max-height:220px;grid-row:1;border:1px solid var(--line);padding:15px;border-radius:9px}.reader-toc nav{display:flex;flex-wrap:wrap;gap:3px 18px}.reader-toc a.subheading{padding-left:0}.steps{grid-template-columns:1fr 1fr}.doc-grid{grid-template-columns:1fr 1fr}.columns{grid-template-columns:1fr}}
+@media(max-width:900px){.sidebar{transform:translateX(-100%);transition:transform .18s}.sidebar.open{transform:translateX(0)}.shell{margin-left:0}.menu-button{display:inline-flex;align-items:center;background:#fff;border:1px solid var(--line);border-radius:7px;padding:7px 12px;color:var(--ink);font-size:13px}.topbar{margin-bottom:20px}.topbar .context{display:none}.hero{padding-top:32px}.sidebar-foot{margin-top:35px}}
+@media(max-width:520px){.shell{padding:18px 18px 40px}.hero h1{font-size:29px;letter-spacing:-.5px}.lead{font-size:14px}.task-grid,.steps,.doc-grid,.roles{grid-template-columns:1fr}.task{padding:20px}.primary{padding:22px 20px}.prompt-box pre{padding:58px 14px 15px;font-size:12px}.metrics{gap:13px}.metric{padding-right:13px}.metric b{font-size:18px}.section-head{align-items:flex-start;flex-direction:column;gap:4px}.panel{padding:20px}.search-form{gap:8px;padding:11px}.search-form input{font-size:13px}.search-form select{max-width:90px;padding-left:8px}.search-hint{font-size:11px}.reader-body{padding:20px 17px}.reader-body h1{font-size:23px}.reader-path{flex-basis:100%}.reader-bar{gap:10px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}@media print{.sidebar,.topbar,.search-form,.search-hint,.reader-toc,.reader-actions,.copy-button,.search-results{display:none!important}.shell{margin:0;padding:0;max-width:none}body{background:#fff}.reader-body,.panel,.task{border-color:#bbb}.primary{background:#eee;color:#111}.primary h2,.primary>p,.prompt-box pre,.primary .fine{color:#111}.section,.task,.panel{break-inside:avoid}a{color:inherit}}
+</style>
+</head>
+<body>
+<a class="skip" id="skip-link" href="#main">跳到主要内容</a>
+<aside class="sidebar" id="site-navigation" aria-label="主导航">
+<a href="#start" class="brand"><span class="brand-mark" aria-hidden="true">HC</span><span>SGLang HCU<small>插件方法与开发手册</small></span></a>
+<p class="nav-label">使用与开发</p>
+<nav class="nav-links"><a href="#start"><span>01</span>方法库概览</a><a href="#use-skill"><span>02</span>统一 Skill 入口</a><a href="#tasks"><span>03</span>任务导航</a><a href="#directories"><span>04</span>仓库目录</a><a href="#composition"><span>05</span>组件职责</a><a href="#workflow"><span>06</span>执行流程</a><a href="#validation"><span>07</span>验证范围</a><a href="#documents"><span>08</span>文档与经验</a></nav>
+<div class="sidebar-foot"><p>V3 · 离线知识库</p><p>__SKILL_COUNT__ 个 Skill · __TOOL_COUNT__ 个工具</p><p><a href="#read=README.md">阅读完整 README →</a></p></div>
+</aside>
+<button type="button" class="backdrop" id="nav-backdrop" hidden aria-label="关闭导航"></button>
+<main class="shell" id="main" tabindex="-1">
+<header class="topbar"><button class="menu-button" id="menu-button" type="button" aria-controls="site-navigation" aria-expanded="false">☰ 导航</button><span class="context"><b>hcu-sglang-plugin</b> / 使用指南</span><a href="#read=docs%2FREADME.md">完整文档目录 ↗</a></header>
+<form class="search-form" id="search-form" role="search"><span class="search-icon" aria-hidden="true">⌕</span><label class="sr-only" for="search">检索文档、Skill、方法与工具</label><input id="search" type="search" placeholder="检索任务、症状或关键词，如 Graph、安装、TP4" autocomplete="off"><label class="sr-only" for="kind-filter">资料类型</label><select id="kind-filter"><option value="">全部类型</option><option>文档</option><option>Skill</option><option>参考方法</option><option>工具</option><option>工程资源</option></select></form>
+<p class="search-hint">支持本页全文检索；搜索结果直接在阅读器打开。只在本地处理输入。</p>
+<section class="search-results" id="search-results" aria-label="搜索结果" hidden><h2 id="search-count" aria-live="polite"></h2><ul class="result-list" id="result-list"></ul><p class="empty" id="no-results" hidden>没有匹配资料。可尝试更短的关键词，或使用统一 Skill 入口描述目标。</p></section>
+<div id="overview">
+<section class="hero" id="start"><p class="eyebrow">SGLANG HCU · DEVELOPMENT KNOWLEDGE</p><h1>从一个目标开始，<br>找到方法并完成开发。</h1><p class="lead">在这里检索插件开发、安装、排障与升级方法。统一 Skill 负责匹配资料和补齐必要输入，专项 Skill 负责实际任务与验收。</p><div class="metrics"><div class="metric"><b>1 + 7</b>统一入口与专项 Skill</div><div class="metric"><b>独立工程</b>运行时实现位于方法库外</div><div class="metric"><b>离线可读</b>导航、检索与文档阅读</div></div></section>
+<section class="section primary" id="use-skill"><h2>统一 Skill 入口</h2><p>不必先记住 Skill 名称。将下面的请求交给已打开本仓库的 Agent，并替换目标描述。</p><div class="prompt-box"><pre id="assistant-prompt">读取 skills/hcu-plugin-assistant/SKILL.md，按该 Skill 执行。
+我的目标：开发一个新插件，先完成最小工程与启停验证。
+请检索相关 Skill 和文档；缺少必要输入时向我提问，再继续执行。</pre><button type="button" class="copy-button" id="copy-prompt">复制请求</button></div><p class="status" id="copy-status" role="status"></p><p class="fine">Agent 未打开本仓库时，补充方法库位置。客户端已发现该 Skill 时也可使用 <code>$hcu-plugin-assistant</code>。<a href="#read=skills%2Fhcu-plugin-assistant%2FSKILL.md">查看完整执行规则 →</a></p></section>
+<section class="section" id="tasks"><div class="section-head"><h2>按任务选择专项入口</h2><a href="#read=docs%2Freading-guide.md">匹配规则与输入要求 →</a></div><div class="task-grid">
+<article class="task"><div class="task-top"><h3>新插件工程初始化</h3><span class="task-number">01</span></div><p>创建独立插件包，跑通安装、入口发现、Hook 调用和开关对照。</p><div class="task-links"><a href="#read=docs%2Ffirst-plugin.md">阅读最小案例 →</a><a href="#read=skills%2Fhcu-plugin-scaffold%2FSKILL.md">查看 Skill</a></div><span class="skill-name">hcu-plugin-scaffold</span></article>
+<article class="task"><div class="task-top"><h3>安装与启用已有插件</h3><span class="task-number">02</span></div><p>安装源码或 wheel，确认解释器、模块来源和实际加载是否正确。</p><div class="task-links"><a href="#read=docs%2Finstallation.md">阅读安装指南 →</a><a href="#read=skills%2Fhcu-plugin-install%2FSKILL.md">查看 Skill</a></div><span class="skill-name">hcu-plugin-install</span></article>
+<article class="task"><div class="task-top"><h3>开发插件能力</h3><span class="task-number">03</span></div><p>在已有工程增加融合、后端或专项能力，明确接缝与有效基线回退。</p><div class="task-links"><a href="#read=docs%2Fplugins.md">阅读开发指南 →</a><a href="#read=skills%2Fhcu-plugin-dev%2FSKILL.md">查看 Skill</a></div><span class="skill-name">hcu-plugin-dev</span></article>
+<article class="task"><div class="task-top"><h3>故障诊断与回归修复</h3><span class="task-number">04</span></div><p>从错误答案、Graph、多卡卡住或性能变化定位本次首次分叉。</p><div class="task-links"><a href="#read=docs%2Ftroubleshooting.md">阅读诊断指南 →</a><a href="#read=skills%2Fhcu-plugin-triage%2FSKILL.md">查看 Skill</a></div><span class="skill-name">hcu-plugin-triage</span></article>
+<article class="task"><div class="task-top"><h3>三方差异审计与迁移</h3><span class="task-number">05</span></div><p>比较 official、HCU fork 和 plugin，整理差异、处置与能力缺口。</p><div class="task-links"><a href="#read=docs%2Fmigration.md">阅读迁移指南 →</a><a href="#read=skills%2Fsglang-dcu-plugin-migration%2FSKILL.md">查看 Skill</a></div><span class="skill-name">sglang-dcu-plugin-migration</span></article>
+<article class="task"><div class="task-top"><h3>官方版本升级与发版</h3><span class="task-number">06</span></div><p>围绕指定官方目标评估补丁接管，组织产物与必测验收矩阵。</p><div class="task-links"><a href="#read=docs%2Fupgrading.md">阅读升级指南 →</a><a href="#read=skills%2Fupgrading-sglang-hcu-upstream-first%2FSKILL.md">查看 Skill</a></div><span class="skill-name">upgrading-sglang-hcu-upstream-first</span></article>
+<article class="task"><div class="task-top"><h3>内嵌源码生成与核验</h3><span class="task-number">07</span></div><p>从干净的官方源码与插件生成新源码树，核对来源和文件哈希。</p><div class="task-links"><a href="#read=docs%2Fbacktracking.md">阅读回溯指南 →</a><a href="#read=skills%2Fhcu-plugin-backtrack%2FSKILL.md">查看 Skill</a></div><span class="skill-name">hcu-plugin-backtrack</span></article>
+<article class="task"><div class="task-top"><h3>查询开发经验与方法</h3><span class="task-number">参考</span></div><p>按症状检索既往问题的检查方法、修复依据和适用边界。</p><div class="task-links"><a href="#read=docs%2Fdevelopment-methodology.md">阅读经验索引 →</a><a href="#read=skills%2Fhcu-plugin-assistant%2FSKILL.md">使用统一入口</a></div><span class="skill-name">历史经验用于定位，不替代本次验证</span></article>
+</div></section>
+<section class="section" id="directories"><div class="section-head"><h2>仓库目录与职责</h2><a href="#read=README.md&section=3-%E4%BB%93%E5%BA%93%E6%96%87%E4%BB%B6%E7%BB%93%E6%9E%84">完整文件结构 →</a></div><div class="columns"><div class="panel"><h3>方法库的现有内容</h3><pre class="tree">docs/          操作指南、设计与经验记录
+skills/        统一入口与专项执行规则
+tools/         审计、生成与验证工具
+templates/     记录模板与网页源模板
+tests/         方法工具契约测试
+ci/            离线结构门禁
+.workflow/     中立 CI 配方
+licenses/      来源许可证</pre></div><div class="panel"><h3>实际开发的输入与输出</h3><p>官方源码、HCU fork、插件实现与生成源码可位于任意目录。路径通过本地变量和工具参数明确传入，不要求复制历史布局。</p><p>本仓不包含运行时包或打包定义。插件代码在外部工程中开发，已有插件安装也使用外部源码或交付 wheel。</p><a href="#read=docs%2Fconfiguration.md">配置输入与输出路径 →</a></div></div></section>
+<section class="section" id="composition"><div class="section-head"><h2>方法库与运行时组件</h2><a href="#read=docs%2Farchitecture.md">详细架构与边界 →</a></div><div class="panel"><div class="roles"><div class="role"><h3>本仓 · 开发方法层</h3><p>文档、Skill 与工具指导开发和验收；不作为服务中的运行时模块。</p></div><div class="role"><h3>外部插件 · 运行时实现层</h3><p>在独立工程中维护新增能力，通过 SGLang 扩展点与 Hook 接入。</p></div></div><div class="runtime">SGLang 官方框架 + 所需 adapter + 外部插件<br><small>固定版本、明确顺序，单独验证实际部署组合</small></div><p class="reader-note">adapter 负责既有行为适配，与 plugin 独立维护、可共同部署。不是二选一关系，也不能由各仓单测推导组合兼容。</p></div></section>
+<section class="section" id="workflow"><div class="section-head"><h2>从问题到交付</h2><a href="#read=docs%2Freading-guide.md">任务衔接说明 →</a></div><div class="steps"><div class="step"><b>1 · 描述目标</b><span>说明想开发、安装、升级或排查什么；已有日志和路径直接提供。</span></div><div class="step"><b>2 · 检索与补问</b><span>统一入口选择匹配资料，只补齐影响当前阶段执行的信息。</span></div><div class="step"><b>3 · 专项执行</b><span>读取专项 Skill，在外部工程实施并完成相关验证。</span></div><div class="step"><b>4 · 交付证据</b><span>说明结果、产物和未验证项；后续任务按实际依赖衔接。</span></div></div><p class="notice">七项专项 Skill 按需选择，不要求依次执行。仅咨询方法时无需提前准备机器路径或 GPU。</p></section>
+<section class="section" id="validation"><div class="section-head"><h2>验证结果的适用范围</h2><a href="#read=docs%2Fvalidation.md">验证矩阵与验收标准 →</a></div><div class="panel"><div class="table-scroll"><table><thead><tr><th>验证阶段</th><th>通过所证明的范围</th><th>进一步验收</th></tr></thead><tbody><tr><td>方法库 L0 / 工具测试</td><td>结构、资源链接与方法工具契约</td><td>运行时仍需在指定环境验证</td></tr><tr><td>安装 / 入口 / 严格加载</td><td>当前产物与模块来源正确，预期目标应用</td><td>实际调用、状态与数值</td></tr><tr><td>HCU / Graph / 多卡</td><td>所覆盖设备、形状与模式</td><td>固定模型的完整服务与指标</td></tr><tr><td>模型服务 / 精度 / 性能</td><td>本次固定版本、配方和输入</td><td>其他模型、设备与组合分别确认</td></tr></tbody></table></div></div></section>
+<section class="section" id="documents"><div class="section-head"><h2>文档与方法索引</h2><a href="#read=docs%2FREADME.md">查看全部文档 →</a></div><div class="doc-grid"><a class="doc-link" href="#read=docs%2Freading-guide.md">任务与 Skill 使用指南<span>如何匹配、准备输入和衔接任务</span></a><a class="doc-link" href="#read=docs%2Fdevelopment-methodology.md">开发经验与故障案例<span>按症状查询检查与修复方法</span></a><a class="doc-link" href="#read=docs%2Fbootstrap.md">方法库环境准备<span>解释器、工具与外部实现要求</span></a><a class="doc-link" href="#read=docs%2Fgovernance.md">组件职责与兼容规则<span>实现归属、加载顺序与组合</span></a><a class="doc-link" href="#read=docs%2Fci.md">维护与质量检查<span>离线检查及实际 CI 接入边界</span></a><a class="doc-link" href="#read=docs%2Fv3-20261026-development.md&section=8-%E6%9C%80%E7%BB%88%E4%BA%A4%E4%BB%98%E4%B8%8E%E9%9C%80%E6%B1%82%E9%AA%8C%E6%94%B6">运行时历史交付<span>固定版本、实际结果与未验证项</span></a></div></section>
+</div>
+<section class="reader" id="reader" aria-label="文档阅读器" hidden><div class="reader-bar"><span class="reader-path" id="reader-path"></span><div class="reader-actions"><a href="#tasks">返回任务导航</a><a id="source-link" target="_blank" rel="noopener">查看源文件 ↗</a></div></div><div class="reader-layout"><article class="reader-body" id="reader-body"></article><aside class="reader-toc" id="reader-toc" aria-label="当前文档目录"></aside></div><p class="reader-note">内容来自当前构建快照。文档中的 Mermaid 图表以可展开源码呈现；详细图形可在支持 Mermaid 的 Markdown 编辑器查看。</p></section>
+<footer><span>方法库用于指导开发；实际实现与验证在指定工程和环境中完成。</span><span>离线快照 · __SNAPSHOT__ · <a href="#read=docs%2Fextraction-map.md">来源与许可</a></span></footer>
+<noscript><p class="notice">当前浏览器禁用了 JavaScript。网页阅读器与检索需要启用 JavaScript；也可在编辑器中直接阅读仓库 README.md 和 docs/README.md。</p></noscript>
+</main>
+<script type="application/json" id="guide-catalog">__CATALOG_JSON__</script>
+<script>
+'use strict';
+const catalog = JSON.parse(document.getElementById('guide-catalog').textContent);
+const byPath = new Map(catalog.map(item => [item.path, item]));
+const search = document.getElementById('search');
+const filter = document.getElementById('kind-filter');
+const results = document.getElementById('search-results');
+const list = document.getElementById('result-list');
+const overview = document.getElementById('overview');
+const reader = document.getElementById('reader');
+const body = document.getElementById('reader-body');
+const menu = document.getElementById('menu-button');
+const navigation = document.getElementById('site-navigation');
+const backdrop = document.getElementById('nav-backdrop');
+document.getElementById('skip-link').addEventListener('click', event => { event.preventDefault(); document.getElementById('main').focus(); });
+function readRoute(path, section = '') { const params = new URLSearchParams({read: path}); if(section) params.set('section', section); return '#' + params.toString(); }
+function closeMenu() { navigation.classList.remove('open'); navigation.inert = window.innerWidth <= 900; menu.setAttribute('aria-expanded', 'false'); backdrop.hidden = true; }
+menu.addEventListener('click', () => { const open = menu.getAttribute('aria-expanded') !== 'true'; navigation.classList.toggle('open', open); navigation.inert = !open && window.innerWidth <= 900; menu.setAttribute('aria-expanded', String(open)); backdrop.hidden = !open; if(open) navigation.querySelector('a').focus(); });
+backdrop.addEventListener('click', () => { closeMenu(); menu.focus(); });
+document.addEventListener('keydown', event => { if(event.key === 'Escape' && !backdrop.hidden) { closeMenu(); menu.focus(); } });
+navigation.addEventListener('click', event => { if(event.target.closest('a')) closeMenu(); });
+function renderRoute() {
+  closeMenu();
+  const params = new URLSearchParams(location.hash.slice(1));
+  const path = params.get('read');
+  const section = params.get('section');
+  overview.hidden = Boolean(path); reader.hidden = !path;
+  if(path) {
+    const item = byPath.get(path);
+    document.getElementById('reader-path').textContent = item ? item.kind + ' / ' + path : '未找到资料 / ' + path;
+    body.innerHTML = item ? item.html : '<h1>未找到该资料</h1><p>链接可能来自旧版本。请返回任务导航，或使用顶部检索定位现有资料。</p>';
+    const source = document.getElementById('source-link');
+    source.hidden = !item;
+    if(item) source.href = path.split('/').map(encodeURIComponent).join('/');
+    const toc = document.getElementById('reader-toc'); toc.replaceChildren();
+    if(item && item.headings.length > 1) {
+      const title = document.createElement('h2'); title.textContent = '本页目录'; toc.append(title);
+      const links = document.createElement('nav');
+      for(const heading of item.headings) {
+        if(heading.level > 3) continue;
+        const a = document.createElement('a'); a.href = readRoute(path, heading.id); a.textContent = heading.text;
+        if(heading.level > 2) a.className = 'subheading'; links.append(a);
+      }
+      toc.append(links); toc.hidden = false;
+    } else toc.hidden = true;
+    reader.querySelector('.reader-layout').style.gridTemplateColumns = toc.hidden ? 'minmax(0,1fr)' : '';
+    document.title = (item ? item.title : '未找到资料') + ' · SGLang HCU';
+    requestAnimationFrame(() => {
+      const target = section ? [...body.querySelectorAll('[id]')].find(node => node.id === 'article-' + section) : null;
+      if(target) { target.scrollIntoView({block:'start'}); target.focus({preventScroll:true}); }
+      else { window.scrollTo({top:0,behavior:'auto'}); const heading = body.querySelector('h1'); if(heading) { heading.setAttribute('tabindex','-1'); heading.focus({preventScroll:true}); } }
+    });
+  } else {
+    document.title = 'SGLang HCU 插件 · 方法与开发手册';
+    const target = document.getElementById(location.hash.slice(1) || 'start');
+    if(target) requestAnimationFrame(() => target.scrollIntoView({block:'start'}));
+  }
+  for(const a of navigation.querySelectorAll('.nav-links a')) {
+    const active = path ? a.hash === '#documents' : a.hash === (location.hash || '#start');
+    if(active) a.setAttribute('aria-current','location'); else a.removeAttribute('aria-current');
+  }
+}
+function renderSearch() {
+  const query = search.value.trim().toLocaleLowerCase();
+  const words = query.split(/\s+/).filter(Boolean);
+  results.hidden = !query && !filter.value;
+  if(results.hidden) { list.replaceChildren(); return; }
+  const ranked = catalog.filter(item => item.kind !== '目录' && (!filter.value || item.kind === filter.value) && words.every(word => (item.title + ' ' + item.path + ' ' + item.text).toLocaleLowerCase().includes(word))).map(item => ({item, rank: words.reduce((total, word) => total + (item.title.toLocaleLowerCase().includes(word) ? 10 : 0) + (item.path.toLocaleLowerCase().includes(word) ? 4 : 0),0)})).sort((a,b) => b.rank - a.rank || a.item.path.localeCompare(b.item.path));
+  list.replaceChildren();
+  document.getElementById('search-count').textContent = ranked.length ? '找到 ' + ranked.length + ' 项资料' + (ranked.length > 20 ? '，显示前 20 项' : '') : '未找到匹配资料';
+  document.getElementById('no-results').hidden = Boolean(ranked.length);
+  for(const {item} of ranked.slice(0,20)) {
+    const li = document.createElement('li'); li.className = 'result';
+    const a = document.createElement('a'); a.href = readRoute(item.path);
+    const title = document.createElement('div'); title.className = 'result-title'; title.textContent = item.title;
+    const meta = document.createElement('div'); meta.className = 'result-meta'; meta.textContent = item.kind + ' · ' + item.path;
+    const snippet = document.createElement('p'); snippet.className = 'result-snippet';
+    const position = words.length ? item.text.toLocaleLowerCase().indexOf(words[0]) : 0;
+    const start = Math.max(0,position - 28); snippet.textContent = (start ? '…' : '') + item.text.slice(start,start + 145).replace(/\s+/g,' ') + '…';
+    a.append(title,meta,snippet); li.append(a); list.append(li);
+  }
+}
+search.addEventListener('input',renderSearch); filter.addEventListener('change',renderSearch);
+document.getElementById('search-form').addEventListener('submit',event => { event.preventDefault(); const first = list.querySelector('a'); if(first) { location.hash = first.hash; search.value = ''; filter.value = ''; renderSearch(); } });
+list.addEventListener('click',event => { if(event.target.closest('a')) { search.value = ''; filter.value = ''; renderSearch(); } });
+document.getElementById('copy-prompt').addEventListener('click', async () => {
+  const text = document.getElementById('assistant-prompt').textContent;
+  let copied = false;
+  try { if(navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); copied = true; } } catch(error) { /* File URLs may not provide the Clipboard API. */ }
+  if(!copied) {
+    const area = document.createElement('textarea'); area.value = text; area.style.position = 'fixed'; area.style.opacity = '0'; document.body.append(area); area.select();
+    try { copied = document.execCommand('copy'); } catch(error) { copied = false; }
+    area.remove(); document.getElementById('copy-prompt').focus();
+  }
+  document.getElementById('copy-status').textContent = copied ? '请求已复制。请在 Agent 中替换目标后使用。' : '当前浏览器未允许复制，请选中上方请求文本手动复制。';
+});
+window.addEventListener('hashchange',renderRoute);
+window.addEventListener('resize',closeMenu);
+renderRoute();
+</script>
+</body>
+</html>

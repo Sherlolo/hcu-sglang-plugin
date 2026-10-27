@@ -1,11 +1,12 @@
 # 文档中心
 
-> **本文用途**：作为 docs 的统一入口，说明每份文档负责什么、何时阅读以及如何维护。首次使用时选择下表任务入口；任务分类见 [阅读指南](reading-guide.md)。
+> **本文用途**：作为 docs 的统一入口，说明每份文档负责什么、何时阅读以及如何维护。首次使用可先调用 [统一任务入口](../skills/hcu-plugin-assistant/SKILL.md)，或选择下表专项任务；任务分类见 [阅读指南](reading-guide.md)。
 
 ## 任务入口
 
 | 任务 | 操作文档 | 执行 Skill |
 |---|---|---|
+| 问题检索与任务匹配 | [统一入口说明](reading-guide.md#统一入口与输入补全) | [hcu-plugin-assistant](../skills/hcu-plugin-assistant/SKILL.md) |
 | 插件工程初始化 | [工程初始化指南](first-plugin.md) | [hcu-plugin-scaffold](../skills/hcu-plugin-scaffold/SKILL.md) |
 | 插件安装与加载验证 | [安装与启用指南](installation.md) | [hcu-plugin-install](../skills/hcu-plugin-install/SKILL.md) |
 | 插件能力开发 | [能力开发指南](plugins.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
@@ -53,13 +54,14 @@ flowchart TB
 | [验证与排障](validation.md) | 接线/数值/graph/服务/性能、组合矩阵 | 验收或定位问题 | 新 lane、阈值或证据要求 |
 | [任务与路线](board.md) | 后续实施条件与任务字段 | 领取下一项工作 | 负责人/状态/接受条件变化 |
 | [来源地图](extraction-map.md) | 固定来源、抽取取舍、V1/V2 关系 | 审核来源或更新方法 | 新来源或方法重写 |
+| [V3 方法库入口实施记录](v3-20261027-development.md) | 网页阅读器、统一 Skill、使用案例及验证限制 | 使用或维护本轮方法库入口 | 导航、输入补全或网页构建方式变化 |
 | [V3 2026-10-26 实施记录](v3-20261026-development.md) | 当前输入、已实现模块、逻辑对照与本轮验证 | 接手本轮交付或复核 HCU 逻辑差异 | 当前来源、实现或验证结果变化 |
 | [V3 实践](v3-runtime-validation.md) | 指定源码/容器上的输出、问题和可复现验证 | 运行本次或相同 profile | 源码/接口/实际结果变化 |
 | [版本升级与发版](upgrading.md) | 升级工作流、Skill 调用、补丁处置与验收 | 指定官方目标升级或发布交付 | 升级流程或验收契约变化 |
 | [vLLM Skill 迁移](vllm-skill-migration.md) | 方法取舍、SGLang 改写和新增升级发版入口 | 升级/发版、维护来源与能力边界 | 来源或方法迁入变化 |
 | [交付记录](delivery-validation.md) | 按版本保存范围、命令和验证结果 | 核对本次完成情况 | 一次交付实际完成后 |
 
-浏览器导览为 [architecture.html](../architecture.html)，详细规则仍以 Markdown 原文为准。
+浏览器导览为 [architecture.html](../architecture.html)，提供离线全文检索、内部文档跳转与窄屏导航。页面由 [网页模板](../templates/architecture.html) 和 [构建工具](../tools/build_guide.py) 生成；修改共享内容后运行 `python3 tools/build_guide.py`，通过 `--check` 检查快照是否最新。详细规则仍以 Markdown 原文为准。
 
 ## 3. 数据快照与执行资源
 
@@ -67,8 +69,8 @@ flowchart TB
 |---|---|---|
 | [source-inventory.json](source-inventory.json) | V1 中 DAS 25 项 Skill 的原始描述、源哈希、取舍和目的地 | 历史抽取索引；不是运行时能力清单 |
 | [source-manifest.json](source-manifest.json) | V1 来源 SHA 与抽取时的源/目标文件哈希 | V1 快照；目标文件未来修改后不能当当前全仓完整性清单 |
-| [skills/](../skills) | 7 个任务入口、agents 元信息和按需参考 | 保留共享相对路径 |
-| [tools/](../tools) | 9 个工具的唯一源码 | 用 `--help` 和对应操作手册 |
+| [skills/](../skills) | 1 个统一入口、7 个专项入口、agents 元信息和按需参考 | 保留共享相对路径 |
+| [tools/](../tools) | 10 个工具的唯一源码 | 用 `--help` 和对应操作手册 |
 | [templates/](../templates) | 人工处置、历史和验证记录 | 复制后填写真实证据，不复用旧 verified |
 | [tests/](../tests) / [ci/](../ci) | 工具契约与结构门禁 | CPU 工具结论不外推成运行时已验证 |
 | `artifacts/` | 本次执行日志、清单和本地产物 | Git 忽略；共享证据时另保存稳定位置 |

@@ -50,6 +50,7 @@ python3 tools/verify_reconstruction.py --help
 
 | Skill | 输入重点 | 输出重点 |
 |---|---|---|
+| [hcu-plugin-assistant](../skills/hcu-plugin-assistant/SKILL.md) | 自然语言目标、已知环境与限制 | 检索匹配、必要补问与专项执行衔接 |
 | [hcu-plugin-scaffold](../skills/hcu-plugin-scaffold/SKILL.md) | 官方版本、外部工程路径、命名与首项功能 | 插件工程、入口映射及启停验证 |
 | [hcu-plugin-install](../skills/hcu-plugin-install/SKILL.md) | 指定产物、目标环境、用户和安装目录 | 安装记录、入口与来源、分层加载结果 |
 | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) | 能力需求、版本、涉及仓库、支持范围 | 接口方案、注册与回退契约、验证计划 |
@@ -58,7 +59,7 @@ python3 tools/verify_reconstruction.py --help
 | [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md) | 干净 official/plugin、新输出路径 | 内嵌树、清单核验、未验证运行项 |
 | [hcu-plugin-triage](../skills/hcu-plugin-triage/SKILL.md) | 可复现配置、启停对比、日志 | 首次分叉/根因、最小复现和回归 |
 
-向 Agent 提供 Skill 的完整路径，例如：
+首次使用可直接描述目标并读取统一入口；无需先填写全部任务模板。明确专项入口时，向 Agent 提供对应 Skill 的路径，例如：
 
 ```text
 读取 <repo>/skills/hcu-plugin-backtrack/SKILL.md。

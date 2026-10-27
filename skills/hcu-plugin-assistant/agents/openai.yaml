@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCU 插件任务助手"
+  short_description: "根据开发、安装或排障目标检索本仓资料，补齐必要输入并衔接专项 Skill。"
+  default_prompt: "使用 $hcu-plugin-assistant，根据我的问题检索本仓 Skill 与文档，补齐必要输入后执行对应任务。"

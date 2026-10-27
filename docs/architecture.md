@@ -93,8 +93,8 @@ hcu-sglang-plugin/
 │   ├── board.md                后续工作与接受条件
 │   ├── extraction-map.md       方法来源和取舍
 │   └── delivery-validation.md  按版本记录交付证据
-├── skills/<task>/              7 个任务 Skill 与按需参考
-├── tools/                      9 个开发工具的唯一实现
+├── skills/<task>/              1 个统一入口 + 7 个专项 Skill 与按需参考
+├── tools/                      10 个方法工具的唯一实现
 ├── templates/                  历史、处置与验证模板
 ├── tests/                      CPU 工具行为测试
 ├── ci/                         离线结构门禁

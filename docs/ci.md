@@ -58,3 +58,9 @@ python3 -m unittest discover -s tests -v
 ## 版本升级与发版门槛
 
 按 [契约与影响](../skills/upgrading-sglang-hcu-upstream-first/references/contracts-and-impact.md) 记录选测与失效条件；选测/CI 本身变化用独立清单核对，必测 skip/xfail 不作通过。实际 wheel/image/embedded 验收及候选/last-good 分离见 [升级发版 Skill](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md)。新增这些方法不代表本仓已经接入硬件 runner 或发布流水线。
+
+## 网页快照维护
+
+[离线导览](../architecture.html) 内嵌当前文档与 Skill 内容，不在浏览时读取外部网络。修改共享文件或 [网页模板](../templates/architecture.html) 后，运行 `python3 tools/build_guide.py` 重新生成，随后运行 `python3 tools/build_guide.py --check`；后者只读比较，快照过期时非零退出。完整原文仍在 docs/skills/tools 等目录维护，不直接手改生成页。
+
+浏览器或 DOM 验证覆盖页面内跳转、文档章节链接、搜索与无结果状态、请求复制反馈、移动导航和历史返回；实际视觉渲染与 DOM 测试分别记录，不以语法或链接检查代替渲染结论。当前 runner 配方包含快照检查，接入平台后才形成自动 CI。
