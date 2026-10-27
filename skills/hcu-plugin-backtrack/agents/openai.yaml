@@ -1,4 +1,4 @@
 interface:
-  display_name: "HCU Plugin 源码回溯"
+  display_name: "HCU 插件内嵌源码生成与核验"
   short_description: "将干净官方 SGLang 与外部 DCU 插件组合为可核验的内嵌源码仓库。"
-  default_prompt: "使用 $hcu-plugin-backtrack，根据给定仓库与环境完成任务并记录验证证据。"
+  default_prompt: "使用 $hcu-plugin-backtrack，根据指定干净输入生成内嵌源码，核验清单并记录实际验证范围。"

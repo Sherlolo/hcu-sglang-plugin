@@ -1,6 +1,26 @@
-# 三方迁移手册：差异审计、处置与版本升级
+# 三方差异审计与迁移指南
 
-> **本文用途**：将 official、DAS fork 和外部 plugin 的差异整理成可追溯清单与处置台账，并给出方法同步和签名检查入口。用于 fork 同步、官方升级和覆盖审计；skill 入口见 [三方迁移](../skills/sglang-dcu-plugin-migration/SKILL.md)。
+> **本文用途**：将 official、DAS fork 和外部 plugin 的差异整理成可追溯清单与处置台账，并给出方法同步和签名检查入口。用于 fork 同步、官方升级和覆盖审计；Skill 入口见 [三方迁移](../skills/sglang-dcu-plugin-migration/SKILL.md)。
+
+## 使用 Skill 执行三方迁移
+
+对应 Skill：[`sglang-dcu-plugin-migration`](../skills/sglang-dcu-plugin-migration/SKILL.md)。该 Skill 按本指南执行审计、清单与台账流程。指定官方目标的升级与发版由 [升级指南](upgrading.md) 组织。
+
+**输入要求**：official/fork/plugin 绝对路径和 ref/SHA、迁移范围、可选 adapter 版本、执行环境及产物目录。
+
+**调用示例**：将占位符替换为实际绝对路径与任务信息，提交给 Agent。
+
+```text
+读取 <方法库绝对路径>/skills/sglang-dcu-plugin-migration/SKILL.md，按该 Skill 执行。
+官方仓库：<路径及 ref/SHA>；HCU fork：<路径及 ref/SHA>。
+外部插件仓库：<路径及 ref/SHA>；adapter：<不使用或版本>。
+迁移范围：<模型/能力/目录或完整审计范围>。
+执行环境：<Python/容器>；产物目录：<独立可写目录>。
+固定基线，执行差异审计并建立人工处置台账。
+区分候选、已接入与已验证能力；实现和运行验证按本次要求执行，不清理脏输入。
+```
+
+**预期交付**：来源审计、差异清单、处置与依赖台账、实际完成范围及验证缺口。
 
 ## 1. 输入、前提与流程
 
@@ -22,13 +42,13 @@ flowchart LR
 
 审计允许记录脏输入，不得先 reset/clean。回溯要求干净输入，见 [回溯手册](backtracking.md)。职责归属按 [治理](governance.md) 拆分；官方 + adapter + plugin 可以是同一交付的目标组合，不是互斥去向。
 
-命令均从本库根目录执行；先将变量替换成真实绝对路径。`PLUGIN` 必须指向外部实现仓，不能指向当前方法库。审计允许脏树并记录 WORKTREE；不得先 reset/clean。回溯对干净树的要求见单独手册。
+命令均从本库根目录执行；先按 [路径配置](configuration.md#1-当前工具的路径配置) 加载本次输入。`PLUGIN` 必须指向外部实现仓，不能指向当前方法库。审计允许脏树并记录 WORKTREE；不得先 reset/clean。回溯对干净树的要求见单独手册。
 
 ```bash
-OFFICIAL=/path/to/official-sglang
-FORK=/path/to/sglang-das
-PLUGIN=/path/to/sglang-plugin-das
-ARTIFACTS="$PWD/artifacts/migration"
+: "${OFFICIAL:?请设置官方源码路径}"
+: "${FORK:?请设置 HCU 来源路径}"
+: "${PLUGIN:?请设置外部插件路径}"
+: "${ARTIFACTS:?请设置本次证据目录}"
 mkdir -p "$ARTIFACTS"
 python3 tools/audit_repositories.py \
   --repo "official=$OFFICIAL" --repo "fork=$FORK" --repo "plugin=$PLUGIN" \
@@ -79,6 +99,8 @@ python3 tools/build_disposition_ledger.py \
 
 没有运行环境时可省略 targets 文件获得 AST 候选台账。报告用 `hook_target_source` 区分 `ast-candidates` 与 `runtime-export`，分别填写 `candidate_hook_targets` 或 `registered_hook_targets`，另一项为 null。模块路径匹配的条目保持 pending，避免误报 implemented/active。即使来自 register，也尚未证明目标属性能 apply。逐项补充来源与行为、拆分 adapter/plugin 实现职责、记录运行组合并查历史 commit，人工审核后才更新 overrides；不要套用旧任务的验收结论。
 
+V3 的新社区源已将部分配置处理迁入具名 resolution/model override seam。不能照搬旧 ServerArgs 方法名；完整 apply 与非空入口检查用 [validate_plugin_runtime.py](../tools/validate_plugin_runtime.py)，实际问题见 [V3 手册](v3-runtime-validation.md)。
+
 ## 4. 方法抽取与升级验证
 
 下面两个工具保留历史 `sglang_dcu_plugin/models/deepseek` 布局，不能泛化到任意 plugin 名称。
@@ -112,3 +134,9 @@ PYTHONPATH="$OFFICIAL/python:$PLUGIN" python3 tools/validate_hook_signatures.py 
 九类处置与证据要求见 [migration-contract](../skills/sglang-dcu-plugin-migration/references/migration-contract.md)。跨仓任务分别引用依赖和兼容 SHA；同一台账可以包含两个仓的工作，但每份实现仍有明确所有者。
 
 交付时报告条目总数及各状态/处置分布、AST/注册/apply 数量、未解析目标、静态与运行时结果、native/package 缺口。用 [验证模板](../templates/validation-record.md) 记录适用组合，按 [协作流程](contributing.md) 评审与交接。
+
+方法同步先预检所有源符号与生成语法，源类拆分/条件别名不猜测；失败退出 2 且不写任何输出。该保护不表示当前旧 DeepSeek profile 已适配新类结构；发现漂移后需审查初始化、继承、状态与调用语义再更新 profile。
+
+## 指定目标升级与发版衔接
+
+三方差异盘点之后，需要升级到用户指定 official ref 并交付 wheel/image/embedded 时，使用 [升级发版 Skill](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md)。它复用本手册工具，补充上游接管判定、测试影响、产物来源与必测矩阵；不会让静态 pending 台账自动成为 verified。取舍见 [迁移分析](vllm-skill-migration.md)。

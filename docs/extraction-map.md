@@ -4,7 +4,7 @@
 
 ## 1. V1 抽取基线与来源
 
-日期：2026-10-20。所有来源为 NMZ_zz_26 本地快照，未拉取网络版本。各树读取时均干净。机器可读基线与文件来源见 [source-manifest](source-manifest.json)，DAS 的 25 个 skill 全量索引、原始描述、SHA256、取舍与目的地见 [source-inventory](source-inventory.json)。
+日期：2026-10-20。所有来源为历史验证节点的本地快照，未拉取网络版本。各树读取时均干净。机器可读基线与文件来源见 [source-manifest](source-manifest.json)，DAS 的 25 个 skill 全量索引、原始描述、SHA256、取舍与目的地见 [source-inventory](source-inventory.json)。
 
 | 来源 | 抽取对象 | 新仓落点 |
 |---|---|---|
@@ -41,7 +41,7 @@ V2 再次核对参考 adapter `dac7de12eae473d9ba4dbd3658e67a517639a024` 的治�
 | 增加配置与协作专篇 | 统一跨仓依赖、版本组合、默认值和评审流程 | configuration / contributing |
 | 提供图文导览 | 便于浏览仓库关系与未来结构 | 根 architecture.html |
 
-## 4. 如何理解 JSON 快照
+## 4. JSON 快照使用边界
 
 | 文件 | 固定内容 | V2 之后的读法 |
 |---|---|---|
@@ -49,3 +49,27 @@ V2 再次核对参考 adapter `dac7de12eae473d9ba4dbd3658e67a517639a024` 的治�
 | `source-manifest.json` | V1 的输入 SHA、源文件及当时目标哈希 | 不是当前全仓完整性清单；修改过的目标以 Git diff/当前版本验证追踪 |
 
 V2 保留这两个来源快照，不重写原捕获日期或把新文案伪装为旧来源。新目录和包名是设计提案，运行时业务代码仍未引入。后续更新来源时新增版本记录并说明改变，不仅覆盖历史通过数字。
+
+## 5. vLLM 发版方法迁入（2026-10-22）
+
+从用户指定的同级 `upgrading-vllm-hcu-upstream-first` 抽取通用升级、上游接管、选测、ABI/产物和发版验收方法，重写为第 5 个 [SGLang 升级发版 skill](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md)。现有四个入口按任务引用它，不搬移 vLLM runtime、专属 API/脚本、固定模型命令和历史通过数字。完整取舍见 [迁移分析](vllm-skill-migration.md)，本次源字节哈希独立保存在 [source-map](../skills/upgrading-sglang-hcu-upstream-first/references/source-map.json)，不覆盖 V1 JSON。
+
+
+## V3 实践经验与方法来源
+
+[开发经验与故障案例索引](development-methodology.md) 与重整后的开发/排障参考，来自本仓 [V3 运行记录](v3-runtime-validation.md) §7–§18：实际 caller/readout、collective owner、原生/理想 oracle、builder 环境、严格生成和产物闭环。新离线生成校验工具是本次实现，不来自 vLLM 运行时；案例的设备、版本与参数不成为通用默认值。V1 source-inventory/source-manifest 和升级 skill 的 source-map 保留各自原始快照语义，未为了本次方法改写而重写历史哈希。
+
+## 来源与许可声明
+
+hcu-sglang-plugin 方法与工具抽取，2026-10-20。
+
+迁移审计脚本、迁移证据契约来自 sglang-plugin-das；回溯生成器与原始测试来自 agent_work/plugin_work。
+文档组织与部分方法参考 hcu-sglang-adapter，插件测试/排障方法参考 sglang-das/.claude/skills。
+来源基线、原始文件哈希及改写说明见 [source-manifest.json](source-manifest.json)、[source-inventory.json](source-inventory.json) 和本文。
+保留源文件已有声明；三个参考仓库的许可原文分别位于 [licenses/](../licenses)。
+本次未复制插件运行时、vendor 二进制或模型权重。
+
+2026-10-22：另参考用户提供的 upgrading-vllm-hcu-upstream-first，按 SGLang 当前框架与方法库边界重写升级、选测、兼容产物与发版验收方法；未复制其运行时或厂商实现。
+方法迁移说明及源文件哈希见 [vllm-skill-migration.md](vllm-skill-migration.md) 和 [source-map.json](../skills/upgrading-sglang-hcu-upstream-first/references/source-map.json)。原来源目录保持只读。
+
+以上声明由原根目录 NOTICE 合并至本页，便于与来源版本和抽取范围一起维护。

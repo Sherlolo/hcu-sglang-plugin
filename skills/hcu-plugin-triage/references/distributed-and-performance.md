@@ -1,15 +1,39 @@
-# 分布式、crash 与性能定位
+# 分布式、共享资源与服务生命周期排障
 
-> **用途**：定位 rank 分叉、crash 和热路径退化，排除环境与冷编译混淆。按 [验证手册](../../../docs/validation.md) 保存环境、组合与结果。
+> **用途**：区分 rank 退出、collective 合同、资源冲突、观察中断和性能退化。结果按 [验证手册](../../../docs/validation.md) 记录，接受配置与交付闭环见 [历史经验](../../../docs/development-methodology.md)。
 
-提取自 DAS debug-distributed-hang、debug-cuda-crash、sglang-bisect-ci-regression、generate-profile 和 sglang-profile-analyse。
+## 1. 先查最后一个实际失败
 
-## 定位与证据
+多 rank 卡住时先查各 rank 是否已 OOM/异常退出，再比较最后 collective 的 group、shape、顺序和 batch/cache 状态。记录 TP/PP/DP/EP、rank 时间线与首次分叉，不从父进程退出 137 单独推断 OOM。
 
-- 先查各 rank 是否 OOM/异常退出，收集 watchdog/Python 栈与最后错误，再判断 collective 卡住。记录 TP/PP/DP/EP、rank 时间线、最后 collective 类型/shape/顺序、seq_len/batch/cache 状态；二分首个 rank 分叉点，既查 shape 又查分支是否一致。
-- 优先用已有 py-spy/watchdog/ROCm/HCU 工具，先读环境权限与版本。CUDA coredump/cuda-gdb 只在对应 CUDA 环境适用；不复制驱动专属命令作为 HCU 指令。不要停止不属于本任务的服务来制造空闲。
-- crash 尽量在调用前保存必要输入 metadata 和最小可重放数据，关注 shape/dtype/stride/device/NaN；某方法依赖模块或分布式状态时，输入 tensor dump 不等于可独立重放。
-- 性能退化先对齐硬件/driver/DTK/轮子/各仓 SHA，分开冷编译、预热和稳定测量；再用环境支持的 profiler 看 CPU dispatch、kernel、通信和同步占比。profiling 结果与正常 benchmark 分开报告，避免探针开销污染结论。
-- 回归二分先找相同测试配置下最后 pass / 首次 fail，并确认不是换了卡型/runner/依赖。对固定失败签名在独立 checkout/worktree 中缩小提交范围；不在用户脏树 checkout/reset。无法复现或缺 GPU 时记 pending，不能强行定责某提交。
+若无 crash 但结果错误，确认生产者/消费者谁拥有 sum：每个局部贡献究竟被归约了几次，是否还带着未完成的 boundary handoff。实际 TP>1 的数值与调用次数都要测，单卡 router/mock 不能覆盖它。
 
-组合回归记录两仓 SHA、实际导入路径、加载时序和配置来源；在同一硬件/输入下隔离新变化，而不是一次更换多个依赖后推断某仓有问题。
+保存必要输入 metadata 和最小可重放数据，优先使用环境已有的 watchdog、Python 栈与 ROCm/HCU 工具。CUDA coredump/cuda-gdb 不直接作为 HCU 指令；依赖模块或分布式状态的方法不能仅凭 tensor dump 重放。
+
+## 2. 共享节点准入与冲突
+
+按用例真实需要的设备检查显存与计算占用；单卡测试不必等待全节点，TP 服务须满足其整个拓扑。0% 利用率但大显存驻留不是空闲。记录物理卡、ROCR/HIP 逻辑映射、NUMA 与进程内可见数；在实际驱动语义下验证映射，不机械复制两份可见性变量。
+
+准入快照不是独占租约。加载期间发生新占用时记录变化，必要时将 GPU_ID→宿主 PID→cgroup→完整容器 ID 关联，避免混淆容器 PID 与宿主 PID。默认不停止他人服务；已有明确用户授权时才处理相应冲突，并再次检查身份及节点权限。权限拒绝就是动作未完成，保留拒绝和仍运行的证据，不能换 socket/全局 kill 绕过。
+
+有时限的等待记录原截止时间和真实控制器。观察中断不自动续期或重启。重试前核对旧服务未存活；新 attempt、新日志目录，保留旧失败和队列状态。
+
+## 3. 长任务观察与恢复
+
+为自有启动记录会话或控制器、宿主/容器 PID 对应关系、创建时间、命令与进程组。状态 JSON 有时间戳，但它本身不能证明进程存活；用仍有效的工具句柄或实际进程身份核验。PID 缺失、明确终态与观察超时分别处理。
+
+SSH 断线或 HTTP 超时后先核验原服务，不能重复加载模型。日志中最后一个阶段未更新时，检查原进程和资源，而不是把“没观察到完成”当作失败或停止。
+
+HTTP 探测只在进程范围绕过 proxy，并设置超时；核对监听者属于本次进程/其 workers 后再用 health、实际模型名和生成响应验收。端口暂不可绑定时先区分监听者与残留连接状态，不据此停止无关容器或擅改配方端口。
+
+## 4. 清理与后继记录
+
+清理仅操作自有进程组和曾核实身份的 workers；进程句柄/创建时间防止 PID 复用。确认 workers 退出、端口状态和所用设备占用回到实测基线；资源本来可能非零，不要求全节点清空。不能用 broad pkill 或重启共享节点来完成回收。
+
+一次切换准入 pending 后，可以在核实旧任务终止、资源恢复后建立新的独立运行。旧 pending/failed 原样保留，后继成功关联新 run-id、原始响应及清理证据。不能因旧队列终态覆盖后来成功，也不能将后继通过回写成旧 attempt 成功。
+
+## 5. 性能与版本二分
+
+先对齐硬件/driver/DTK、轮子和各仓 SHA、拓扑、权重/精度、功能与请求分布，分开冷编译、预热和稳定测量，再看 CPU dispatch、kernel、通信与同步占比。profiling 结果与正常 benchmark 分开，报告探针开销。
+
+二分使用同一失败签名下的最后 pass / 首次 fail，排除卡型、runner 和依赖变化，在隔离 checkout 缩小范围，不在用户脏树 checkout/reset。无法复现或缺资源时保留 failed/pending 及解除条件，不强行归因某个仓或提交。涉及 adapter 时另记录组合加载顺序和有效基线。

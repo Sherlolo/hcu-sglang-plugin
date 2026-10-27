@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCU 插件安装与加载验证"
+  short_description: "安装指定 HCU 插件源码或 wheel，核验解释器、入口、模块来源及实际加载状态。"
+  default_prompt: "使用 $hcu-plugin-install，在指定环境安装插件并分层记录安装、入口与加载验证结果。"

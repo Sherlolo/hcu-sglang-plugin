@@ -1,0 +1,4 @@
+interface:
+  display_name: "SGLang HCU 升级与发版"
+  short_description: "优先复用上游能力，完成 SGLang HCU 插件迁移、产物核验与发版验证"
+  default_prompt: "使用 $upgrading-sglang-hcu-upstream-first 将外部 SGLang HCU 插件升级到指定官方目标，建立补丁台账与验收矩阵并验证交付产物。"

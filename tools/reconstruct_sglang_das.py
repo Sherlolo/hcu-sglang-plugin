@@ -18,7 +18,7 @@ from typing import Iterable, Sequence
 
 MANIFEST_NAME = ".sglang-dcu-embedded.json"
 MANIFEST_KIND = "sglang-dcu-embedded-source"
-GENERATOR_VERSION = 1
+GENERATOR_VERSION = 3
 
 PLUGIN_PACKAGE = Path("sglang_dcu_plugin")
 UPSTREAM_PLUGIN_LOADER = Path("python/sglang/srt/plugins/__init__.py")
@@ -28,35 +28,28 @@ UPSTREAM_PYPROJECT = Path("python/pyproject.toml")
 LOADER_BEGIN = "    # BEGIN SGLANG DCU EMBEDDED PLUGIN"
 LOADER_END = "    # END SGLANG DCU EMBEDDED PLUGIN"
 LOADER_ANCHOR = "    for name, (func, dist_name) in plugins.items():\n"
-LOADER_BLOCK = f"""{LOADER_BEGIN}
-    # The vendored implementation is part of this source tree, so it is loaded
-    # regardless of the external SGLANG_PLUGINS entry-point allowlist.
-    from sglang_dcu_plugin import register as register_embedded_dcu
+LOADER_BLOCK = """    from sglang_dcu_plugin import register as register_embedded_dcu
 
     plugins.setdefault(
         "dcu", (register_embedded_dcu, "sglang-dcu-embedded")
     )
-{LOADER_END}
 
 """
 
 BOOTSTRAP_BEGIN = "# BEGIN SGLANG DCU EMBEDDED BOOTSTRAP"
 BOOTSTRAP_END = "# END SGLANG DCU EMBEDDED BOOTSTRAP"
 BOOTSTRAP_ANCHOR = "_redirect_third_party_caches()\n"
-BOOTSTRAP_BLOCK = f"""
+BOOTSTRAP_BLOCK = """
 
-{BOOTSTRAP_BEGIN}
-# Install optional AITER import shims before SGLang imports the heavy runtime.
 from sglang_dcu_plugin.compat.aiter import (
     bootstrap_aiter_compat as _bootstrap_dcu_aiter_compat,
 )
 
 _bootstrap_dcu_aiter_compat()
-{BOOTSTRAP_END}
 """
 
 PACKAGE_DATA_TABLE = '[tool.setuptools.package-data]\n'
-PACKAGE_DATA_LINE = '"sglang_dcu_plugin" = ["jit_overlay/**/*.cuh", "jit_overlay/**/*.h"]\n'
+PACKAGE_DATA_LINE = '"sglang_dcu_plugin" = ["jit_overlay/**/*"]\n'
 
 
 class ReconstructionError(RuntimeError):
@@ -87,6 +80,9 @@ def _run(
             text=True,
             stdout=subprocess.PIPE if capture else None,
             stderr=subprocess.PIPE if capture else None,
+            # Source validation is read-only, including Git's optional stat cache.
+            # Required locks for clone/switch still work in the generated checkout.
+            env={**os.environ, "GIT_OPTIONAL_LOCKS": "0"},
         )
     except FileNotFoundError as exc:
         raise ReconstructionError(
@@ -168,11 +164,17 @@ def _inject_once(
     end: str,
     *,
     after: bool = False,
+    symbol: str,
 ) -> None:
     source = path.read_text(encoding="utf-8")
-    if begin in source or end in source:
+    tree = ast.parse(source, filename=str(path))
+    imported_names = {alias.asname or alias.name
+                      for node in ast.walk(tree)
+                      if isinstance(node, (ast.Import, ast.ImportFrom))
+                      for alias in node.names}
+    if begin in source or end in source or symbol in imported_names:
         raise ReconstructionError(
-            f"embedded marker already exists in pristine source: {path}"
+            f"embedded integration already exists in pristine source: {path}"
         )
     if source.count(anchor) != 1:
         raise ReconstructionError(
@@ -361,6 +363,7 @@ def reconstruct_sglang_das(
             LOADER_BLOCK,
             LOADER_BEGIN,
             LOADER_END,
+            symbol="register_embedded_dcu",
         )
         _inject_once(
             temp_path / UPSTREAM_PACKAGE_INIT,
@@ -368,6 +371,7 @@ def reconstruct_sglang_das(
             BOOTSTRAP_BLOCK,
             BOOTSTRAP_BEGIN,
             BOOTSTRAP_END,
+            symbol="_bootstrap_dcu_aiter_compat",
             after=True,
         )
         _add_package_data(temp_path / UPSTREAM_PYPROJECT)

@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "captured_date": "2026-10-22",
+  "source_root": "${VLLM_SKILL_SOURCE}",
+  "target_scope": "SGLang 方法/skill 迁移；未复制 runtime 或执行硬件/发版测试",
+  "hash_semantics": "原始源字节的 SHA256；不是目标完整性或硬件验证结果。文件枚举不表示逐行复核全部历史证据。",
+  "files": [
+    {
+      "source": "SKILL.md",
+      "sha256": "eaa33bb2c5df237a60d8dd13cdd2df0f4ece04dfa8e55c7f199438280b7b96f6",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/SKILL.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "agents/openai.yaml",
+      "sha256": "dd1a56ac8d743558ba4b038ff0c4a3d63bae04f6654ff57a8a7168cef568b593",
+      "decision": "rewritten_metadata",
+      "destinations": [],
+      "reason": "创建独立 SGLang skill 名称和触发描述，不复用 vLLM prompt。"
+    },
+    {
+      "source": "references/aiter-moe-allreduce.md",
+      "sha256": "0981a02a6d6d1962ce0944fc675914653ff41c795edd94822adfb798d50eceec",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/native-contracts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/attention-kv.md",
+      "sha256": "43ff77bbc75d7245c31cb229cb85d5e216bc8951584b8ce3ac55daddc596b848",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/native-contracts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/build-main.md",
+      "sha256": "316fcefac50f551310b8a9b3a6bda0885e938b5190d3ab66745333d1d1961cb2",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/compatibility-and-artifacts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/ci-release.md",
+      "sha256": "94dc80374128b7bf7933c032351b7911d1af185408186d64d19658f26bc9a277",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/release-validation.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/compatibility.md",
+      "sha256": "c17e009655b21affa1f2785a351b732049a721acbc05d6c2bc4e5a435159e611",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/compatibility-and-artifacts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/continuous-validation.md",
+      "sha256": "d8db02f6626d2b571139544f9478c669a204872c1fbeac5bdc581c4ed3530647",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/contracts-and-impact.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/cross-model.md",
+      "sha256": "12970d0925ff8afa624197d50e60fbba62ea34fd6d4ef0b83c8225defcd6b776",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/derived-from.json",
+      "sha256": "62d78b0d9aff7e552760612c27b04809024d1d52b547edfaf953c261d0f25f42",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/distributed-mtp.md",
+      "sha256": "d2c57301d2e5e9d4f04c76d1f40c975e121a82741241be98b0ec243d7182869b",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evaluation.md",
+      "sha256": "fa1afde0f69ba643344fee2aaca8cfee86d755cdd5f2b683d4db0ee72a1cc492",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/release-validation.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/evidence-deepseek.md",
+      "sha256": "5b728afa3feac38f8b70d9de84b699aed4fe322a62e1b0098f321704ffc84c73",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evidence-glm.md",
+      "sha256": "fcc8bada7a19c936171cdca35ac2808f0057974648d56b2793a59521d5a3fea9",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evidence-other-models.md",
+      "sha256": "307427c56283c05675dbc461635358ac4b0543e1ec471115781e53117b073148",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evidence-qwen.md",
+      "sha256": "4b4f30c56f4fd81b9f1866cea1f3ecc60b2b3d3a6184f09b24bb43fb327edd90",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evidence-runtime.md",
+      "sha256": "75f6cb9756cf9b89e13caeb7634ca35807b171a9712b565bfd2ceb00a3b2a6d7",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/evidence-validation-v0281.md",
+      "sha256": "2d2c750269ae3465b289330298ac73b165575bd01d3bc0f017a1f9e01150f4f0",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/failure-ledger.md",
+      "sha256": "c309ab26bce297dc2c3a42e6b42268d1d12d931bc823dc9352252721ce20fa15",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/fla-providers.md",
+      "sha256": "c9548ba0e69d9b7129efb8c40cddc21557c28189b456047f074360d245b21927",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/native-contracts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/hybrid-prefix.md",
+      "sha256": "59d4d4dbba414a284ce15af136ab50f025450aad6d4b13d1bea6e2c4b57a6666",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/kv-precision.md",
+      "sha256": "47663f3d32cbf7feb6c7b9994428181de4ea0164b04f72d302cac0f3abe1f4c3",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/native-contracts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/migration-v0281-to-v0310.md",
+      "sha256": "02a013043a0071b95d1bc930b7fc2af4eafef260000c08c0f25ca5516717b9ba",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/model-index.md",
+      "sha256": "92854f29c3a3c80e0bffe7f3521f431c4726bb885b24c99f4216f2cd7038baab",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-deepseek.md",
+      "sha256": "e73b0995c3177c3a9ff7274a6ab7622b7f5fe66ecb6b92d71b897bd2d5b54a9f",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-glm.md",
+      "sha256": "380cf73d96c569d69e53ffc79962021edaaee566640f985ae0e71c356d8c1fab",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-hunyuan-mimo.md",
+      "sha256": "0a4655d991cbcd90846221fff31d52d7eb4e46612c8b1275f5ed7b790080c9ae",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-kimi.md",
+      "sha256": "503806d9bd0ebe0ed72566e8c020fe22c5095ac8aea3e43996ae2e9f231dde67",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-minimax.md",
+      "sha256": "9557ceebd39ba9616cb9030a022add6f63e63e3a4a282b7dd593b995434510d6",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-other.md",
+      "sha256": "8bea8b077db1531ec5c2a146170d979fca09591d23a9fb6659d73406511e2346",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/models-qwen.md",
+      "sha256": "32580e3680056b55317f62e5ef38cb53687f1bd026607a5e5f95279621807830",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/plugin-migration.md",
+      "sha256": "d0007370afaddb45d905040a0895343bd4142da101762ca2794cb1df56cd627d",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/upgrade-workflow.md",
+        "skills/upgrading-sglang-hcu-upstream-first/references/compatibility-and-artifacts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/quantization-custom-ops.md",
+      "sha256": "f9f1da8929e912ad483b3416cfc099382d8b43640f17b65a13dc4e85bc282158",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/scope-and-provenance.md",
+      "sha256": "cf836afcad14285f3d76ade3b590b90214d6f3a145041724f1438a592045018c",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "docs/vllm-skill-migration.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/sglang-qwen35-gap.md",
+      "sha256": "5ff9ca9a48818410dab7480152140d6cb366fa6c16fe1e52946be3fa7dc04f5e",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/upgrade-workflow.md",
+        "skills/upgrading-sglang-hcu-upstream-first/references/native-contracts.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/source-map.json",
+      "sha256": "319354f9d6342ff0d56b276bdf0f8a44484657fe695c87c3cc4e790ac3fe3fcd",
+      "decision": "retained_at_source_not_transferred",
+      "destinations": [],
+      "reason": "模型/版本/历史证据或未逐项核验的专题只保留来源索引，不作为 SGLang 当前支持事实或操作规则。"
+    },
+    {
+      "source": "references/upgrade-strategy.md",
+      "sha256": "4127ec30528929d8c5088cacafef7724d9a6d99a2718b941440c906b1ec7a571",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/upgrade-workflow.md",
+        "skills/upgrading-sglang-hcu-upstream-first/references/contracts-and-impact.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/upgrade-workflow.md",
+      "sha256": "0f9fe4fea13883cd3d8dde52698f07e96d18249b4a92b04d240856eb3b6373c3",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/upgrade-workflow.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/upstream-research.md",
+      "sha256": "307f63b716a30f851d249a6c2e5ce8b2ad5b2e7b022168e25f819eb443c6968e",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/upgrade-workflow.md",
+        "skills/upgrading-sglang-hcu-upstream-first/references/contracts-and-impact.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "references/validation.md",
+      "sha256": "a8bf2606ff3bd31b09f151f0bfa1753a09140bd4dc4dd7a4bca75b837a33ee1b",
+      "decision": "adapted_method_only",
+      "destinations": [
+        "skills/upgrading-sglang-hcu-upstream-first/references/release-validation.md"
+      ],
+      "reason": "重写为 SGLang 目标源码/现有工具与部署契约；专属 API、固定阈值和历史成绩不迁移。"
+    },
+    {
+      "source": "scripts/test_contract_comparison.py",
+      "sha256": "00bafd498fa56f858d1054bd5ebc2f497cbbce1ac830028b6458a1f3d1b91c81",
+      "decision": "not_ported_framework_specific_tool",
+      "destinations": [],
+      "reason": "扫描器依赖 vllm_hcu/patch/TARGET_MODULE 及 vLLM 模块布局；不复制脚本或其测试，避免形成虚假的 SGLang 覆盖。"
+    },
+    {
+      "source": "scripts/test_upgrade_preflight.py",
+      "sha256": "6614d89183ceffb9eae4fa21a592e3e0b64c39d51610fca14a0a91d3966c5079",
+      "decision": "not_ported_framework_specific_tool",
+      "destinations": [],
+      "reason": "扫描器依赖 vllm_hcu/patch/TARGET_MODULE 及 vLLM 模块布局；不复制脚本或其测试，避免形成虚假的 SGLang 覆盖。"
+    },
+    {
+      "source": "scripts/upgrade_preflight.py",
+      "sha256": "61c2c2f9c14e4cf7b0d6dd6f28f870ea0df01c5562ed48042db2f828587c3caf",
+      "decision": "not_ported_framework_specific_tool",
+      "destinations": [],
+      "reason": "扫描器依赖 vllm_hcu/patch/TARGET_MODULE 及 vLLM 模块布局；不复制脚本或其测试，避免形成虚假的 SGLang 覆盖。"
+    }
+  ],
+  "path_semantics": "Source root is a redacted location placeholder; source file paths remain relative to it. Version and original file hashes retain snapshot semantics; tools do not expand this placeholder."
+}

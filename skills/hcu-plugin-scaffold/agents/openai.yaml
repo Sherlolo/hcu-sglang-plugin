@@ -1,0 +1,4 @@
+interface:
+  display_name: "HCU 插件工程初始化"
+  short_description: "在外部目录创建独立 SGLang 插件工程，验证入口发现、Hook 应用与功能开关。"
+  default_prompt: "使用 $hcu-plugin-scaffold，在指定外部目录创建插件工程并完成入口、Hook 与启停验证。"

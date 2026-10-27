@@ -19,6 +19,17 @@ class AdditionalReconstructionTests(unittest.TestCase):
     setUp = reconstruction_fixture.ReconstructionTest.setUp
     tearDown = reconstruction_fixture.ReconstructionTest.tearDown
 
+    def test_cpp_and_hpp_resources_survive_reconstruction_packaging(self):
+        _write(self.plugin / "sglang_dcu_plugin/jit_overlay/csrc/test.cpp", "int value = 1;\n")
+        _write(self.plugin / "sglang_dcu_plugin/jit_overlay/include/test.hpp", "#pragma once\n")
+        reconstruction_fixture._run("git", "add", ".", cwd=self.plugin)
+        reconstruction_fixture._run("git", "commit", "-qm", "native fixtures", cwd=self.plugin)
+        reconstruct_sglang_das(self.upstream, self.plugin, self.output)
+        self.assertTrue((self.output / "python/sglang_dcu_plugin/jit_overlay/csrc/test.cpp").is_file())
+        self.assertTrue((self.output / "python/sglang_dcu_plugin/jit_overlay/include/test.hpp").is_file())
+        self.assertIn('"jit_overlay/**/*"', (self.output / "python/pyproject.toml").read_text())
+        self.assertEqual(verify(self.output)["status"], "passed")
+
     def test_hash_verification_detects_tamper_and_missing(self):
         reconstruct_sglang_das(self.upstream, self.plugin, self.output)
         self.assertEqual(verify(self.output)["status"], "passed")

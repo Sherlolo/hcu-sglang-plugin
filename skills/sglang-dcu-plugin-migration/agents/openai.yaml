@@ -1,4 +1,4 @@
 interface:
-  display_name: "SGLang DCU 三方迁移"
+  display_name: "SGLang DCU 三方差异审计与迁移"
   short_description: "审计 official、DAS fork 和外部插件，生成可追溯的迁移台账。"
-  default_prompt: "使用 $sglang-dcu-plugin-migration，根据给定仓库与环境完成任务并记录验证证据。"
+  default_prompt: "使用 $sglang-dcu-plugin-migration，固定三方基线并生成差异清单、处置台账与验证缺口。"

@@ -1,7 +1,0 @@
-hcu-sglang-plugin 方法与工具抽取，2026-10-20。
-
-迁移审计脚本、迁移证据契约来自 sglang-plugin-das；回溯生成器与原始测试来自 agent_work/plugin_work。
-文档组织与部分方法参考 hcu-sglang-adapter，插件测试/排障方法参考 sglang-das/.claude/skills。
-来源基线、原始文件哈希及改写说明见 docs/source-manifest.json、docs/source-inventory.json 和 docs/extraction-map.md。
-保留源文件已有声明；三个参考仓库的许可原文分别位于 licenses/。
-本次未复制插件运行时、vendor 二进制或模型权重。

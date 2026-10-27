@@ -14,12 +14,12 @@ python3 -m unittest discover -s tests -v
 | 检查 | 实际覆盖 | 不覆盖 |
 |---|---|---|
 | L0 Python | 仓库 Python AST 语法，不导入运行时 | 运行语义、外部依赖或数值结果 |
-| L0 skill | 名称/描述、名称与目录一致、agents prompt 与资源文件链接 | 完整 YAML 语义或 agent 行为质量 |
+| L0 Skill | 名称/描述、名称与目录一致、agents prompt 与资源文件链接 | 完整 YAML 语义或 Agent 行为质量 |
 | L0 文档 | Markdown 相对文件链接存在性 | 锚点有效性、HTML 链接、Mermaid 渲染或可读性 |
 | L0 阶段边界 | 禁止当前列出的运行时/构建路径 | 所有可能包名的通用业务代码检测 |
-| unittest | 14 项隔离 Git fixture 工具契约 | 外部 plugin 的模型与 GPU 可用性 |
+| unittest | 隔离 Git fixture、loader 与确定性响应验收工具契约 | 外部 plugin 的模型与 GPU 可用性 |
 
-新增文档除执行 L0 外，还要人工/工具核对标题锚点、图文、HTML 导览和当前/规划标注。修改 skill 后使用维护环境的 skill validator 核对 frontmatter 与元信息；这些额外工具不成为本库的运行依赖。
+新增文档除执行 L0 外，还要人工/工具核对标题锚点、图文、HTML 导览和当前/规划标注。修改 Skill 后使用维护环境的 Skill validator 核对 frontmatter 与元信息；这些额外工具不成为本库的运行依赖。
 
 ## 2. 自动化接入现状
 
@@ -34,7 +34,7 @@ python3 -m unittest discover -s tests -v
 | L0 | 结构、资源、配置/声明一致性 | CPU | 当前方法库版本已实现；运行时规则待扩展 |
 | CPU 运行时契约 | entry point、注册集合、target、配置/依赖门控与 fallback | 对应业务包和可控依赖/mock | 规划 |
 | 组合集成 | official + plugin、official + adapter + plugin 等声明组合 | 固定 SHA、明确加载顺序与接口 | 规划，按能力适用性选择 |
-| HCU 数值与 graph | reference 对拍、cache/状态、变输入 replay | 合适设备与依赖 | 规划 |
+| HCU 数值与 Graph | reference 对拍、cache/状态、变输入 replay | 合适设备与依赖 | 规划 |
 | 服务与性能 | 模型加载、prefill/decode、拓扑、精度、预热 A/B | 明确资源窗口、模型/数据 | 规划 |
 
 首次引入 `pyproject.toml` 或运行时目录时，要先更新 [架构阶段](architecture.md#4-未来运行时目录规划)、L0 的当前排除约束与相应测试。不能只删除禁止规则而不增加运行时质量约束。
@@ -54,3 +54,7 @@ python3 -m unittest discover -s tests -v
 ## 5. 证据留存
 
 短期日志放 `artifacts/<task>/`；交付文档记录实际命令、解释器/镜像、SHA、断言和汇总。长期证据需要稳定存放位置，因为 ignored 日志不会随 Git 提交。当前及历史结果见 [交付记录](delivery-validation.md)，记录格式见 [validation-record](../templates/validation-record.md)。
+
+## 版本升级与发版门槛
+
+按 [契约与影响](../skills/upgrading-sglang-hcu-upstream-first/references/contracts-and-impact.md) 记录选测与失效条件；选测/CI 本身变化用独立清单核对，必测 skip/xfail 不作通过。实际 wheel/image/embedded 验收及候选/last-good 分离见 [升级发版 Skill](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md)。新增这些方法不代表本仓已经接入硬件 runner 或发布流水线。

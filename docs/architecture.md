@@ -8,11 +8,11 @@
 |---|---|---|
 | 独立开发 | adapter/plugin 各自维护代码、版本与验证，不把两个仓库合成一个 glue 单体 | 文档与职责契约已建立 |
 | 组合运行 | 同一个 SGLang 环境可同时使用 adapter 与 plugin，显式验证目标冲突及加载顺序 | 组合契约已设计；本仓运行时尚未实现 |
-| 可追溯扩展 | 新能力通过 seam/注册/窄 Hook 接入，记录目标、条件、依赖和回退 | skill、迁移台账与工具已提供 |
-| 可验证交付 | 接线、数值、graph、服务与性能证据逐层递进 | CPU 工具验证已提供；运行时门禁为规划 |
+| 可追溯扩展 | 新能力通过 seam/注册/窄 Hook 接入，记录目标、条件、依赖和回退 | Skill、迁移台账与工具已提供 |
+| 可验证交付 | 接线、数值、Graph、服务与性能证据逐层递进 | CPU 工具验证已提供；运行时门禁为规划 |
 | 可维护文档 | 导航、设计、操作、规则与历史证据各有归属 | 文档按 [文档索引](README.md) 组织 |
 
-本仓目前包含方法、skill 与工具。下文中“参考实现”指外部 `sglang-plugin-das`；“未来规划”指本仓尚未落地的业务包。**独立开发不等于没有运行时依赖**：某能力若需要 adapter 提供的符号或环境行为，必须声明并验证这个依赖。
+本仓目前包含方法、Skill 与工具。下文中“参考实现”指外部 `sglang-plugin-das`；“未来规划”指本仓尚未落地的业务包。**独立开发不等于没有运行时依赖**：某能力若需要 adapter 提供的符号或环境行为，必须声明并验证这个依赖。
 
 ## 2. 运行时组合关系
 
@@ -93,17 +93,17 @@ hcu-sglang-plugin/
 │   ├── board.md                后续工作与接受条件
 │   ├── extraction-map.md       方法来源和取舍
 │   └── delivery-validation.md  按版本记录交付证据
-├── skills/<task>/              4 个任务 skill 与按需参考
-├── tools/                      7 个开发工具的唯一实现
+├── skills/<task>/              7 个任务 Skill 与按需参考
+├── tools/                      9 个开发工具的唯一实现
 ├── templates/                  历史、处置与验证模板
 ├── tests/                      CPU 工具行为测试
 ├── ci/                         离线结构门禁
 ├── .workflow/                  runner 配方，尚未接入托管平台
-├── licenses/ + NOTICE          来源许可与归属
+├── licenses/                   来源许可（归属见 docs/extraction-map.md）
 └── artifacts/                  被忽略的本地执行证据
 ```
 
-JSON 来源快照的职责见 [文档索引](README.md)。不在每个 skill 下复制工具；同一规则的详细版放在一处，其他入口提供链接。
+JSON 来源快照的职责见 [文档索引](README.md)。不在每个 Skill 下复制工具；同一规则的详细版放在一处，其他入口提供链接。
 
 ## 4. 未来运行时目录规划
 
@@ -157,7 +157,7 @@ flowchart LR
 |---|---|---|
 | 需求 | 行为、输入范围、涉及仓库、接受条件 | [任务看板](board.md) |
 | 设计 | seam、目标所有权、依赖与回退、版本矩阵 | [治理](governance.md)、[配置](configuration.md) |
-| 实现 | 聚焦改动、对应测试、文档/skill 更新 | [开发指南](plugins.md)、[开发 skill](../skills/hcu-plugin-dev/SKILL.md) |
+| 实现 | 聚焦改动、对应测试、文档/skill 更新 | [开发指南](plugins.md)、[开发 Skill](../skills/hcu-plugin-dev/SKILL.md) |
 | 验证 | 单仓和组合结果、缺失 lane 与原因 | [验证手册](validation.md)、[CI](ci.md) |
 | 评审/合入 | 变更清单、兼容组合、风险和停用方式 | [协作流程](contributing.md) |
 
@@ -169,6 +169,6 @@ flowchart LR
 - 新能力依赖的是上游 API、adapter 能力还是 vendor 符号？缺失时如何处理？
 - 同一目标是否存在多层修改？是否记录加载顺序、包装链与 alias 行为？
 - 当前已有内容与规划目录、计划 gate 是否明确分开？
-- 是否能从需求找到目录、skill、命令、测试和交付记录？
+- 是否能从需求找到目录、Skill、命令、测试和交付记录？
 
 下一步：设计接口读 [governance](governance.md)，开始开发读 [plugins](plugins.md)，参与协作读 [contributing](contributing.md)。

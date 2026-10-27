@@ -1,7 +1,6 @@
 {
   "captured_at": "2026-10-20",
-  "host": "NMZ_zz_26",
-  "source_root": "/public/home/yangyn1/work_space/2026/sglang_main",
+  "source_root": "${SOURCE_ROOT}",
   "repositories": [
     {
       "name": "hcu-sglang-adapter",
@@ -92,5 +91,6 @@
   "notes": [
     "Source hashes describe the extraction snapshot; destination hashes describe this delivery, not future edits.",
     "repo_audit.py literal registration targets were merged into audit_repositories.py; plugin_work and plugin repository migration skills were identical."
-  ]
+  ],
+  "path_semantics": "Source root is a redacted location placeholder; source file paths remain relative to it. Version and original file hashes retain snapshot semantics; tools do not expand this placeholder."
 }

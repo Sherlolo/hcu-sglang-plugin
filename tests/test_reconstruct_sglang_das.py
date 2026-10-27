@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -88,13 +89,15 @@ class ReconstructionTest(unittest.TestCase):
         self.assertFalse((self.output / "python/ignored.txt").exists())
         loader = (self.output / "python/sglang/srt/plugins/__init__.py").read_text()
         package_init = (self.output / "python/sglang/__init__.py").read_text()
-        self.assertIn(LOADER_BEGIN, loader)
-        self.assertIn(BOOTSTRAP_BEGIN, package_init)
+        self.assertIn("register_embedded_dcu", loader)
+        self.assertIn("_bootstrap_dcu_aiter_compat", package_init)
+        self.assertNotIn(LOADER_BEGIN, loader)
+        self.assertNotIn(BOOTSTRAP_BEGIN, package_init)
         self.assertEqual(package_init.count('"""SGLang public API."""'), 1)
         self.assertTrue(package_init.startswith('"""SGLang public API."""'))
         self.assertLess(
             package_init.index("_redirect_third_party_caches()"),
-            package_init.index(BOOTSTRAP_BEGIN),
+            package_init.index("from sglang_dcu_plugin.compat.aiter import"),
         )
         self.assertIn(
             '"sglang_dcu_plugin"',
@@ -105,6 +108,23 @@ class ReconstructionTest(unittest.TestCase):
         self.assertEqual(manifest["kind"], MANIFEST_KIND)
         self.assertEqual(manifest["vendored_file_count"], 3)
         self.assertIn("python/sglang_dcu_plugin/__init__.py", manifest["files"])
+
+    def test_source_indexes_preserved_when_stat_cache_is_stale(self) -> None:
+        indexes = {}
+        for repo, relative in [(self.upstream, "README.md"),
+                               (self.plugin, "sglang_dcu_plugin/__init__.py")]:
+            index = repo / ".git/index"
+            indexes[index] = index.read_bytes()
+            source = repo / relative
+            stat = source.stat()
+            os.utime(source, ns=(stat.st_atime_ns, stat.st_mtime_ns + 5_000_000_000))
+
+        reconstruct_sglang_das(self.upstream, self.plugin, self.output)
+
+        for index, before in indexes.items():
+            with self.subTest(repository=str(index.parent.parent)):
+                self.assertEqual(index.read_bytes(), before,
+                                 "read-only source checks must not refresh the Git index")
 
     def test_existing_output_requires_force_and_valid_manifest(self) -> None:
         self.output.mkdir()
