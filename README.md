@@ -2,6 +2,8 @@
 
 SGLang HCU 插件开发方法库：把开发、安装、排障和升级经验组织成文档、Skill 与方法工具，供开发者和 Agent 按任务检索使用。**本仓库不包含插件运行时代码，也不作为 `pip install` 的安装对象。** 插件实现与生成源码始终放在外部工程中。
 
+面向研发同事评审 `sglang-das → sglang-plugin` 时，先打开 [模块盘点与开发计划](migration-plan.html)：可查看三方基线、26 个工作域、完整源码与符号明细，以及分阶段建议任务。统计和维护方法见 [迁移规划指南](docs/sglang-das-migration-plan.md)。
+
 ## 1. 首次使用
 
 保留完整仓库，在 Agent 中打开或提供仓库位置，然后描述你想完成的工作。无需先了解全部文档或记住专项 Skill 名称。
@@ -48,6 +50,8 @@ hcu-sglang-plugin/
 ├── README.md                        使用入口、功能与案例
 ├── AGENTS.md                        Agent 工作约定
 ├── architecture.html                离线网页导览、检索与文档阅读器
+├── migration-plan.html              DAS 模块盘点与插件迁移开发计划
+├── plans/                           可复核的固定版本盘点 JSON
 ├── docs/
 │   ├── README.md                    完整文档目录与维护规范
 │   ├── reading-guide.md             任务匹配、输入与 Skill 衔接

@@ -11,6 +11,7 @@
 | 插件安装与加载验证 | [安装与启用指南](installation.md) | [hcu-plugin-install](../skills/hcu-plugin-install/SKILL.md) |
 | 插件能力开发 | [能力开发指南](plugins.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
 | 故障诊断与回归修复 | [故障诊断指南](troubleshooting.md) | [hcu-plugin-triage](../skills/hcu-plugin-triage/SKILL.md) |
+| 研发模块盘点与开发计划 | [迁移规划指南](sglang-das-migration-plan.md) / [网页](../migration-plan.html) | [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) |
 | 三方差异审计与迁移 | [三方迁移指南](migration.md) | [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) |
 | 官方版本升级与发版 | [版本升级与发版指南](upgrading.md) | [upgrading-sglang-hcu-upstream-first](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md) |
 | 内嵌源码生成与核验 | [源码回溯指南](backtracking.md) | [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md) |
@@ -47,6 +48,7 @@ flowchart TB
 | [配置管理](configuration.md) | 路径变量、配置所有权、覆盖与记录 | 新增开关、组合运行 | 参数/默认值/来源变化 |
 | [开发经验与故障案例索引](development-methodology.md) | 上次故障的症状、检查方法、修复经验和适用边界 | 遇到相似问题时查询 | 有实证的新排障经验 |
 | [插件开发](plugins.md) | 新能力从设计、注册到验证的步骤 | 新增或修改能力 | seam、Hook 或状态契约变化 |
+| [DAS 模块盘点与迁移规划](sglang-das-migration-plan.md) | 全量目录/符号、当前差异、现有映射线索及研发建议计划 | 拆分 DAS 到 plugin 的研发任务 | 来源版本、模块边界或计划定义变化 |
 | [三方迁移](migration.md) | official/fork/plugin 审计、清单和台账 | 同步 fork、升级官方版本 | 工具参数或外部布局变化 |
 | [源码回溯](backtracking.md) | 生成内嵌源码树、保护与哈希核验 | 复现/交付 embedded 树 | 注入 anchor 或清单变化 |
 | [协作流程](contributing.md) | 需求、分支、跨仓评审、提交清单 | 参与改动与交接 | 协作流程或阶段变化 |
@@ -70,7 +72,7 @@ flowchart TB
 | [source-inventory.json](source-inventory.json) | V1 中 DAS 25 项 Skill 的原始描述、源哈希、取舍和目的地 | 历史抽取索引；不是运行时能力清单 |
 | [source-manifest.json](source-manifest.json) | V1 来源 SHA 与抽取时的源/目标文件哈希 | V1 快照；目标文件未来修改后不能当当前全仓完整性清单 |
 | [skills/](../skills) | 1 个统一入口、7 个专项入口、agents 元信息和按需参考 | 保留共享相对路径 |
-| [tools/](../tools) | 10 个工具的唯一源码 | 用 `--help` 和对应操作手册 |
+| [tools/](../tools) | 11 个工具的唯一源码 | 用 `--help` 和对应操作手册 |
 | [templates/](../templates) | 人工处置、历史和验证记录 | 复制后填写真实证据，不复用旧 verified |
 | [tests/](../tests) / [ci/](../ci) | 工具契约与结构门禁 | CPU 工具结论不外推成运行时已验证 |
 | `artifacts/` | 本次执行日志、清单和本地产物 | Git 忽略；共享证据时另保存稳定位置 |

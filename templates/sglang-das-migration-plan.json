@@ -1,0 +1,833 @@
+{
+  "schema_version": 1,
+  "title": "sglang-das → sglang-plugin 迁移盘点与开发计划",
+  "reviewed_on": "2026-10-28",
+  "phases": [
+    {
+      "id": "M0",
+      "title": "基线与边界评审",
+      "gate": "固定三方版本，完成当前差异归因与任务拆分，确定 plugin / adapter / 上游 / 独立组件归属。",
+      "depends_on": []
+    },
+    {
+      "id": "M1",
+      "title": "基础运行链与算子",
+      "gate": "配置、原生构建、基础层和量化的支持/回退闭环，保留可复现的基线与构建记录。",
+      "depends_on": [
+        "M0"
+      ]
+    },
+    {
+      "id": "M2",
+      "title": "Attention、缓存与目标模型",
+      "gate": "逐模型完成真实构造与消费链、变输入 Graph 和指定服务验收；先保持已有 MiniMax 基线。",
+      "depends_on": [
+        "M1"
+      ]
+    },
+    {
+      "id": "M3",
+      "title": "高级并行与扩展能力",
+      "gate": "CP/EP/PD、推测解码、多模态等按独立配置验收；完整 DeepSeek 引擎与 streaming 不能被局部测试替代。",
+      "depends_on": [
+        "M2"
+      ]
+    },
+    {
+      "id": "M4",
+      "title": "交付与持续验证",
+      "gate": "本轮选定范围的 M2/M3 必测闭合；源码/wheel/embedded 分别留证，CI、许可、文档和回退记录闭合。未纳入交付的扩展能力不阻断该版本。",
+      "depends_on": [
+        "M2",
+        "M3"
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "id": "bootstrap",
+      "title": "启动、参数与插件接入",
+      "prefixes": [
+        "python/sglang/srt/arg_groups/",
+        "python/sglang/srt/server_args.py",
+        "python/sglang/srt/environ.py",
+        "python/sglang/srt/runtime_context.py",
+        "python/sglang/srt/plugins/",
+        "python/sglang/srt/entrypoints/",
+        "python/sglang/srt/platforms/",
+        "python/sglang/srt/hardware_backend/",
+        "python/sglang/__init__.py",
+        "python/sglang/launch_server.py"
+      ],
+      "role": "框架与运行时",
+      "phase": "M0",
+      "priority": "P0",
+      "decision": "优先使用官方具名 seam；已有平台适配与新增能力分开归属。",
+      "tasks": [
+        "核对目标官方版本的 loader、registry、参数解析与 typed env 契约",
+        "梳理每个配置的所有者、生效时机及 worker 传播；保持入口轻量",
+        "为支持范围、缺依赖和停用路径建立显式对照"
+      ],
+      "acceptance": [
+        "实际模块来源、目标注册与应用均可核验",
+        "停用后保留有效 adapter 基线；启动兼容层不提前导入 Torch/vendor"
+      ],
+      "depends_on": [],
+      "destinations": [
+        "sglang_dcu_plugin/__init__.py",
+        "sglang_dcu_plugin/server_args*.py",
+        "sglang_dcu_plugin/compat/"
+      ]
+    },
+    {
+      "id": "models",
+      "title": "模型实现与模型配置",
+      "prefixes": [
+        "python/sglang/srt/models/",
+        "python/sglang/srt/configs/"
+      ],
+      "role": "模型研发",
+      "phase": "M2",
+      "priority": "P0",
+      "decision": "按模型与真实调用链立项；不整包复制全部上游模型。",
+      "tasks": [
+        "为差异模型逐一判定上游接管、HCU 差异和现有 Hook；优先保持 MiniMax 已验基线",
+        "DeepSeek V4/NextN 等沿构造、继承、caller 和 readout 建立符号级迁移映射",
+        "分别建立模型/量化/并行/Graph 支持矩阵；源缺失类不猜补实现"
+      ],
+      "acceptance": [
+        "每个模型完成真实构造、公共调用、基线回退及适用服务验收",
+        "完整 DeepSeek 引擎未验项保持待验证，不以局部链测试替代"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "quantization",
+        "attention",
+        "kv-cache"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/models/",
+        "sglang_dcu_plugin/configs.py"
+      ]
+    },
+    {
+      "id": "execution",
+      "title": "模型执行、权重装载与同步",
+      "prefixes": [
+        "python/sglang/srt/model_executor/",
+        "python/sglang/srt/model_loader/",
+        "python/sglang/srt/weight_cache/",
+        "python/sglang/srt/weight_sync/",
+        "python/sglang/srt/checkpoint_engine/"
+      ],
+      "role": "模型执行与权重",
+      "phase": "M1",
+      "priority": "P1",
+      "decision": "公共执行流程尽量复用；只接入可定位的装载、dtype 或状态差异。",
+      "tasks": [
+        "核对 checkpoint→配置→参数分配→量化后处理链路",
+        "审查权重 dtype、重载与缓存所有权，避免复制官方执行器",
+        "隔离新模型字段与执行状态，验证更新或重载后的生命周期"
+      ],
+      "acceptance": [
+        "相同权重和配置下参数布局与真实 forward 可复现",
+        "非目标模型、缺 vendor 与停用行为保持基线"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "quantization"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/models/",
+        "sglang_dcu_plugin/layers/quantization/"
+      ]
+    },
+    {
+      "id": "attention",
+      "title": "Attention 后端与索引压缩",
+      "prefixes": [
+        "python/sglang/srt/layers/attention/",
+        "python/sglang/srt/layers/radix_attention.py",
+        "python/sglang/srt/layers/radix_linear_attention.py"
+      ],
+      "role": "Attention 与算子",
+      "phase": "M2",
+      "priority": "P0",
+      "decision": "选定正式 backend/provider seam，完整迁移依赖类图，避免 REPLACE 类后再叠旧成员 Hook。",
+      "tasks": [
+        "核对 MLA/MQA/FLA/DSV4 后端选择、metadata、candidate/indexer 与 compressor 数据流",
+        "审查量化载体、行对齐、序列切片和缓存视图的真实消费者",
+        "独立保留原生完整批次与匹配批次形状的数值参考"
+      ],
+      "acceptance": [
+        "prefill/decode、空与非空、变输入 Graph replay 覆盖实际分支",
+        "完整模型另验；批次形状导致的数值差异不通过放宽阈值掩盖"
+      ],
+      "depends_on": [
+        "native",
+        "kv-cache",
+        "quantization"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/layers/attention/",
+        "sglang_dcu_plugin/models/deepseek/current_v4/"
+      ]
+    },
+    {
+      "id": "kv-cache",
+      "title": "KV 缓存、内存池与前缀状态",
+      "prefixes": [
+        "python/sglang/srt/mem_cache/"
+      ],
+      "role": "运行时内存",
+      "phase": "M2",
+      "priority": "P0",
+      "decision": "按描述符、池接口及生命周期迁移，不能只搬 getter 或缓存写入函数。",
+      "tasks": [
+        "核对 BF16/FP8 的元素数、字节跨度、stride 和 layer ownership",
+        "梳理 CP cache layer split、slot 映射、空查询与前缀复用状态",
+        "覆盖分配、写入、消费、reset、释放及 Graph replay 全链路"
+      ],
+      "acceptance": [
+        "真实 pool 构造与 consumer 一致，跨 dtype 和不同 head_dim 验证",
+        "不重复 KV store；缓存、CP 与 PD 状态需独立或组合验证"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "native"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/mem_cache/"
+      ]
+    },
+    {
+      "id": "quantization",
+      "title": "量化、GEMM 与权重格式",
+      "prefixes": [
+        "python/sglang/srt/layers/quantization/",
+        "python/sglang/srt/layers/fused_rms_quant.py",
+        "python/sglang/srt/layers/int4fp8_utils.py",
+        "python/sglang/srt/layers/rocm_linear_utils.py"
+      ],
+      "role": "量化与算子",
+      "phase": "M1",
+      "priority": "P0",
+      "decision": "保留插件自有支持判断与可选依赖门控；框架语义与物理 HIP 能力分开。",
+      "tasks": [
+        "逐项核对 FP8/INT8/W4A8/FP4 与 checkpoint 格式、pack layout、scales 语义",
+        "审查 vendor 符号、gfx/DTK/Torch 组合与可选依赖的回退",
+        "将 FP4 AOT 构建和 W4A8/DeepEP 完整链路列为独立验收项"
+      ],
+      "acceptance": [
+        "固定输入、dtype、shape 下单算子精度与变输入 Graph 验收",
+        "模型级输出及未覆盖 gfx/native 分支单独留证"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "native"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/layers/quantization/"
+      ]
+    },
+    {
+      "id": "moe",
+      "title": "MoE、专家路由与负载均衡",
+      "prefixes": [
+        "python/sglang/srt/layers/moe/",
+        "python/sglang/srt/eplb/",
+        "python/sglang/srt/elastic_ep/"
+      ],
+      "role": "MoE 与通信",
+      "phase": "M3",
+      "priority": "P0",
+      "decision": "先确定 FFN/共享专家/collective 的所有者，避免双重归约或 norm。",
+      "tasks": [
+        "追踪 dispatch→专家计算→shared expert→combine→出口的实际调用链",
+        "核对 DeepEP、W4A8、共享专家及空 token 的组合路径",
+        "拆分本地计算和跨 rank 数据流，保留各模式的支持/回退条件"
+      ],
+      "acceptance": [
+        "EP/TP 实际边界覆盖归约次数、shape 与状态",
+        "W4A8/DeepEP 共享专家完整模型单列，不能由局部原语推断"
+      ],
+      "depends_on": [
+        "quantization",
+        "distributed",
+        "models"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/layers/moe/"
+      ]
+    },
+    {
+      "id": "base-layers",
+      "title": "线性层、归一化、RoPE 与基础算子",
+      "prefixes": [
+        "python/sglang/srt/layers/"
+      ],
+      "role": "基础算子",
+      "phase": "M1",
+      "priority": "P1",
+      "decision": "正式算子扩展与模型私有融合分开；用窄 Hook 保留正常路径。",
+      "tasks": [
+        "按实际差异梳理 linear、norm、RoPE、embedding 与融合路径",
+        "核对默认参数、alias、in-place、副作用及实际返回语义",
+        "验证可选 vendor 缺失与非目标 shape 的有效基线回退"
+      ],
+      "acceptance": [
+        "真实公共 caller 与支持/回退对照通过",
+        "精度、不同 shape 和变输入 Graph 各自有证据"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "native"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/layers/"
+      ]
+    },
+    {
+      "id": "distributed",
+      "title": "分布式进程组、CP/TP 与通信",
+      "prefixes": [
+        "python/sglang/srt/distributed/",
+        "python/sglang/srt/layers/communication/",
+        "python/sglang/srt/layers/cp/",
+        "python/sglang/srt/layers/dcp/",
+        "python/sglang/srt/layers/dp_attention.py",
+        "python/sglang/srt/layers/model_parallel.py",
+        "python/sglang/srt/layers/communicator_"
+      ],
+      "role": "分布式运行时",
+      "phase": "M3",
+      "priority": "P0",
+      "decision": "维持正式进程组生命周期；新增通信不得改变非目标拓扑。",
+      "tasks": [
+        "核对 CP 第二组的精确 partition、创建/销毁顺序与 variable-split all-to-all",
+        "检查 native communicator、stream/event 与多次 Graph capture 的 buffer 生命周期",
+        "将 CP 层拆分约束与模型配置、PP/TP/PD 组合一起审阅"
+      ],
+      "acceptance": [
+        "多 rank、空分片、非等长分片、独立 capture 与多次 replay 对照",
+        "全模型 CP 服务与多节点测试独立于通信原语测试"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "native",
+        "kv-cache"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/distributed.py",
+        "sglang_dcu_plugin/mem_cache/cp_cache_layer_split/"
+      ]
+    },
+    {
+      "id": "pd",
+      "title": "Prefill/Decode 分离与传输协议",
+      "prefixes": [
+        "python/sglang/srt/disaggregation/",
+        "python/sglang/srt/connector/"
+      ],
+      "role": "PD 与网络传输",
+      "phase": "M3",
+      "priority": "P0",
+      "decision": "迁移描述符与 wire 协议的整个生产消费链，不仅比较源函数。",
+      "tasks": [
+        "对照池→descriptor→codec→握手→传输→consumer 的字段与字节效果",
+        "核对 K/V 不同 head_dim、dtype、跨层状态、队列与 stream 同步",
+        "为 DSpark streaming、ACK/source-event 及真实 Mooncake 场景建立专项任务"
+      ],
+      "acceptance": [
+        "TCP/本地受控测试、真实传输链与完整 PD 服务分别验收",
+        "异步 handler 和下一消费者都覆盖；未验网络/streaming 模式保持待验证"
+      ],
+      "depends_on": [
+        "kv-cache",
+        "distributed",
+        "execution"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/disagg/"
+      ]
+    },
+    {
+      "id": "scheduler",
+      "title": "调度、请求与批次管理",
+      "prefixes": [
+        "python/sglang/srt/managers/",
+        "python/sglang/srt/multiplex/",
+        "python/sglang/srt/beam_search/"
+      ],
+      "role": "调度与服务运行时",
+      "phase": "M2",
+      "priority": "P1",
+      "decision": "框架通用调度优先复用；字段扩展要保持复制和序列化契约。",
+      "tasks": [
+        "核对 ForwardBatch/ScheduleBatch 的新增字段与生产消费位置",
+        "覆盖 copy、pickle、reset、请求结束与空 batch 的状态",
+        "将请求调度行为变化与具体模型优化解耦"
+      ],
+      "acceptance": [
+        "真实 schema 构造及复制/序列化路径通过",
+        "服务并发、前缀复用与完整请求生命周期按影响面验证"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "kv-cache"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/models/deepseek/current_v4/"
+      ]
+    },
+    {
+      "id": "graph",
+      "title": "编译、Graph 与批次重叠",
+      "prefixes": [
+        "python/sglang/srt/compilation/",
+        "python/sglang/srt/batch_invariant_ops/",
+        "python/sglang/srt/batch_overlap/",
+        "python/sglang/srt/model_executor/cuda_graph_runner.py",
+        "python/sglang/srt/model_executor/piecewise_cuda_graph_runner.py"
+      ],
+      "role": "Graph 与性能",
+      "phase": "M2",
+      "priority": "P0",
+      "decision": "Graph 是状态与生命周期契约，不能用一次 capture 或静态输入验收。",
+      "tasks": [
+        "区分 capture 时 Python 状态、replay 动态输入和持久 buffer",
+        "先验基础 Graph；CP/EP/PD collective 的 Graph 组合在高级并行阶段补充独立验收",
+        "保留非 Graph 基线与多次独立 capture 的对照"
+      ],
+      "acceptance": [
+        "变化输入/状态、多 capture 与 replay 验证实际结果",
+        "性能结论使用同配方预热 A/B，独立于功能正确性"
+      ],
+      "depends_on": [
+        "native",
+        "kv-cache"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/models/",
+        "sglang_dcu_plugin/distributed.py"
+      ]
+    },
+    {
+      "id": "speculative",
+      "title": "推测解码与 DLLM",
+      "prefixes": [
+        "python/sglang/srt/speculative/",
+        "python/sglang/srt/dllm/"
+      ],
+      "role": "解码与算法",
+      "phase": "M3",
+      "priority": "P1",
+      "decision": "逐算法判定上游接管与 HCU 差异，避免复制整套解码框架。",
+      "tasks": [
+        "盘点 draft/verify、NextN 与目标模型的状态和通信接口",
+        "验证接受/拒绝、空候选与多步回滚对 cache 的影响",
+        "将算法本身的通用演进与 HCU 优化分开归属"
+      ],
+      "acceptance": [
+        "实际算法、模型、TP 与 Graph 配方独立验收",
+        "正确性与吞吐提升分别留证"
+      ],
+      "depends_on": [
+        "models",
+        "kv-cache",
+        "sampling"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/models/deepseek/"
+      ]
+    },
+    {
+      "id": "sampling",
+      "title": "采样、输出约束与响应语义",
+      "prefixes": [
+        "python/sglang/srt/sampling/",
+        "python/sglang/srt/constrained/",
+        "python/sglang/srt/function_call/",
+        "python/sglang/srt/parser/",
+        "python/sglang/srt/layers/sampler.py",
+        "python/sglang/srt/layers/logits_processor.py",
+        "python/sglang/srt/layers/logprob_processor.py"
+      ],
+      "role": "解码与服务接口",
+      "phase": "M2",
+      "priority": "P1",
+      "decision": "通用协议和解析尽量复用官方；保留模型、template 与 token 预算对齐。",
+      "tasks": [
+        "核对 logits、sampling、reasoning/tool parser 与终止语义",
+        "为确定性请求保留完整 content/reasoning、finish_reason 与答案",
+        "异常定位沿生成 token 到最终响应逐层检查"
+      ],
+      "acceptance": [
+        "正常结束且完整答案正确，不能关键词命中即通过",
+        "不同 checkpoint/template 的参数不直接复用"
+      ],
+      "depends_on": [
+        "bootstrap",
+        "base-layers"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/layers/"
+      ]
+    },
+    {
+      "id": "native",
+      "title": "原生 Kernel、JIT 与 AOT 构建",
+      "prefixes": [
+        "python/sglang/kernels/",
+        "python/sglang/srt/monokernels/"
+      ],
+      "role": "原生算子与构建",
+      "phase": "M1",
+      "priority": "P0",
+      "decision": "保留来源与许可证，按插件 package data 交付；JIT/AOT 与运行时符号分别验证。",
+      "tasks": [
+        "盘点 CUDA/HIP/C++/header 资源与 provider/JIT 加载链",
+        "核对 uint8 FP8 carrier、gfx、编译选项和 vendor 最低依赖",
+        "补齐 FP4 AOT 构建/导出矩阵与未覆盖 native 分支"
+      ],
+      "acceptance": [
+        "源码资源和 wheel/embedded 内容可核验，隔离安装后真实调用",
+        "JIT 可编译不等于 AOT 可构建或全部 gfx 支持"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/jit_overlay/",
+        "sglang_dcu_plugin/kernels/"
+      ]
+    },
+    {
+      "id": "lora",
+      "title": "LoRA 与适配器权重",
+      "prefixes": [
+        "python/sglang/srt/lora/"
+      ],
+      "role": "模型与权重",
+      "phase": "M3",
+      "priority": "P2",
+      "decision": "先复用官方实现；只有来源差异归因到 HCU 后才新增插件接缝。",
+      "tasks": [
+        "核对 LoRA kernel/provider、adapter 权重装载和切换差异",
+        "审阅动态批次、多 LoRA 与量化组合的状态",
+        "按实际需求确定目标模型和最低支持配置"
+      ],
+      "acceptance": [
+        "所选模型的加载、切换和数值通过",
+        "未验证组合明确不在当前交付范围"
+      ],
+      "depends_on": [
+        "execution",
+        "quantization"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "multimodal",
+      "title": "多模态理解与生成",
+      "prefixes": [
+        "python/sglang/srt/multimodal/",
+        "python/sglang/multimodal_gen/"
+      ],
+      "role": "多模态模型",
+      "phase": "M3",
+      "priority": "P2",
+      "decision": "文本运行时与生成管线分别立项，不能用文本模型结果覆盖多模态。",
+      "tasks": [
+        "按模型梳理 processor、encoder、diffusion/生成管线与量化依赖",
+        "检查已有多模态插件入口和仅存在源码的分支",
+        "明确图像/视频输入、shape、dtype 与实际设备配置"
+      ],
+      "acceptance": [
+        "使用真实多模态输入与对应模型配方验收",
+        "单独记录精度、生成结果与未验证管线"
+      ],
+      "depends_on": [
+        "models",
+        "native",
+        "quantization"
+      ],
+      "destinations": [
+        "sglang_dcu_plugin/multimodal_gen/"
+      ]
+    },
+    {
+      "id": "observability",
+      "title": "可观测、调试与状态捕获",
+      "prefixes": [
+        "python/sglang/srt/observability/",
+        "python/sglang/srt/profile/",
+        "python/sglang/srt/debug_utils/",
+        "python/sglang/srt/state_capturer/",
+        "python/sglang/srt/kv_canary/",
+        "python/sglang/profiler.py"
+      ],
+      "role": "运行时与质量",
+      "phase": "M1",
+      "priority": "P1",
+      "decision": "优先复用可观测接口，为插件分支提供低侵入的可诊断证据。",
+      "tasks": [
+        "统一版本、模块来源、最终配置与目标分支命中记录",
+        "检查多 rank 首次异常、collective 时间线与内存生命周期证据",
+        "区分诊断探针、性能测量和正式服务配置"
+      ],
+      "acceptance": [
+        "启用/停用诊断不改变正常数值路径",
+        "日志可定位实际产物、首次分叉和未执行项"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "runtime-utils",
+      "title": "运行时公共设施与其他子系统",
+      "prefixes": [
+        "python/sglang/srt/"
+      ],
+      "role": "框架与运行时",
+      "phase": "M0",
+      "priority": "P1",
+      "decision": "这是保底分类，按实际子目录审查；没有差异的文件继续复用官方。",
+      "tasks": [
+        "逐目录审阅 utils、tokenizer、session、ray、Rust bridge 等实际差异",
+        "将平台兼容归入 adapter，新增机制才进入 plugin",
+        "无法归因的差异保留待评审，不按硬件关键词直接丢弃"
+      ],
+      "acceptance": [
+        "差异归因与实现归属有记录",
+        "涉及正式调用链时增加对应回归"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "frontend",
+      "title": "客户端、API 与前端接口",
+      "prefixes": [
+        "python/sglang/"
+      ],
+      "role": "服务接口与客户端",
+      "phase": "M0",
+      "priority": "P2",
+      "decision": "默认复用官方客户端与 API；存在硬件行为差异时再定位最小边界。",
+      "tasks": [
+        "审阅 lang/api/cli、环境检测及启动脚本差异",
+        "将通用新增协议或 API 演进列为上游版本差异",
+        "仅为明确 HCU 执行依赖增加必要兼容入口"
+      ],
+      "acceptance": [
+        "API 行为与目标官方一致，必要改动有对照",
+        "不将完整客户端代码搬入插件"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "gateway",
+      "title": "Gateway 与 Rust 服务组件",
+      "prefixes": [
+        "sgl-model-gateway/",
+        "rust/"
+      ],
+      "role": "路由与服务平台",
+      "phase": "M0",
+      "priority": "P2",
+      "decision": "独立服务组件不整体转成 Python 插件；仅记录接口依赖与兼容组合。",
+      "tasks": [
+        "审阅 router/gateway 与 Rust 组件的直接差异",
+        "区分上游版本同步、独立组件升级和插件必须的接口依赖",
+        "对 PD 路由等交互建立单独验收条目"
+      ],
+      "acceptance": [
+        "组件职责与版本组合有明确记录",
+        "插件单测不替代 gateway/PD 端到端验证"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "tests",
+      "title": "测试、评测、Benchmark 与示例",
+      "prefixes": [
+        "test/",
+        "benchmark/",
+        "examples/",
+        "python/sglang/test/",
+        "python/sglang/benchmark/"
+      ],
+      "role": "质量与性能",
+      "phase": "M4",
+      "priority": "P0",
+      "decision": "迁移可复用测试方法与固定输入，历史通过数不得直接当成本次支持。",
+      "tasks": [
+        "将能力对应到 CPU、HCU、Graph、多卡、服务及性能验收矩阵",
+        "分开验证源码、隔离 wheel 和 embedded 的实际模块来源",
+        "保留失败反例、原始响应、阈值来源与资源准入/清理记录"
+      ],
+      "acceptance": [
+        "每个必测 lane 有本次证据与适用范围",
+        "性能、精度、服务正确性各自独立给结论"
+      ],
+      "depends_on": [
+        "models",
+        "attention",
+        "pd"
+      ],
+      "destinations": [
+        "tests/",
+        "tools/validate_plugin_runtime.py",
+        "tools/validate_generation_response.py"
+      ]
+    },
+    {
+      "id": "packaging",
+      "title": "打包、依赖与许可证",
+      "prefixes": [
+        "python/",
+        "requirements",
+        "pyproject.toml",
+        "setup.py",
+        "setup.cfg",
+        "LICENSE",
+        "NOTICE",
+        "THIRD_PARTY_NOTICES"
+      ],
+      "role": "构建与交付",
+      "phase": "M4",
+      "priority": "P0",
+      "decision": "运行时包在独立插件仓维护；只声明当前真实存在的产物和依赖。",
+      "tasks": [
+        "核对 pyproject、entry point、native package data 与依赖门控",
+        "补齐隔离 wheel 安装、embedded 生成与第三方许可",
+        "记录源码/产物版本、哈希、兼容范围及 last-good 回退"
+      ],
+      "acceptance": [
+        "包内资源、入口与真实调用闭环，停用路径可验证",
+        "生成/哈希通过与模型运行结果分别记录"
+      ],
+      "depends_on": [
+        "native",
+        "tests"
+      ],
+      "destinations": [
+        "pyproject.toml",
+        "sglang_dcu_plugin/"
+      ]
+    },
+    {
+      "id": "delivery",
+      "title": "CI、容器、脚本与工程工具",
+      "prefixes": [
+        ".github/",
+        ".devcontainer/",
+        ".agents/",
+        ".claude/",
+        "docker/",
+        "scripts/",
+        "tools/",
+        ".pre-commit",
+        ".gitignore",
+        ".gitleaks"
+      ],
+      "role": "工程与 CI",
+      "phase": "M4",
+      "priority": "P1",
+      "decision": "复用任务与规则，不迁入私人 runner、容器名或固定工作目录。",
+      "tasks": [
+        "拆分离线方法 gate、运行时门禁和资源受限的 GPU lane",
+        "固定构建来源与可重放命令，按权限处理共享设备",
+        "按目标 CI 平台接入，手动配方不冒充已生效自动门禁"
+      ],
+      "acceptance": [
+        "runner 与产物身份可追溯，失败码有效",
+        "未运行/受阻/不适用项有清晰区分"
+      ],
+      "depends_on": [
+        "packaging"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "documents",
+      "title": "文档、许可说明与静态资源",
+      "prefixes": [
+        "docs/",
+        "assets/",
+        "README",
+        "CODE_OF_CONDUCT",
+        "CONTRIBUTING"
+      ],
+      "role": "文档与研发协作",
+      "phase": "M4",
+      "priority": "P1",
+      "decision": "提炼方法和支持范围，移除个人路径与私有部署默认值。",
+      "tasks": [
+        "为每个迁移任务补输入、归属、实现边界与验收证据",
+        "将同事接入路径接到本仓统一 Skill 与对应指南",
+        "区分历史经验、当前支持和后续开发计划"
+      ],
+      "acceptance": [
+        "新同事能从任务入口定位源码、步骤和验收",
+        "未验证能力不写成当前支持"
+      ],
+      "depends_on": [
+        "tests"
+      ],
+      "destinations": []
+    },
+    {
+      "id": "independent",
+      "title": "协议、第三方与其他工程资源",
+      "prefixes": [
+        "proto/",
+        "3rdparty/",
+        "experimental/",
+        ""
+      ],
+      "role": "跨组件评审",
+      "phase": "M0",
+      "priority": "P2",
+      "decision": "保留全量清单；子模块、协议和实验代码先判断归属，不默认搬入插件。",
+      "tasks": [
+        "核对 submodule、协议生成与实验组件是否被目标运行链引用",
+        "按来源和许可证处理实际需要的依赖",
+        "无法判定的差异进入待评审清单"
+      ],
+      "acceptance": [
+        "每项差异有复用、独立维护或插件接入的处置理由",
+        "Git 子模块只记录固定对象，不冒充已读取内部文件"
+      ],
+      "depends_on": [
+        "bootstrap"
+      ],
+      "destinations": []
+    }
+  ],
+  "historical_evidence": [
+    {
+      "title": "MiniMax TP4 已验配置",
+      "state": "历史验证",
+      "detail": "插件 afc6205 与官方 baa9befa 的源码及内嵌形态，MiniMax TP4/Graph 服务通过；范围与原始证据见 V3 最终交付记录。当前网页盘点不重跑该服务。",
+      "href": "architecture.html#read=docs%2Fv3-20261026-development.md&section=8-%E6%9C%80%E7%BB%88%E4%BA%A4%E4%BB%98%E4%B8%8E%E9%9C%80%E6%B1%82%E9%AA%8C%E6%94%B6"
+    },
+    {
+      "title": "高级能力仍有验证缺口",
+      "state": "待专项验收",
+      "detail": "完整 DeepSeek 引擎、完整 CP/PD 模型服务、DSpark streaming/source-event/ACK、W4A8/DeepEP 共享专家、FP4 AOT 和全部 native/gfx 分支仍须独立核验。",
+      "href": "architecture.html#read=docs%2Fv3-20261026-development.md&section=8-%E6%9C%80%E7%BB%88%E4%BA%A4%E4%BB%98%E4%B8%8E%E9%9C%80%E6%B1%82%E9%AA%8C%E6%94%B6"
+    }
+  ]
+}

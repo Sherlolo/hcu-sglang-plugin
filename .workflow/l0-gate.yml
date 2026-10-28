@@ -1,6 +1,7 @@
 # Runner-neutral recipe; wire to the chosen CI platform before relying on automation.
 name: hcu-plugin-tooling-l0
 commands:
+  - python3 tools/build_migration_plan.py --check
   - python3 tools/build_guide.py --check
   - python3 ci/l0_gate.py
   - python3 -m unittest discover -s tests -v

@@ -47,3 +47,7 @@ V3 中 merge-base 清单包含大量上游历史，结合当前树等价性与�
 ## 协议与消费者的逻辑对照
 
 差异审阅包含 async handler，并沿状态生产、wire codec、发布、调用方和下一消费者检查实际数据。来源 AST 一致只证明声明的节点；源实现也可能保留与新描述符语义冲突的旧预检。用修复前反例和实际字节效果解释有意适配差异，保留正常基线，参见 [PD 描述符案例](../../docs/development-methodology.md#13-描述符身份与位置式校验冲突) 与 [本轮记录](../../docs/v3-20261026-development.md#73-pd-描述符生产协商与复制)。
+
+## 团队模块盘点与研发计划
+
+准备将 DAS 按模块转为插件时，先读 [迁移规划指南](../../docs/sglang-das-migration-plan.md) 和 [研发网页](../../migration-plan.html)。可用 [build_migration_plan.py](../../tools/build_migration_plan.py) 对固定三方 HEAD 采集全量路径、顶层 Python 定义、合同与来源线索，按工作域组织建议任务。它不执行运行时加载，不做完整 merge-base 归因，也不把静态线索变成完成率。来源或计划定义变化后重新采集；随后仍按本 Skill 做人工处置、符号/消费者审阅及实际验收。
