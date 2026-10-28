@@ -12,7 +12,7 @@ description: 审计 SGLang official、DAS fork 与外部 DCU plugin，生成差�
 
 ## 用途与输入
 
-用于固定基线后的三方差异审计、处置和升级。输入 official/fork/外部 plugin 路径、产物目录；组合使用 adapter 时补充版本与目标交互。当前方法库不能作为包含业务代码的 plugin 输入。
+用于固定基线后的三方差异审计、处置和升级。输入 official/fork/外部 plugin 路径、产物目录；组合使用 adapter 时补充版本与目标交互。本仓现有 `hcu_sglang` 实现；下述旧抽取、审计 profile 与回溯工具部分仍针对 `sglang_dcu_plugin` 布局，不能因目录改名就假定全部工具已支持新包。当前迁入范围与待适配项见 [开发迁移记录](../../docs/hcu-sglang-development.md)。
 
 详细命令按 [迁移手册](../../docs/migration.md) 执行；先记录 SHA、merge-base、dirty 和环境。审计保留脏文件，不 reset/clean。adapter 与 plugin 可共同部署，实现归属与运行组合分别记录。
 

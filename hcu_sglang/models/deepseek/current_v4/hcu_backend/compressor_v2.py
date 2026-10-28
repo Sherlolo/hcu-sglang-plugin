@@ -1,0 +1,276 @@
+# Modifications Copyright 2026 Hygon Information Technology Co., Ltd.
+from __future__ import annotations
+from typing import TYPE_CHECKING, List, Literal, Optional, TypeAlias, Union, cast
+import torch
+from sglang.kernels.jit.utils import is_hip_runtime
+from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.models.deepseek.current_v4.hcu_backend.compress import CompressorDecodePlan, CompressorPrefillPlan, compress_forward, compress_norm_rope_store
+from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
+from sglang.srt.environ import envs
+if TYPE_CHECKING:
+    from hcu_sglang.models.deepseek.current_v4.hcu_backend.backend import DSV4Metadata
+    from hcu_sglang.models.deepseek.current_v4.hcu_backend.compressor import Compressor
+    from sglang.srt.layers.layernorm import RMSNorm
+    from hcu_sglang.mem_cache.hcu_v4_pool import DeepSeekV4TokenToKVPool
+    from sglang.srt.model_executor.forward_batch_info import ForwardBatch
+CompressMetadata: TypeAlias = Union[CompressorDecodePlan, CompressorPrefillPlan]
+FusedCompressMetadata: TypeAlias = CompressMetadata
+_is_hip = is_hip_runtime()
+
+def _use_online_compress(compress_ratio: int) -> bool:
+    """Online state-pool path is c128-only."""
+    return compress_ratio == 128 and envs.SGLANG_OPT_USE_ONLINE_COMPRESS.get()
+
+def _select_bf16_prefill_compress_writes(plan: CompressorPrefillPlan, out_loc: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Return static-shape (valid_mask, write_loc, positions) from plan_c."""
+    plan_c = plan.plan_c
+    assert plan_c.shape[-1] == 16, f'BF16 compressed cache prefill expects CompressPlan layout, got {tuple(plan_c.shape)}'
+    plan_c_i32 = plan_c.contiguous().view(dtype=torch.int32).view(-1, 4)
+    seq_lens = plan_c_i32[:, 0].to(torch.int64)
+    ragged_ids = torch.bitwise_and(plan_c_i32[:, 1], 65535).to(torch.long)
+    compress_ratio = int(plan.compress_ratio)
+    valid = (seq_lens >= compress_ratio) & (seq_lens % compress_ratio == 0)
+    positions = torch.clamp(seq_lens - compress_ratio, min=0)
+    write_loc = out_loc.index_select(0, ragged_ids)
+    return (valid, write_loc, positions)
+
+def _extract_positions_from_plan(plan: Union[CompressorDecodePlan, CompressorPrefillPlan], compress_ratio: int) -> torch.Tensor:
+    """Extract RoPE positions from plan tensors (decode or prefill).
+
+    DecodePlan layout: [bs, 16] uint8, first 4 bytes = uint32 seq_len.
+    CompressPlan layout: [num_c, 16] uint8, first 4 bytes = uint32 seq_len.
+    Position for RoPE = seq_len - compress_ratio.
+    """
+    plan_tensor = plan[1]
+    seq_lens = plan_tensor[:, :4].contiguous().view(torch.int32).squeeze(-1)
+    positions = seq_lens.to(torch.int32) - compress_ratio
+    return positions
+
+class CompressorBackendMixin:
+    _rlc_paged_cache: Optional[tuple] = None
+
+    def __init__(self):
+        super().__init__()
+        self.forward_metadata: DSV4Metadata
+
+    def _get_paged_compress_metadata(self, compress_ratio: int) -> CompressMetadata:
+        attr_name = f'c{compress_ratio}_compress_metadata'
+        return getattr(self.forward_metadata, attr_name)
+
+    def _get_out_loc(self, compress_ratio: int) -> torch.Tensor:
+        attr_name = f'c{compress_ratio}_out_loc'
+        return getattr(self.forward_metadata.core_metadata, attr_name)
+
+    def _forward_compress_all_in_one(self, *, kv_score_buffer: torch.Tensor, kv_score_input: torch.Tensor, ape: torch.Tensor, head_dim: int, norm: RMSNorm, freqs_cis_cache: torch.Tensor, kv_cache: torch.Tensor, is_indexer: bool, rotate: bool, compress_ratio: int, page_size: int, out_loc: torch.Tensor, use_fp4_indexer: bool=False, bf16_store: bool=False, kv_scale_cache: Optional[torch.Tensor]=None, rope_cache: Optional[tuple[torch.Tensor, torch.Tensor]]=None, kv_layout: KVLayout=KVLayout.V4, fp8_2buff: bool=False, kv_cache_rope: Optional[torch.Tensor]=None, int8_store: bool=False) -> None:
+        assert compress_ratio == 4 or compress_ratio == 128
+        assert rotate == is_indexer == (head_dim == 128)
+        if use_fp4_indexer:
+            assert is_indexer
+            assert compress_ratio == 4
+            assert head_dim == 128
+        plan = self._get_paged_compress_metadata(compress_ratio)
+        is_online = _use_online_compress(compress_ratio)
+        if is_online:
+            kv_score_buffer = kv_score_buffer.view(-1, 1, head_dim * 3)
+        else:
+            coff = 2 if is_overlap_compress(compress_ratio) else 1
+            last_dim = 2 * head_dim * coff
+            assert kv_score_buffer.shape[-1] == last_dim
+            kv_score_buffer = kv_score_buffer.view(-1, compress_ratio, last_dim)
+        compress_out = None
+        if _is_hip and use_fp4_indexer:
+            compress_out = kv_score_input.new_empty((plan[1].shape[0], head_dim), dtype=torch.bfloat16)
+        kv_compressed = compress_forward(kv_score_buffer=kv_score_buffer, kv_score_input=kv_score_input, ape=ape.view(-1, head_dim), plan=plan, compress_ratio=compress_ratio, head_dim=head_dim, out=compress_out, is_online=is_online)
+        norm_weight = norm.weight
+        if _is_hip and use_fp4_indexer:
+            norm_weight = getattr(norm, 'fp4_weight_bf16', norm_weight)
+        compress_norm_rope_store(kv_compressed, plan, norm_weight=norm_weight, norm_eps=norm.variance_epsilon, freq_cis=freqs_cis_cache, out_loc=out_loc, kvcache=kv_cache, page_size=page_size, use_fp4=use_fp4_indexer, bf16_store=bf16_store, kvcache_scale=kv_scale_cache, rope_cache=rope_cache, layout=kv_layout, fp4_k_write_metadata=getattr(self.forward_metadata, 'fp4_k_write_metadata', None) if _is_hip and use_fp4_indexer else None, fp8_2buff=fp8_2buff, kvcache_rope=kv_cache_rope, int8_store=int8_store)
+
+    def forward_unified(self, x: torch.Tensor, forward_batch: ForwardBatch, layer_id: int, compressor: Compressor) -> None:
+        if forward_batch.forward_mode.is_idle():
+            return
+        if self._rlc_gate(forward_batch, compressor):
+            self._forward_unified_rlc(x, forward_batch, layer_id, compressor)
+            return
+        token_to_kv_pool = self.token_to_kv_pool
+        token_to_kv_pool = cast('DeepSeekV4TokenToKVPool', token_to_kv_pool)
+        kv_score_input = compressor.compute_kv_score(x, forward_batch)
+        state_pool = compressor.get_state_pool(self)
+        from sglang.kernels.ops.attention.dsv4.unified_kv_kernels.env_gate import is_unified_kv_fp8, is_unified_kv_triton
+        if token_to_kv_pool.uniform_fp8 and (not compressor.is_in_indexer):
+            from sglang.srt.layers.attention.dsv4.compressor_trtllm import forward_compress_uniform_fp8
+            forward_compress_uniform_fp8(self, token_to_kv_pool=token_to_kv_pool, kv_score_input=kv_score_input, state_pool=state_pool, compressor=compressor, layer_id=layer_id)
+            return
+        out_loc = self._get_out_loc(compressor.ratio)
+        use_fp4_indexer = compressor.is_in_indexer and self.enable_deepseek_v4_fp4_indexer
+        use_hip_fp4 = _is_hip and use_fp4_indexer
+        bf16_store = False
+        kv_layout = KVLayout.V4
+        kv_scale_cache = None
+        fp8_2buff = False
+        kv_cache_rope = None
+        if compressor.is_in_indexer:
+            page_size = token_to_kv_pool.get_index_k_page_size(compressor.ratio)
+            if use_hip_fp4:
+                kv_cache = token_to_kv_pool.get_index_k_fp4_payload_buffer(layer_id)
+                kv_scale_cache = token_to_kv_pool.get_index_k_fp4_scale_buffer(layer_id)
+            else:
+                kv_cache = token_to_kv_pool.get_index_k_with_scale_buffer(layer_id)
+        elif is_unified_kv_triton():
+            kv_cache = token_to_kv_pool.get_unified_kv(layer_id)
+            page_size = 1
+            out_loc = getattr(self.forward_metadata.core_metadata.unified, f'c{compressor.ratio}_out_loc')
+            if is_unified_kv_fp8():
+                fp8_2buff = True
+                kv_cache_rope = token_to_kv_pool.get_unified_kv_rope(layer_id)
+            else:
+                bf16_store = True
+        else:
+            (_, _, compress_kv_pool) = token_to_kv_pool.layer_mapping[layer_id]
+            assert compress_kv_pool is not None
+            kv_cache = token_to_kv_pool.get_extra_key_buffer(layer_id)
+            page_size = token_to_kv_pool.get_extra_key_page_size(layer_id)
+            bf16_store = token_to_kv_pool.is_bf16_attention_kv_cache
+            kv_layout = token_to_kv_pool.get_extra_key_layout(layer_id)
+            if hasattr(compress_kv_pool, 'translate_loc_to_hisparse_device'):
+                out_loc = compress_kv_pool._translate_loc_to_hisparse_device(out_loc)
+        self._forward_compress_all_in_one(kv_score_buffer=state_pool.kv_score_buffer.kv_score, kv_score_input=kv_score_input, ape=compressor.ape, head_dim=compressor.head_dim, norm=compressor.norm, freqs_cis_cache=compressor.freqs_cis, kv_cache=kv_cache if use_hip_fp4 else kv_cache.view(dtype=torch.uint8), is_indexer=compressor.is_in_indexer, rotate=compressor.rotate, compress_ratio=compressor.ratio, page_size=page_size, out_loc=out_loc, use_fp4_indexer=use_fp4_indexer, bf16_store=bf16_store, kv_scale_cache=kv_scale_cache, rope_cache=(compressor.fp4_cos, compressor.fp4_sin) if use_hip_fp4 else None, kv_layout=kv_layout, fp8_2buff=fp8_2buff, kv_cache_rope=None if kv_cache_rope is None else kv_cache_rope.view(dtype=torch.uint8), int8_store=is_hcu() and compressor.is_in_indexer and token_to_kv_pool.use_int8_index_k_cache)
+        online_c128_mtp = getattr(self, 'online_c128_mtp', None)
+        if online_c128_mtp is not None:
+            online_c128_mtp.write_prefix_states(layer_id=layer_id, compressor=compressor, kv_score_input=kv_score_input, logical_forward_mode=getattr(forward_batch, '_original_forward_mode', None) or forward_batch.forward_mode)
+
+    def _forward_unified_hip(self, token_to_kv_pool: DeepSeekV4TokenToKVPool, kv_score_input: torch.Tensor, state_pool, compressor: Compressor, layer_id: int) -> None:
+        """HIP-specific forward path using PyTorch/Triton fallbacks."""
+        from sglang.kernels.ops.attention.deepseek_v4_rope import fused_norm_rope_inplace_triton
+        from sglang.srt.layers.attention.nsa.nsa_indexer import rotate_activation
+        compress_ratio = compressor.ratio
+        head_dim = compressor.head_dim
+        is_indexer = compressor.is_in_indexer
+        plan = self._get_paged_compress_metadata(compress_ratio)
+        out_loc = self._get_out_loc(compress_ratio)
+        coff = 2 if is_overlap_compress(compress_ratio) else 1
+        last_dim = 2 * head_dim * coff
+        kv_score_buffer = state_pool.kv_score_buffer.kv_score
+        kv_score_buffer = kv_score_buffer.view(-1, compress_ratio, last_dim)
+        kv_compressed = compress_forward(kv_score_buffer=kv_score_buffer, kv_score_input=kv_score_input, ape=compressor.ape.view(-1, head_dim), plan=plan, compress_ratio=compress_ratio, head_dim=head_dim, is_online=False)
+        if kv_compressed.shape[0] == 0:
+            return
+        valid_mask = None
+        if plan.is_decode:
+            plan_raw = plan[1].view(torch.int32)
+            seq_lens_plan = plan_raw[:, 0].to(torch.int32)
+            is_boundary = (seq_lens_plan % compress_ratio == 0).unsqueeze(-1)
+            kv_compressed = torch.where(is_boundary, kv_compressed, torch.zeros_like(kv_compressed))
+        if token_to_kv_pool.is_bf16_attention_kv_cache and (not is_indexer) and (not plan.is_decode):
+            (valid_mask, out_loc_to_store, positions) = _select_bf16_prefill_compress_writes(plan, out_loc)
+        else:
+            positions = _extract_positions_from_plan(plan, compress_ratio)
+        positions_safe = positions.clamp(min=0)
+        fused_norm_rope_inplace_triton(kv_compressed, compressor.norm.weight, compressor.norm.variance_epsilon, compressor.freqs_cis, positions=positions_safe)
+        if compressor.rotate:
+            kv_compressed = rotate_activation(kv_compressed)
+        if plan.is_decode:
+            kv_to_store = kv_compressed
+            out_loc_to_store = out_loc
+        elif valid_mask is None:
+            kv_to_store = kv_compressed
+            plan_raw = plan[1].view(torch.int32)
+            ragged_ids = plan_raw[:, 1].to(torch.int32) & 65535
+            out_loc_to_store = out_loc[ragged_ids.long()]
+        if kv_to_store.shape[0] == 0:
+            return
+        if is_indexer and token_to_kv_pool.use_int8_index_k_cache:
+            token_to_kv_pool.set_index_k_int8_buffer(layer_id=layer_id, loc=out_loc_to_store, cache_k=kv_to_store)
+        elif token_to_kv_pool.is_bf16_attention_kv_cache and (not is_indexer):
+            token_to_kv_pool.set_extra_key_buffer_fused(layer_id=layer_id, loc=out_loc_to_store, cache_k=kv_to_store, valid_mask=valid_mask)
+        elif envs.SGLANG_OPT_USE_FUSED_STORE_CACHE.get():
+            if is_indexer:
+                token_to_kv_pool.set_index_k_fused(layer_id=layer_id, loc=out_loc_to_store, cache_k=kv_to_store)
+            else:
+                token_to_kv_pool.set_extra_key_buffer_fused(layer_id=layer_id, loc=out_loc_to_store, cache_k=kv_to_store, valid_mask=valid_mask)
+        else:
+            token_to_kv_pool.set_extra_key_buffer_fused(layer_id=layer_id, loc=out_loc_to_store, cache_k=kv_to_store)
+
+    def _rlc_gate(self, forward_batch: ForwardBatch, compressor: Compressor) -> bool:
+        """Whether this forward_unified call should run the RLC path.
+
+        The env flag is checked first so the disabled state costs one boolean
+        read; the remaining imports are lazy so they stay out of module load.
+        """
+        if not envs.SGLANG_DSV4_COMPRESS_RLC.get() or not is_hcu() or (not compressor.overlap) or compressor.is_in_indexer or (compressor.ratio != 4):
+            return False
+        from sglang.srt.layers.attention.dsa.utils import dsa_use_prefill_cp
+        from hcu_sglang.models.deepseek.current_v4.hcu_backend.compat import is_dsa_prefill_cp_round_robin_split
+        from hcu_sglang.models.deepseek.current_v4.hcu_backend.compressor import _rlc_prefix_aligned
+        return dsa_use_prefill_cp(forward_batch) and is_dsa_prefill_cp_round_robin_split() and _rlc_prefix_aligned(forward_batch, compressor.ratio)
+
+    def _forward_unified_rlc(self, x: torch.Tensor, forward_batch: ForwardBatch, layer_id: int, compressor: Compressor) -> None:
+        """RLC variant of ``forward_unified`` for the core c4 compressor.
+
+        Runs ``Compressor._forward_rlc`` (all-to-all repartition + local
+        compress + compact all-gather) and stores its output exactly like
+        ``forward_core_compressor`` does. The v1-style paged metadata
+        (write_loc / extra_data / v1 plan) needed by the RLC kernels is built
+        once per ForwardBatch and reused across all c4 layers.
+        """
+        from hcu_sglang.models.deepseek.current_v4.hcu_backend.compressor import create_paged_compressor_data
+        token_to_kv_pool = cast('DeepSeekV4TokenToKVPool', self.token_to_kv_pool)
+        cache = self._rlc_paged_cache
+        if cache is None or cache[0] is not forward_batch:
+            paged = create_paged_compressor_data(compressor.ratio, is_prefill=True, token_to_kv_pool=token_to_kv_pool, req_to_token=self.req_to_token_pool.req_to_token, req_pool_indices=forward_batch.req_pool_indices, seq_lens=forward_batch.seq_lens, extend_lens=forward_batch.extend_seq_lens, seq_lens_cpu=list(forward_batch.seq_lens_cpu), extend_lens_cpu=list(forward_batch.extend_seq_lens_cpu))
+            self._rlc_paged_cache = (forward_batch, paged)
+        else:
+            paged = cache[1]
+        compressed = compressor._forward_rlc(x, forward_batch, self, paged)
+        compressor.store_rlc_output(token_to_kv_pool, layer_id, self._get_out_loc(compressor.ratio), compressed)
+    forward_indexer_compressor = forward_unified
+    forward_core_compressor = forward_unified
+
+def is_overlap_compress(compress_ratio: int) -> bool:
+    return compress_ratio == 4
+
+def create_paged_compressor_data(compress_ratio: Literal[4, 128], *, is_prefill: bool, token_to_kv_pool: DeepSeekV4TokenToKVPool, req_to_token: torch.Tensor, req_pool_indices: torch.Tensor, seq_lens: torch.Tensor, extend_lens: Optional[torch.Tensor]=None, seq_lens_cpu: Optional[List[int]]=None, extend_lens_cpu: Optional[List[int]]=None, use_prefill_cuda_graph: bool=False, num_q_tokens: Optional[int]=None, online_state_slot_offset: int=0) -> CompressMetadata:
+    """Build the paged compress metadata (= the plan).
+
+    State-pool slot translation is done inside the C++ planner; the
+    Python side just hands the relevant tensors over.
+    """
+    if _use_online_compress(compress_ratio):
+        return _create_online_paged_compressor_data(is_prefill=is_prefill, token_to_kv_pool=token_to_kv_pool, req_to_token=req_to_token, req_pool_indices=req_pool_indices, seq_lens=seq_lens, extend_lens=extend_lens, seq_lens_cpu=seq_lens_cpu, extend_lens_cpu=extend_lens_cpu, use_prefill_cuda_graph=use_prefill_cuda_graph, num_q_tokens=num_q_tokens, online_state_slot_offset=online_state_slot_offset)
+    swa_page_size = token_to_kv_pool.swa_page_size
+    ring_size = token_to_kv_pool.get_ring_size(compress_ratio=compress_ratio)
+    use_req_ring = compress_ratio == 4 and token_to_kv_pool._unified_kv
+    full_to_swa = token_to_kv_pool.full_to_swa_index_mapping.detach()
+    req_pool_indices_i64 = req_pool_indices.to(torch.int64)
+    if is_prefill:
+        assert extend_lens is not None
+        if seq_lens_cpu is not None:
+            assert extend_lens_cpu is not None
+            seq_lens_planner = torch.tensor(seq_lens_cpu, dtype=torch.int64)
+            extend_lens_planner = torch.tensor(extend_lens_cpu, dtype=torch.int64)
+            num_q_tokens = sum(extend_lens_cpu)
+        else:
+            assert num_q_tokens is not None
+            seq_lens_planner = seq_lens.to(torch.int64)
+            extend_lens_planner = extend_lens.to(torch.int64)
+        return CompressorPrefillPlan.generate(compress_ratio=compress_ratio, req_pool_indices=req_pool_indices_i64, seq_lens=seq_lens_planner, extend_lens=extend_lens_planner, req_to_token=req_to_token, full_to_state=full_to_swa, swa_page_size=swa_page_size, ring_size=ring_size, use_req_ring=use_req_ring, num_q_tokens=num_q_tokens, use_cuda_graph=use_prefill_cuda_graph)
+    else:
+        return CompressorDecodePlan.generate(compress_ratio=compress_ratio, req_pool_indices=req_pool_indices_i64, req_to_token=req_to_token, full_to_state=full_to_swa, seq_lens=seq_lens.to(torch.int64), swa_page_size=swa_page_size, ring_size=ring_size, use_req_ring=use_req_ring)
+
+def _create_online_paged_compressor_data(*, is_prefill: bool, token_to_kv_pool: DeepSeekV4TokenToKVPool, req_to_token: torch.Tensor, req_pool_indices: torch.Tensor, seq_lens: torch.Tensor, extend_lens: Optional[torch.Tensor], seq_lens_cpu: Optional[List[int]], extend_lens_cpu: Optional[List[int]], use_prefill_cuda_graph: bool, num_q_tokens: Optional[int], online_state_slot_offset: int=0) -> CompressMetadata:
+    req_pool_indices = req_pool_indices.to(torch.int64)
+    if is_prefill:
+        assert extend_lens is not None
+        if seq_lens_cpu is not None:
+            assert extend_lens_cpu is not None
+            seq_lens_planner = torch.tensor(seq_lens_cpu, dtype=torch.int64)
+            extend_lens_planner = torch.tensor(extend_lens_cpu, dtype=torch.int64)
+            num_q_tokens_planner = sum(extend_lens_cpu)
+        else:
+            assert num_q_tokens is not None
+            seq_lens_planner = seq_lens.to(torch.int64)
+            extend_lens_planner = extend_lens.to(torch.int64)
+            num_q_tokens_planner = num_q_tokens
+        return CompressorPrefillPlan.generate_online(seq_lens=seq_lens_planner, extend_lens=extend_lens_planner, req_pool_indices=req_pool_indices, req_to_token=req_to_token, num_q_tokens=int(num_q_tokens_planner), use_cuda_graph=use_prefill_cuda_graph, state_slot_offset=online_state_slot_offset)
+    else:
+        return CompressorDecodePlan.generate_online(seq_lens=seq_lens.to(torch.int64), req_pool_indices=req_pool_indices, req_to_token=req_to_token, state_slot_offset=online_state_slot_offset)

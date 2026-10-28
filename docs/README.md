@@ -9,6 +9,7 @@
 | 问题检索与任务匹配 | [统一入口说明](reading-guide.md#统一入口与输入补全) | [hcu-plugin-assistant](../skills/hcu-plugin-assistant/SKILL.md) |
 | 插件工程初始化 | [工程初始化指南](first-plugin.md) | [hcu-plugin-scaffold](../skills/hcu-plugin-scaffold/SKILL.md) |
 | 插件安装与加载验证 | [安装与启用指南](installation.md) | [hcu-plugin-install](../skills/hcu-plugin-install/SKILL.md) |
+| 当前运行时代码与迁入进展 | [hcu_sglang 开发迁移记录](hcu-sglang-development.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
 | 插件能力开发 | [能力开发指南](plugins.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
 | 故障诊断与回归修复 | [故障诊断指南](troubleshooting.md) | [hcu-plugin-triage](../skills/hcu-plugin-triage/SKILL.md) |
 | 研发模块盘点与开发计划 | [迁移规划指南](sglang-das-migration-plan.md) / [网页](../migration-plan.html) | [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) |
@@ -17,6 +18,8 @@
 | 内嵌源码生成与核验 | [源码回溯指南](backtracking.md) | [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md) |
 
 每份操作文档包含本任务的输入要求、Skill 调用示例、执行范围和验收标准。[任务与 Skill 使用指南](reading-guide.md) 负责选择与衔接；下列目录用于按需查询设计、规则与历史证据。
+
+当前阶段已包含 `hcu_sglang` 与打包入口；历史文档中“仅方法库、运行时位于外部”的描述按记录日期理解，当前安装和开发以 [迁移记录](hcu-sglang-development.md) 为准。
 
 ## 1. 文档组织
 

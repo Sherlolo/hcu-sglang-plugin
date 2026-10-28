@@ -1,0 +1,111 @@
+from __future__ import annotations
+import logging
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, ClassVar, Optional, Protocol
+from hcu_sglang.utils.detection import is_dcu as is_hcu
+_is_hcu = is_hcu()
+if TYPE_CHECKING:
+    from sglang.srt.model_executor.forward_batch_info import ForwardBatch
+logger = logging.getLogger(__name__)
+DSA_DENSE = 'dense'
+DSA_SPARSE = 'sparse'
+
+class AttentionGraphVariants(Protocol):
+    capture_labels: ClassVar[tuple[str, ...]]
+
+    def select(self, forward_batch: ForwardBatch) -> str:
+        """Select one of capture_labels for the batch."""
+        ...
+
+@dataclass(frozen=True)
+class DsaGraphVariants:
+    index_topk: int
+    capture_labels: ClassVar[tuple[str, ...]] = (DSA_DENSE, DSA_SPARSE)
+
+    def select(self, forward_batch: ForwardBatch) -> str:
+        seq_lens_cpu = forward_batch.seq_lens_cpu
+        if seq_lens_cpu is not None and seq_lens_cpu.numel() > 0:
+            max_kv_len = int(seq_lens_cpu.max().item())
+        elif not _is_hcu and forward_batch.seq_lens is not None and (forward_batch.seq_lens.numel() > 0):
+            max_kv_len = int(forward_batch.seq_lens.max().item())
+        else:
+            return DSA_SPARSE
+        return DSA_DENSE if max_kv_len <= self.index_topk else DSA_SPARSE
+
+def create_attention_graph_variants(hf_config) -> Optional[AttentionGraphVariants]:
+    from sglang.srt.configs.model_config import get_dsa_index_kpool, get_dsa_index_topk, is_deepseek_dsa
+    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from sglang.srt.utils import is_hip
+    _is_hcu = is_hcu()
+    if is_hip() and is_deepseek_dsa(hf_config):
+        if get_dsa_index_kpool(hf_config) > 1:
+            return None
+        index_topk = get_dsa_index_topk(hf_config)
+        logger.info('[dense-decode] DSA dual-graph enabled: capturing dense (k-only) + sparse (full indexer) decode graphs; dispatch on max_kv_len vs index_topk=%d.', index_topk)
+        return DsaGraphVariants(index_topk)
+    return None
+DSV41_CANDIDATE_FILTERED = 'candidate_filtered'
+
+@dataclass(frozen=True)
+class Dsv41CandidateGraphVariants:
+    """Candidate-indexer graphs keyed by the batch's longest request; a variant
+    below its limit skips low-ratio scoring or candidate filtering."""
+    graph_limits: tuple[tuple[str, int], ...]
+    capture_labels: tuple[str, ...]
+    verify_extra_tokens: int = 0
+
+    def select(self, forward_batch: ForwardBatch) -> str:
+        lengths = getattr(forward_batch, 'seq_lens_cpu', None)
+        max_seq_len = None
+        if lengths is not None and lengths.device.type == 'cpu' and (lengths.numel() > 0):
+            max_seq_len = int(lengths.max())
+        if max_seq_len is None and self.verify_extra_tokens:
+            max_seq_len = getattr(getattr(forward_batch, 'spec_info', None), 'candidate_max_seq_len_upper_bound', None)
+        if max_seq_len is not None:
+            max_seq_len += self.verify_extra_tokens
+            for (variant, limit) in self.graph_limits:
+                if max_seq_len <= limit:
+                    return variant
+        return DSV41_CANDIDATE_FILTERED
+
+def _candidate_indexer_capturable(model_runner) -> bool:
+    """Whether this device can capture the two-level candidate decode graphs.
+
+    HCU runs the same two-level indexer as CUDA but through LightOp, so it
+    qualifies once LightOp provides the paged fp4 ABI. Other platforms keep
+    main's gfx95/SM100 eligibility checks.
+    """
+    import torch
+    from sglang.srt.utils import is_gfx95_supported, is_hip
+    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    if not is_hip():
+        return torch.cuda.get_device_capability(model_runner.gpu_id)[0] >= 10
+    if not is_hcu():
+        return is_gfx95_supported()
+    from hcu_sglang.models.deepseek.current_v4.hcu_backend import lightop_indexer
+    return lightop_indexer.lightop_paged_indexer_available()
+
+def create_dsv41_candidate_graph_variants(model_runner, capture_forward_mode, captured_req_width: int=0) -> Optional[Dsv41CandidateGraphVariants]:
+    from sglang.srt.model_executor.forward_batch_info import ForwardMode
+    text_config = model_runner.model_config.hf_text_config
+    dspark_target_verify = capture_forward_mode == ForwardMode.TARGET_VERIFY and model_runner.spec_algorithm.is_dspark() and (not model_runner.is_draft_worker) and (captured_req_width > 0)
+    if not ((capture_forward_mode == ForwardMode.DECODE or dspark_target_verify) and model_runner.device == 'cuda' and _candidate_indexer_capturable(model_runner) and (getattr(text_config, 'model_type', None) == 'deepseek_v41') and (getattr(text_config, 'candidate_source_layer_id', -1) >= 0)):
+        return None
+    span = text_config.candidate_topk_blocks * text_config.candidate_block_size
+    if span <= 0:
+        return None
+    ratios = set(text_config.compress_ratios) & {1, 2}
+    topk = text_config.index_topk
+    variants = []
+    if topk > 0 and ratios and (not dspark_target_verify):
+        variants.append(('candidate_all', topk * min(ratios)))
+        if ratios == {1, 2}:
+            variants.append(('candidate_c2_all', topk * 2))
+    variants.append(('candidate_unfiltered', span))
+    graph_limits = []
+    for (variant, limit) in variants:
+        graph_limits.append((variant, min(limit, span)))
+        if limit >= span:
+            break
+    logger.info('Candidate indexer graph limits: %s; use full filtering above %s.', graph_limits, span)
+    return Dsv41CandidateGraphVariants(graph_limits=tuple(graph_limits), capture_labels=tuple((v for (v, _) in graph_limits)) + (DSV41_CANDIDATE_FILTERED,), verify_extra_tokens=captured_req_width if dspark_target_verify else 0)

@@ -1,6 +1,6 @@
 # HCU 插件安装与启用指南
 
-> **本文用途**：指导使用者安装现有 `sglang-dcu-plugin`，确认真正加载，再用自己的模型配方启动服务。安装对象是外部运行时实现仓，当前方法库本身不需要 pip 安装。
+> **本文用途**：指导使用者安装当前 HCU 插件，确认真正加载，再用自己的模型配方启动服务。当前可安装本仓 `hcu_sglang`；外部 `sglang_dcu_plugin` 安装流程保留为历史版本参考。
 
 ## 使用 Skill 安装与验证插件
 
@@ -23,6 +23,14 @@
 
 **预期交付**：安装与环境记录、入口信息、模块来源、加载报告及未执行项。若要求模型服务，另交付本次请求/响应与自有服务清理记录。
 
+## 当前仓库安装入口（2026-10-28 起）
+
+当前 distribution 为 `hcu-sglang-plugin`，包为 `hcu_sglang`，入口 `dcu = hcu_sglang:register`。在匹配的官方 SGLang/HCU 环境，从本仓根目录执行 `python3 -m pip install -e . --no-deps --no-build-isolation`；服务使用 `SGLANG_PLUGINS=dcu python3 -m hcu_sglang` 并追加真实模型配方参数。该显式启动入口安装惰性 AITER 兼容，不安装全局 `usercustomize.py`。
+
+当前加载验证必须指定 `--plugin-package hcu_sglang`。命令、隔离安装、版本与实际验收见 [开发迁移记录](hcu-sglang-development.md)。不要在同一运行环境混装旧 `sglang-dcu-plugin` 与新包的同名 `dcu` entry point。
+
+以下章节保留 v0.3.0/旧 `sglang_dcu_plugin` 的历史安装和复现方式，不代表当前包名或当前包已完成全部模型验收。
+
 ## 1. 运行环境与兼容基线
 
 需要 Python 3.10+、兼容的官方 SGLang、HCU/DTK/PyTorch HIP 和该插件所用的 vendor 依赖。`--no-deps` 只安装插件，不准备 Torch、LightOp、AITER、vLLM 扩展或 Rust 工具链。普通 CPU 环境不等于 HCU 服务环境。
@@ -31,7 +39,7 @@
 
 2026-10-26 需求当前交付为 v0.3.2.dev5，官方基线 `baa9befa381511cd4d56f83980951e5a45fffc6d`、插件提交 `afc6205dd1a0f1979cfab9bf1f3272d2db14f46c`。完整范围见 [最终交付记录](v3-20261026-development.md#8-最终交付与需求验收)；下表保留 v0.3.0 历史证据。
 
-本轮本地 wheel：`sglang_dcu_plugin-0.3.2.dev5-py3-none-any.whl`（历史相对位置 `output-code/dist/`，部署时通过 `WHEEL` 指定），SHA256：`c2260d30015e932faf33c09082758dee675113785353717a2750f75775544fac`。源码位于同级 `output-code/sglang-plugin`；本方法库不作为安装对象。在已准备配套 SGLang、Torch/HCU 与 vendor 依赖的个人环境中，可按后文 wheel 安装步骤使用该文件；`--no-deps` 不补齐这些依赖。本轮独立 wheel 已验证启动隔离、入口、363 项加载与 CPU 合约；GPU 和完整服务结果属于同提交的源码及内嵌形态，未执行 wheel 模型服务或公共 PyPI 发布。
+本轮本地 wheel：`sglang_dcu_plugin-0.3.2.dev5-py3-none-any.whl`（历史相对位置 `output-code/dist/`，部署时通过 `WHEEL` 指定），SHA256：`c2260d30015e932faf33c09082758dee675113785353717a2750f75775544fac`。历史源码位于同级 `output-code/sglang-plugin`；该版本发布时本仓尚未提供运行时安装入口。在已准备配套 SGLang、Torch/HCU 与 vendor 依赖的个人环境中，可按后文 wheel 安装步骤使用该文件；`--no-deps` 不补齐这些依赖。本轮独立 wheel 已验证启动隔离、入口、363 项加载与 CPU 合约；GPU 和完整服务结果属于同提交的源码及内嵌形态，未执行 wheel 模型服务或公共 PyPI 发布。
 
 | 对象 | 本次版本或位置 |
 |---|---|

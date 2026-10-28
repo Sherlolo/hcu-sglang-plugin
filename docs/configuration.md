@@ -1,6 +1,6 @@
 # 配置管理：路径、开关与运行时状态
 
-> **本文用途**：区分工具参数、SGLang/adapter/plugin 配置的所有权，说明组合运行时的覆盖与记录规则。当前本仓没有配置服务或运行时环境变量注册表；下述运行时规范用于后续实现。
+> **本文用途**：区分工具参数、SGLang/adapter/plugin 配置的所有权，说明组合运行时的覆盖与记录规则。当前 `hcu_sglang/config.py` 与 `hcu_sglang/environ.py` 已含插件配置和注册逻辑；所有权及状态规范继续适用于当前实现。
 
 ## 1. 当前工具的路径配置
 
@@ -49,7 +49,7 @@ set +a
 | plugin 自有能力开关 | 未来 plugin 实现 | 集中定义、记录类型/默认/支持条件，独立命名并可诊断 |
 | NCCL / driver / launcher / OS 变量 | 外部依赖或部署 | 按所有者的接口消费，不擅自改变语义 |
 
-本库目前不实现 `HCU_PLUGIN_*`、`HCU_DISABLE_OPS` 或统一配置文件。示例中旧插件的 `dcu` 来自外部实现仓，不能替换为尚未实现的本仓入口。
+本仓 `hcu_sglang` 已包含来源插件的配置开关和 `dcu` 入口；具体以当前代码为准，不假定存在统一的 `HCU_DISABLE_OPS` 或额外配置服务。
 
 ## 3. 新增配置的设计检查
 
@@ -77,7 +77,7 @@ flowchart LR
 
 平台判定也有所有权：adapter 可能向 SGLang 暴露 CUDA 语义，而真实 torch/编译器仍是 HIP。plugin 的硬件能力判定应使用足够直接且被验证的设备/依赖信息，不能只凭某个 SGLang `is_cuda()` 推断物理设备与 vendor 符号。
 
-V3 的外部运行时输出实际引入 `HCU_PLUGIN_MINIMAX_OPT`，由 `--minimax-opt` 在构造配置前设置并继承给 worker；在 ServerArgs 上仅提供兼容读取，不写冻结记录。该接口属于外部 runtime 0.3.0，不是本方法库的环境变量注册表，见 [V3 手册](v3-runtime-validation.md)。
+V3 的外部运行时输出实际引入 `HCU_PLUGIN_MINIMAX_OPT`，由 `--minimax-opt` 在构造配置前设置并继承给 worker；在 ServerArgs 上仅提供兼容读取，不写冻结记录。该接口最初属于外部 runtime 0.3.0，当前迁入实现见 `hcu_sglang/environ.py`；历史行为与验收边界见 [V3 手册](v3-runtime-validation.md)。
 
 官方配置记录可能是 msgspec Struct，不要仅靠 dataclasses.is_dataclass 判断；使用 pinned 版本的 `arg_utils.is_record`/record_fields。CLI 解析后还要 resolve_once 才算完成配置解析。
 

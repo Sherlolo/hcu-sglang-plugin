@@ -21,7 +21,7 @@ distribution / Python 包 / entry point：<三个名称，或按功能提出命�
 仅在要求真实 HCU 功能时衔接 hcu-plugin-dev，按本次范围验证。
 ```
 
-**预期交付**：外部工程路径、命名与入口映射、模块来源、可重放命令、三个对照结果及未验证项。工程初始化不等同于模型精度或性能验收；本方法库中不生成运行时代码。
+**预期交付**：外部工程路径、命名与入口映射、模块来源、可重放命令、三个对照结果及未验证项。工程初始化不等同于模型精度或性能验收；本示例生成到独立目录，已有 HCU 实现维护在本仓 `hcu_sglang/`。
 
 ## 1. 适用范围与代码归属
 
@@ -32,10 +32,10 @@ distribution / Python 包 / entry point：<三个名称，或按功能提出命�
 | 任务类型 | 实现位置 |
 |---|---|
 | 学习创建一个独立插件包 | 本文的新临时目录，包 `demo_prefix_plugin`，入口 `demo_prefix` |
-| 给已有 `dcu` 加能力 | 外部运行时仓 `output-code/sglang-plugin`；在对应功能模块实现，沿 `sglang_dcu_plugin:register` 接入 |
+| 给已有 `dcu` 加能力 | 本仓 `hcu_sglang/`；在对应功能模块实现，沿 `hcu_sglang:register` 接入，并更新 [开发迁移记录](hcu-sglang-development.md) |
 | 改开发指引或工具 | 当前方法库 `hcu-sglang-plugin` |
 
-方法库不放业务代码。不要把 demo 包添加进方法库根目录，也不需要为已有 `dcu` 的每项能力另建一个 wheel。
+本仓维护正式 HCU 实现；教学 demo 使用独立目录，不添加到本仓根目录。已有 `dcu` 的能力扩展复用当前 wheel。
 
 ## 2. 前置条件与工程结构
 

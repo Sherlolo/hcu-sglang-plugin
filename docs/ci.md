@@ -1,4 +1,4 @@
-# CI 与质量门禁：当前工具库及未来运行时
+# CI 与质量门禁：方法工具与当前运行时
 
 > **本文用途**：给出当前可执行的检查命令、它们能证明的范围、失败处理方式，以及未来运行时和跨仓组合的门禁规划。验收断言见 [验证手册](validation.md)，提交清单见 [协作流程](contributing.md)。
 
@@ -16,7 +16,7 @@ python3 -m unittest discover -s tests -v
 | L0 Python | 仓库 Python AST 语法，不导入运行时 | 运行语义、外部依赖或数值结果 |
 | L0 Skill | 名称/描述、名称与目录一致、agents prompt 与资源文件链接 | 完整 YAML 语义或 Agent 行为质量 |
 | L0 文档 | Markdown 相对文件链接存在性 | 锚点有效性、HTML 链接、Mermaid 渲染或可读性 |
-| L0 阶段边界 | 禁止当前列出的运行时/构建路径 | 所有可能包名的通用业务代码检测 |
+| L0 阶段边界 | 校验 hcu_sglang/pyproject 布局、禁止旧根包与全局启动文件、检查旧 namespace import | 所有可能包名的通用业务代码检测 |
 | unittest | 隔离 Git fixture、loader 与确定性响应验收工具契约 | 外部 plugin 的模型与 GPU 可用性 |
 
 新增文档除执行 L0 外，还要人工/工具核对标题锚点、图文、HTML 导览和当前/规划标注。修改 Skill 后使用维护环境的 Skill validator 核对 frontmatter 与元信息；这些额外工具不成为本库的运行依赖。
@@ -32,10 +32,10 @@ python3 -m unittest discover -s tests -v
 | 层 | 内容 | 条件 | 当前状态 |
 |---|---|---|---|
 | L0 | 结构、资源、配置/声明一致性 | CPU | 当前方法库版本已实现；运行时规则待扩展 |
-| CPU 运行时契约 | entry point、注册集合、target、配置/依赖门控与 fallback | 对应业务包和可控依赖/mock | 规划 |
+| CPU 运行时契约 | entry point、注册集合、target、配置/依赖门控与 fallback | 对应业务包和可控依赖/mock | 按本次范围执行 |
 | 组合集成 | official + plugin、official + adapter + plugin 等声明组合 | 固定 SHA、明确加载顺序与接口 | 规划，按能力适用性选择 |
-| HCU 数值与 Graph | reference 对拍、cache/状态、变输入 replay | 合适设备与依赖 | 规划 |
-| 服务与性能 | 模型加载、prefill/decode、拓扑、精度、预热 A/B | 明确资源窗口、模型/数据 | 规划 |
+| HCU 数值与 Graph | reference 对拍、cache/状态、变输入 replay | 合适设备与依赖 | 按本次范围执行 |
+| 服务与性能 | 模型加载、prefill/decode、拓扑、精度、预热 A/B | 明确资源窗口、模型/数据 | 按本次范围执行 |
 
 首次引入 `pyproject.toml` 或运行时目录时，要先更新 [架构阶段](architecture.md#4-未来运行时目录规划)、L0 的当前排除约束与相应测试。不能只删除禁止规则而不增加运行时质量约束。
 
@@ -66,3 +66,5 @@ python3 -m unittest discover -s tests -v
 浏览器或 DOM 验证覆盖页面内跳转、文档章节链接、搜索与无结果状态、请求复制反馈、移动导航和历史返回；实际视觉渲染与 DOM 测试分别记录，不以语法或链接检查代替渲染结论。当前 runner 配方包含快照检查，接入平台后才形成自动 CI。
 
 模块迁移规划页另由 `python3 tools/build_migration_plan.py --check` 检查计划定义、保存的源码盘点与 HTML 是否一致；该命令不重新访问输入仓库。三份来源版本变化后按 [规划维护指南](sglang-das-migration-plan.md#4-重新采集与维护) 显式重新采集，不能把缓存页面通过当作当前源码已审计。
+
+当前 `hcu_sglang` 的入口、轻量导入、命名空间和显式 launcher 有仓库测试；真实依赖下的严格加载、wheel 与服务分别记录在 [开发迁移记录](hcu-sglang-development.md)。不得将仓库测试总数理解为全部 GPU/模型已验。

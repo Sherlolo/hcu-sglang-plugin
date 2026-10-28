@@ -1,6 +1,6 @@
 # hcu-sglang-plugin
 
-SGLang HCU 插件开发方法库：把开发、安装、排障和升级经验组织成文档、Skill 与方法工具，供开发者和 Agent 按任务检索使用。**本仓库不包含插件运行时代码，也不作为 `pip install` 的安装对象。** 插件实现与生成源码始终放在外部工程中。
+SGLang HCU 插件代码与开发方法仓库。运行时代码位于 `hcu_sglang/`，同时维护开发、安装、排障和升级文档、Skill 与方法工具。2026-10-28 起本仓提供可安装的 `hcu-sglang-plugin`，入口 `dcu = hcu_sglang:register`；迁入步骤、提交和验证见 [开发迁移记录](docs/hcu-sglang-development.md)。
 
 面向研发同事评审 `sglang-das → sglang-plugin` 时，先打开 [模块盘点与开发计划](migration-plan.html)：可查看三方基线、26 个工作域、完整源码与符号明细，以及分阶段建议任务。统计和维护方法见 [迁移规划指南](docs/sglang-das-migration-plan.md)。
 
@@ -49,6 +49,8 @@ Skill 按实际目标选择，不构成必须全部执行的流水线。已有�
 hcu-sglang-plugin/
 ├── README.md                        使用入口、功能与案例
 ├── AGENTS.md                        Agent 工作约定
+├── hcu_sglang/                      HCU 插件运行时代码与原生资源
+├── pyproject.toml                   安装、入口与资源打包定义
 ├── architecture.html                离线网页导览、检索与文档阅读器
 ├── migration-plan.html              DAS 模块盘点与插件迁移开发计划
 ├── plans/                           可复核的固定版本盘点 JSON
@@ -75,7 +77,7 @@ hcu-sglang-plugin/
 
 `docs/` 负责解释与指导，`skills/` 规定 Agent 如何选择和执行，`tools/` 提供可运行的方法实现，`templates/` 用于保存本次真实记录。历史经验不是当前版本的兼容性承诺，ignored 证据也不会随 Git clone 自动分发。
 
-外部官方源码、HCU fork、运行时插件和生成目录可放在任意位置，不要求互为同级。通过 `OFFICIAL`、`FORK`、`PLUGIN`、`OUTPUT`、`ARTIFACTS` 等本地变量传入，见 [路径配置](docs/configuration.md#1-当前工具的路径配置)。本仓不固定个人目录、机器名称、容器或 UID。
+官方源码、HCU fork 和生成目录可放在任意位置；当前运行时实现位于本仓 `hcu_sglang/`。通过 `OFFICIAL`、`FORK`、`PLUGIN`、`OUTPUT`、`ARTIFACTS` 等本地变量传入，见 [路径配置](docs/configuration.md#1-当前工具的路径配置)。本仓不固定个人目录、机器名称、容器或 UID。
 
 ## 4. 开发使用案例
 
@@ -104,7 +106,7 @@ hcu-sglang-plugin/
 请确认正确的安装方式并验证入口、模块来源和加载结果；本次不要求模型服务。
 ```
 
-助手选择 `hcu-plugin-install`，核对实际版本、兼容依赖和可写安装位置。安装对象是外部运行时产物；`pip install -e .` 不用于本方法库。完整命令维护在 [安装指南](docs/installation.md)。
+助手选择 `hcu-plugin-install`，核对实际版本、兼容依赖和可写安装位置。当前包可从本仓安装；使用旧版外部产物时须核对对应命名空间和入口。完整命令维护在 [安装指南](docs/installation.md)。
 
 ### 4.3 排查运行异常
 

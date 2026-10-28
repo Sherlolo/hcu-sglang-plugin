@@ -10,11 +10,11 @@ description: 设计或开发 SGLang 在 HCU 上的新增融合、后端、专项
 
 [阅读指南](../../docs/reading-guide.md) 给出本 Skill 的输入、产出和可复制请求。各项 Skill 按任务选用，不要求顺序执行；安装现有插件使用 [安装 Skill](../hcu-plugin-install/SKILL.md) 和 [安装指南](../../docs/installation.md)。
 
-新建独立包使用 [工程初始化 Skill](../hcu-plugin-scaffold/SKILL.md) 和 [初始化指南](../../docs/first-plugin.md)；给现有 dcu 新增能力则在外部运行时仓修改对应模块、沿现有 register 接入。出现异常时读 [排障入口](../../docs/troubleshooting.md)，需要定位根因再用 triage。历史经验按症状查询，不作为额外必读流程。
+新建独立包使用 [工程初始化 Skill](../hcu-plugin-scaffold/SKILL.md) 和 [初始化指南](../../docs/first-plugin.md)；给现有 dcu 新增能力则在本仓 `hcu_sglang/` 修改对应模块、沿现有 register 接入，并更新开发迁移记录。出现异常时读 [排障入口](../../docs/troubleshooting.md)，需要定位根因再用 triage。历史经验按症状查询，不作为额外必读流程。
 
 ## 用途与输入
 
-用于一项新能力从设计到验证的执行。输入：需求与支持范围、official/plugin SHA 和路径；使用 adapter 时加其 SHA/能力依赖；可选 DAS 来源、产物目录和执行资源。当前仓库仅提供方法和工具，不含可安装运行时包。
+用于一项新能力从设计到验证的执行。输入：需求与支持范围、official/plugin SHA 和路径；使用 adapter 时加其 SHA/能力依赖；可选 DAS 来源、产物目录和执行资源。当前实现位于本仓 `hcu_sglang/`，开发步骤、提交与验收记录在 [开发迁移记录](../../docs/hcu-sglang-development.md)。
 
 设计接口或处理跨仓交互时读 [架构](../../docs/architecture.md) 与 [治理](../../docs/governance.md)：adapter 和 plugin 独立开发、可共同部署。判别“上游是否已有行为”用于实现拆分，不把部署画成二选一。
 

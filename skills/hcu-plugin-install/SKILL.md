@@ -9,7 +9,7 @@ description: 在指定环境安装现有 SGLang HCU 插件源码或 wheel，核�
 
 按 [安装与启用指南](../../docs/installation.md) 操作已有运行时产物。需要官方 SGLang 路径/版本、插件源码或 wheel 路径/哈希、目标 Python/容器、安装方式与可写目录、实际运行用户、证据目录；仅在要求服务验证时再提供模型与完整配方。
 
-当前方法库不是可安装插件。安装位置优先使用指定个人环境或任务 target，不修改共享 site-packages、全局 Git 配置或 HOME；保留当前部署依赖的 adapter/platform 基线。目标为任意新插件时，使用其实际 distribution 和 entry point，不能假定都叫 dcu。
+当前仓库可安装 `hcu-sglang-plugin`，Python 包为 `hcu_sglang`，入口为 `dcu`；按 [开发迁移记录](../../docs/hcu-sglang-development.md) 的当前安装与验证步骤执行。安装位置优先使用指定个人环境或任务 target，不修改共享 site-packages、全局 Git 配置或 HOME；保留当前部署依赖的 adapter/platform 基线。目标为任意新插件时，使用其实际 distribution 和 entry point，不能假定都叫 dcu。
 
 ## 执行流程
 
