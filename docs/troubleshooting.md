@@ -43,7 +43,7 @@
 | 吞吐下降 | 固定形状、预热、同步、并发、频率，比较实际命中的实现 | 同上性能路线；不要把首次 JIT 当稳态性能 |
 | 只有 adapter＋plugin 组合出错 | 固定两仓版本、同目标包装顺序和 fallback 是否绕过适配 | [治理](governance.md)、[配置](configuration.md) |
 
-若严格加载报告只有 `Failed to execute general plugin: dcu`，在同一已配置环境用新进程打开日志，找第一条 traceback：
+若严格加载报告只有 `Failed to execute general plugin: hcu`（旧版本可能显示 `dcu`），在同一已配置环境用新进程打开日志，找第一条 traceback：
 
 ```bash
 python3 - <<'PYCODE'

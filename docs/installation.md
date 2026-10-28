@@ -25,9 +25,9 @@
 
 ## 当前仓库安装入口（2026-10-28 起）
 
-当前 distribution 为 `hcu-sglang-plugin`，包为 `hcu_sglang`，入口 `dcu = hcu_sglang:register`。在匹配的官方 SGLang/HCU 环境，从本仓根目录执行 `python3 -m pip install -e . --no-deps --no-build-isolation`；服务使用 `SGLANG_PLUGINS=dcu python3 -m hcu_sglang` 并追加真实模型配方参数。该显式启动入口安装惰性 AITER 兼容，不安装全局 `usercustomize.py`。
+当前 distribution 为 `hcu-sglang-plugin`，包为 `hcu_sglang`，入口 `hcu = hcu_sglang:register`。在匹配的官方 SGLang/HCU 环境，从本仓根目录执行 `python3 -m pip install -e . --no-deps --no-build-isolation`；服务使用 `SGLANG_PLUGINS=hcu python3 -m hcu_sglang` 并追加真实模型配方参数。该显式启动入口安装惰性 AITER 兼容，不安装全局 `usercustomize.py`。
 
-当前加载验证必须指定 `--plugin-package hcu_sglang`。命令、隔离安装、版本与实际验收见 [开发迁移记录](hcu-sglang-development.md)。不要在同一运行环境混装旧 `sglang-dcu-plugin` 与新包的同名 `dcu` entry point。
+当前加载验证必须指定 `--plugin-package hcu_sglang`。命令、隔离安装、版本与实际验收见 [开发迁移记录](hcu-sglang-development.md)。当前插件按名称 `hcu` 精确选择，旧名称 `dcu` 不再是当前包的入口或别名。更新安装元数据后，使用 `export SGLANG_PLUGINS=hcu`；只修改环境变量而未重新安装旧版本不会生效。未设置白名单仍可能加载其他已安装插件。
 
 以下章节保留 v0.3.0/旧 `sglang_dcu_plugin` 的历史安装和复现方式，不代表当前包名或当前包已完成全部模型验收。
 

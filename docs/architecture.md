@@ -107,7 +107,7 @@ JSON 来源快照的职责见 [文档索引](README.md)。不在每个 Skill 下
 
 ## 4. 未来运行时目录规划
 
-本节保留早期目录提案用于解释模块拆分方向。当前已采用 `hcu_sglang/`、根 `pyproject.toml` 与 `dcu = hcu_sglang:register`，并更新 L0 阶段约束；以下 `hcu_sglang_plugin` 等名称不代表实际接口。当前布局与验证见 [开发迁移记录](hcu-sglang-development.md)。
+本节保留早期目录提案用于解释模块拆分方向。当前已采用 `hcu_sglang/`、根 `pyproject.toml` 与 `hcu = hcu_sglang:register`，并更新 L0 阶段约束；以下 `hcu_sglang_plugin` 等名称不代表实际接口。当前布局与验证见 [开发迁移记录](hcu-sglang-development.md)。
 
 ```text
 hcu-sglang-plugin/                 未来在当前方法库基础上逐步增加

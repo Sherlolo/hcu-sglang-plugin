@@ -1,6 +1,6 @@
 # hcu-sglang-plugin
 
-SGLang HCU 插件代码与开发方法仓库。运行时代码位于 `hcu_sglang/`，同时维护开发、安装、排障和升级文档、Skill 与方法工具。2026-10-28 起本仓提供可安装的 `hcu-sglang-plugin`，入口 `dcu = hcu_sglang:register`；迁入步骤、提交和验证见 [开发迁移记录](docs/hcu-sglang-development.md)。
+SGLang HCU 插件代码与开发方法仓库。运行时代码位于 `hcu_sglang/`，同时维护开发、安装、排障和升级文档、Skill 与方法工具。2026-10-28 起本仓提供可安装的 `hcu-sglang-plugin`，入口 `hcu = hcu_sglang:register`；迁入步骤、提交和验证见 [开发迁移记录](docs/hcu-sglang-development.md)。
 
 面向研发同事评审 `sglang-das → sglang-plugin` 时，先打开 [模块盘点与开发计划](migration-plan.html)：可查看三方基线、26 个工作域、完整源码与符号明细，以及分阶段建议任务。统计和维护方法见 [迁移规划指南](docs/sglang-das-migration-plan.md)。
 

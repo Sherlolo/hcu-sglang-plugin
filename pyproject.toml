@@ -4,14 +4,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hcu-sglang-plugin"
-version = "0.3.2.dev6"
+version = "0.3.2.dev7"
 description = "SGLang HCU runtime plugin and development methods"
 requires-python = ">=3.10"
 dependencies = ["sglang==0.5.22"]
 license = {file = "LICENSE"}
 
 [project.entry-points."sglang.srt.plugins"]
-dcu = "hcu_sglang:register"
+hcu = "hcu_sglang:register"
 
 [project.scripts]
 hcu-sglang-serve = "hcu_sglang.__main__:main"

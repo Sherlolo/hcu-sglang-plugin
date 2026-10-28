@@ -32,10 +32,10 @@ distribution / Python 包 / entry point：<三个名称，或按功能提出命�
 | 任务类型 | 实现位置 |
 |---|---|
 | 学习创建一个独立插件包 | 本文的新临时目录，包 `demo_prefix_plugin`，入口 `demo_prefix` |
-| 给已有 `dcu` 加能力 | 本仓 `hcu_sglang/`；在对应功能模块实现，沿 `hcu_sglang:register` 接入，并更新 [开发迁移记录](hcu-sglang-development.md) |
+| 给已有 `hcu` 加能力 | 本仓 `hcu_sglang/`；在对应功能模块实现，沿 `hcu_sglang:register` 接入，并更新 [开发迁移记录](hcu-sglang-development.md) |
 | 改开发指引或工具 | 当前方法库 `hcu-sglang-plugin` |
 
-本仓维护正式 HCU 实现；教学 demo 使用独立目录，不添加到本仓根目录。已有 `dcu` 的能力扩展复用当前 wheel。
+本仓维护正式 HCU 实现；教学 demo 使用独立目录，不添加到本仓根目录。已有 `hcu` 的能力扩展复用当前 wheel。
 
 ## 2. 前置条件与工程结构
 
@@ -150,7 +150,7 @@ SGLANG_PLUGINS=__no_general_plugins__ DEMO_TRACE_PREFIX=1 EXPECT_PLUGIN=0 python
 
 预期依次是 `PASS plugin=True trace=True`、`PASS plugin=True trace=False`、`PASS plugin=False trace=False`。第一行证明入口发现、目标应用和实际调用都生效；第二行证明功能关闭后保留原行为；第三行证明没有加载 demo 时仍使用基线。每行必须启动新 Python，因为 loader 在进程内只执行一次。
 
-在本次版本中，空 `SGLANG_PLUGINS` 表示加载所有发现的插件，不能用空值测试停用。最后一行的名称应确认没有对应已安装入口。示例不选择 `dcu`，不验证 HCU 服务，也不证明 adapter 组合兼容。
+在本次版本中，空 `SGLANG_PLUGINS` 表示加载所有发现的插件，不能用空值测试停用。最后一行的名称应确认没有对应已安装入口。示例不选择 `hcu`，不验证 HCU 服务，也不证明 adapter 组合兼容。
 
 ## 4. HCU 功能开发衔接
 
@@ -158,7 +158,7 @@ SGLANG_PLUGINS=__no_general_plugins__ DEMO_TRACE_PREFIX=1 EXPECT_PLUGIN=0 python
 
 1. 写清能力和支持范围，例如只优化某 dtype/shape 的 norm，其他情况回退；确认上游已有 seam，适合时优先使用。
 2. 在运行时实现仓新增功能模块，读取真实 caller、返回值、状态和下一消费者。可选 vendor 在选中路径内导入；不能把 demo 的任意参数包装误当成已经满足真实签名。
-3. 沿已有顶层 register 接入，核对完整目标合同。已有 `dcu` 可用 [严格加载工具](../tools/validate_plugin_runtime.py)；该工具不能直接拿来验证本文 demo。
+3. 沿已有顶层 register 接入，核对完整目标合同。已有 `hcu` 可用 [严格加载工具](../tools/validate_plugin_runtime.py)；该工具不能直接拿来验证本文 demo。
 4. 先测支持/回退、参数和状态，再测相关 HCU 数值、Graph、TP 和模型请求。涉及 collective、KV、norm 交接时需穿过真实框架边界。
 5. 写 [验证记录](../templates/validation-record.md)，说明真实完成范围；需要 wheel 或 embedded 交付时分别验证实际来源和行为。
 
