@@ -375,7 +375,6 @@
     "sglang.srt.speculative.dspark_components.dspark_draft_sampler.DsparkDraftSampler.stage_sampling_params",
     "sglang.srt.speculative.dspark_components.dspark_planner.DSparkVerifyPlanner.__init__",
     "sglang.srt.speculative.dspark_components.dspark_worker_v2.DSparkWorkerV2.init_cuda_graphs",
-    "sglang.srt.speculative.eagle_worker_common.eagle_prepare_for_verify",
     "sglang.srt.speculative.eagle_worker_common.prepare_for_draft",
     "sglang.srt.utils.common.get_cuda_graph_batch_size_alignment"
   ]

@@ -72,24 +72,16 @@ def _needs_mhc_hidden_states(model_runner: Any) -> bool:
 
 
 def around_prepare_for_draft(original: Callable[..., Any], *args, **kwargs):
-    forward_batch, can_run_decode_cuda_graph = original(*args, **kwargs)
+    result = original(*args, **kwargs)
+    forward_batch = result[0]
     draft_model_runner = kwargs.get("draft_model_runner")
-    if draft_model_runner is None and len(args) >= 4:
-        draft_model_runner = args[3]
+    if draft_model_runner is None and len(args) >= 5:
+        draft_model_runner = args[4]
     if _needs_mhc_hidden_states(draft_model_runner):
         forward_batch.return_hidden_states_before_norm = True
-    return forward_batch, can_run_decode_cuda_graph
+    return result
 
 
-def around_eagle_prepare_for_verify(original: Callable[..., Any], *args, **kwargs):
-    forward_batch, can_run_cuda_graph = original(*args, **kwargs)
-    target_worker = kwargs.get("target_worker")
-    if target_worker is None and len(args) >= 4:
-        target_worker = args[3]
-    model_runner = getattr(target_worker, "model_runner", None)
-    if _needs_mhc_hidden_states(model_runner):
-        forward_batch.return_hidden_states_before_norm = True
-    return forward_batch, can_run_cuda_graph
 
 
 def around_tbo_filter_batch(
@@ -150,11 +142,6 @@ def register_hooks() -> None:
     HookRegistry.register(
         "sglang.srt.speculative.eagle_worker_common.prepare_for_draft",
         around_prepare_for_draft,
-        HookType.AROUND,
-    )
-    HookRegistry.register(
-        "sglang.srt.speculative.eagle_worker_common.eagle_prepare_for_verify",
-        around_eagle_prepare_for_verify,
         HookType.AROUND,
     )
     HookRegistry.register(
