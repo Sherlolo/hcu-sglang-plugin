@@ -1,0 +1,19 @@
+"""DeepseekV2MLP method hooks."""
+
+from __future__ import annotations
+
+from hcu_sglang.models.deepseek.hook_utils import (
+    register_method_replaces_from_path,
+)
+
+_BASE = "sglang.srt.models.deepseek_v2"
+_SRC = "hcu_sglang.models.deepseek.deepseek_v2.methods.mlp"
+
+
+def register_hooks() -> int:
+    return register_method_replaces_from_path(
+        _BASE,
+        "DeepseekV2MLP",
+        ("forward",),
+        _SRC,
+    )

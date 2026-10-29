@@ -5,6 +5,8 @@ from __future__ import annotations
 import argparse
 import contextlib
 import json
+import importlib
+import sys
 import logging
 from pathlib import Path
 from unittest.mock import patch
@@ -21,9 +23,9 @@ class PluginErrors(logging.Handler):
 
 
 def validate(official_python, plugin_root, *, disable_entry_points=False,
-             expected_targets=None):
+             expected_targets=None, plugin_package="sglang_dcu_plugin"):
     import sglang
-    import sglang_dcu_plugin
+    runtime_plugin = importlib.import_module(plugin_package)
     import sglang.srt.plugins as plugins
     from sglang.srt.plugins.hook_registry import HookRegistry
     from sglang.srt.arg_groups import resolution_hooks
@@ -31,7 +33,7 @@ def validate(official_python, plugin_root, *, disable_entry_points=False,
     errors = []
     for label, module, root in (
         ("official", sglang, official_python),
-        ("plugin", sglang_dcu_plugin, plugin_root),
+        ("plugin", runtime_plugin, plugin_root),
     ):
         source = Path(module.__file__).resolve()
         if not source.is_relative_to(Path(root).resolve()):
@@ -64,14 +66,17 @@ def validate(official_python, plugin_root, *, disable_entry_points=False,
                           + " unexpected=" + str(sorted(set(targets)-expected)))
 
     named = sorted(name for name, wrappers in resolution_hooks._HOOKS.items()
-                   if any(w.__module__.startswith("sglang_dcu_plugin") for w in wrappers))
+                   if any((w.__module__ == plugin_package or w.__module__.startswith(plugin_package + ".")) for w in wrappers))
     required = {"handle_model_specific_adjustments", "handle_a2a_moe",
                 "handle_attention_backend_compatibility"}
     if not required <= set(named):
         errors.append("Missing named resolution seams: " + str(sorted(required-set(named))))
+    if plugin_package == "hcu_sglang" and any(name == "sglang_dcu_plugin" or name.startswith("sglang_dcu_plugin.") for name in sys.modules):
+        errors.append("Legacy namespace was imported during current-package validation")
     return {
+        "plugin_package": plugin_package,
         "status": "failed" if errors else "passed",
-        "official": sglang.__file__, "plugin": sglang_dcu_plugin.__file__,
+        "official": sglang.__file__, "plugin": runtime_plugin.__file__,
         "external_entry_points_disabled": disable_entry_points,
         "registered": len(targets), "applied": len(set(targets)&HookRegistry._patched),
         "unapplied": unapplied, "named_resolution_hooks": named,
@@ -86,12 +91,15 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--disable-entry-points", action="store_true")
     parser.add_argument("--expected-targets", type=Path)
+    parser.add_argument("--plugin-package", choices=["sglang_dcu_plugin", "hcu_sglang"], default="sglang_dcu_plugin")
     args = parser.parse_args()
     expected = (json.loads(args.expected_targets.read_text())
                 if args.expected_targets else None)
+    if isinstance(expected, dict):
+        expected = expected["expected_hook_targets"]
     report = validate(args.official_python, args.plugin_root,
                       disable_entry_points=args.disable_entry_points,
-                      expected_targets=expected)
+                      expected_targets=expected, plugin_package=args.plugin_package)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True)+"\n")
     print(json.dumps({k:v for k,v in report.items() if k != "targets"}, indent=2))

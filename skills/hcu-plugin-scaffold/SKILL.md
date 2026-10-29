@@ -9,7 +9,7 @@ description: 在指定外部目录创建独立 SGLang 插件工程，确定包�
 
 基于 [插件工程初始化指南](../../docs/first-plugin.md) 创建新的运行时插件工程。输入为官方 SGLang 路径与 ref/SHA、外部输出目录、distribution/Python 包/entry point 名称、首项功能或学习示例、Python 环境和证据目录。使用 adapter 时补充其版本与依赖关系。未指定命名时按目标能力提出并记录命名，常规命名选择不构成额外确认步骤。
 
-本方法库只维护文档、Skill 和方法工具。插件包、pyproject.toml 与生成的测试必须位于用户指定的外部目录；学习示例使用独立临时目录。已存在实现仓的能力改动转 [hcu-plugin-dev](../hcu-plugin-dev/SKILL.md)，不重新创建包。
+本仓已有 `hcu_sglang` 运行时及打包定义；本 Skill 用于另外创建用户指定的独立插件，仍使用指定的新目录，学习示例使用独立临时目录。已存在实现仓的能力改动转 [hcu-plugin-dev](../hcu-plugin-dev/SKILL.md)，不重新创建包。
 
 生成或修改源码遵守[生成代码约定](../../docs/contributing.md#生成代码约定)：不新增说明性注释、生成标记、来源 docstring 或 lint 抑制注释；保留来源已有内容与许可声明，说明写入独立文档和清单。
 

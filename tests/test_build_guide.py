@@ -99,6 +99,16 @@ class GuideTests(unittest.TestCase):
         self.assertNotIn(self.root / 'README.md', selected)
         self.assertNotIn(self.root / '.env', selected)
 
+    def test_standalone_plan_and_snapshot_links_stay_local(self):
+        (self.root / 'migration-plan.html').write_text('<h1>plan</h1>', encoding='utf-8')
+        (self.root / 'plans').mkdir()
+        (self.root / 'plans/source.json').write_text('{}', encoding='utf-8')
+        source = self.root / 'README.md'
+        self.assertEqual(resolve_link('migration-plan.html#modules', source, self.root, {'README.md'}),
+                         'migration-plan.html#modules')
+        self.assertEqual(resolve_link('plans/source.json', source, self.root, {'README.md'}),
+                         'plans/source.json')
+
     def test_check_is_read_only_and_detects_stale_snapshot(self):
         command = [sys.executable, str(ROOT / 'tools/build_guide.py'), '--root', str(self.root)]
         result = subprocess.run(command + ['--check'], capture_output=True)

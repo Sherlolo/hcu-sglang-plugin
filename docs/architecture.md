@@ -12,7 +12,7 @@
 | 可验证交付 | 接线、数值、Graph、服务与性能证据逐层递进 | CPU 工具验证已提供；运行时门禁为规划 |
 | 可维护文档 | 导航、设计、操作、规则与历史证据各有归属 | 文档按 [文档索引](README.md) 组织 |
 
-本仓目前包含方法、Skill 与工具。下文中“参考实现”指外部 `sglang-plugin-das`；“未来规划”指本仓尚未落地的业务包。**独立开发不等于没有运行时依赖**：某能力若需要 adapter 提供的符号或环境行为，必须声明并验证这个依赖。
+本仓目前包含 `hcu_sglang` 运行时、方法、Skill 与工具。当前实现与命名以 [开发迁移记录](hcu-sglang-development.md) 为准；下文“参考实现”与“未来规划”保留早期设计背景，旧 `hcu_sglang_plugin` 包名提案不代表现行目录。**独立开发不等于没有运行时依赖**：某能力若需要 adapter 提供的符号或环境行为，必须声明并验证这个依赖。
 
 ## 2. 运行时组合关系
 
@@ -94,7 +94,7 @@ hcu-sglang-plugin/
 │   ├── extraction-map.md       方法来源和取舍
 │   └── delivery-validation.md  按版本记录交付证据
 ├── skills/<task>/              1 个统一入口 + 7 个专项 Skill 与按需参考
-├── tools/                      10 个方法工具的唯一实现
+├── tools/                      11 个方法工具的唯一实现
 ├── templates/                  历史、处置与验证模板
 ├── tests/                      CPU 工具行为测试
 ├── ci/                         离线结构门禁
@@ -107,7 +107,7 @@ JSON 来源快照的职责见 [文档索引](README.md)。不在每个 Skill 下
 
 ## 4. 未来运行时目录规划
 
-以下名称是**提案**，不是已存在目录、可安装包或稳定 API。首次实现需先确认包名、entry point、支持的官方版本与依赖，再同步调整当前 L0 的“禁止运行时代码”阶段约束。
+本节保留早期目录提案用于解释模块拆分方向。当前已采用 `hcu_sglang/`、根 `pyproject.toml` 与 `hcu = hcu_sglang:register`，并更新 L0 阶段约束；以下 `hcu_sglang_plugin` 等名称不代表实际接口。当前布局与验证见 [开发迁移记录](hcu-sglang-development.md)。
 
 ```text
 hcu-sglang-plugin/                 未来在当前方法库基础上逐步增加

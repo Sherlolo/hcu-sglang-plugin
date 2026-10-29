@@ -65,3 +65,5 @@
 - 方法来源与交付：[vLLM Skill 迁移分析](vllm-skill-migration.md)、[交付记录](delivery-validation.md)。
 
 当前需求的实现范围、验证结果和 HCU 逻辑差异见 [V3 2026-10-26 实施记录](v3-20261026-development.md)。历史经验用于定位相似问题，当前支持范围以对应固定版本的实施记录为准。
+
+团队需要将 DAS 按模块转为插件时，先查看 [模块盘点与开发计划网页](../migration-plan.html) 和 [维护说明](sglang-das-migration-plan.md)，再用三方迁移 Skill 评审本轮范围。网页的 78 条建议项需认领和裁剪，不能按静态映射计数推定已迁移或未支持。

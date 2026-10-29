@@ -8,11 +8,11 @@ import html
 import json
 import re
 from pathlib import Path
-from urllib.parse import unquote, urlencode, urlsplit
+from urllib.parse import unquote, urlencode, urlsplit, quote
 
 ROOT = Path(__file__).resolve().parents[1]
 FOLDERS = ("docs", "skills", "tools", "templates", "tests", "ci", ".workflow", "licenses")
-EXTENSIONS = {".md", ".py", ".json", ".yaml", ".yml", ".LICENSE"}
+EXTENSIONS = {".md", ".py", ".json", ".yaml", ".yml", ".LICENSE", ".html"}
 
 
 def source_files(root: Path) -> list[Path]:
@@ -54,6 +54,8 @@ def resolve_link(target: str, source: Path, root: Path, known: set[str]) -> str 
         return "#start"
     if name in known:
         return route(name, unquote(parsed.fragment))
+    if destination.is_file() and destination.suffix in {".html", ".json", ".csv"}:
+        return quote(name, safe="/") + ("#" + quote(unquote(parsed.fragment)) if parsed.fragment else "")
     return None
 
 

@@ -1,0 +1,26 @@
+"""HCU compatibility for the diffusion QK-Norm + RoPE JIT kernel."""
+
+from __future__ import annotations
+
+from typing import Any, Callable
+
+from hcu_sglang.utils.detection import is_dcu
+
+
+def around_can_use_fused_inplace_qknorm_rope(
+    original: Callable[..., bool], *args: Any, **kwargs: Any
+) -> bool:
+    if is_dcu():
+        return False
+    return original(*args, **kwargs)
+
+
+def register_hooks() -> None:
+    from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+
+    HookRegistry.register(
+        "sglang.kernels.ops.diffusion.rope.qknorm_rope_jit."
+        "can_use_fused_inplace_qknorm_rope",
+        around_can_use_fused_inplace_qknorm_rope,
+        HookType.AROUND,
+    )

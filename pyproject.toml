@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hcu-sglang-plugin"
+version = "0.3.2.dev7"
+description = "SGLang HCU runtime plugin and development methods"
+requires-python = ">=3.10"
+dependencies = ["sglang==0.5.22"]
+license = {file = "LICENSE"}
+
+[project.entry-points."sglang.srt.plugins"]
+hcu = "hcu_sglang:register"
+
+[project.scripts]
+hcu-sglang-serve = "hcu_sglang.__main__:main"
+
+[tool.setuptools]
+include-package-data = false
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hcu_sglang*"]
+exclude = ["hcu_sglang.__pycache__", "hcu_sglang.*.__pycache__"]
+
+[tool.setuptools.package-data]
+hcu_sglang = ["jit_overlay/**/*", "models/deepseek/current_v4/hcu_backend/csrc/*"]
+
+[tool.setuptools.exclude-package-data]
+hcu_sglang = ["**/__pycache__/*", "**/*.pyc"]

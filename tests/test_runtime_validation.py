@@ -10,11 +10,11 @@ from unittest.mock import patch
 from tools.validate_plugin_runtime import validate
 
 
-def fake_runtime(targets, patched, official, plugin, soft_error=False):
+def fake_runtime(targets, patched, official, plugin, soft_error=False, package="sglang_dcu_plugin"):
     modules = {}
     for name in ["sglang", "sglang.srt", "sglang.srt.plugins",
                  "sglang.srt.plugins.hook_registry", "sglang.srt.arg_groups",
-                 "sglang.srt.arg_groups.resolution_hooks", "sglang_dcu_plugin"]:
+                 "sglang.srt.arg_groups.resolution_hooks", package]:
         module = types.ModuleType(name)
         module.__path__ = []
         modules[name] = module
@@ -23,7 +23,7 @@ def fake_runtime(targets, patched, official, plugin, soft_error=False):
             parent, attr = name.rsplit(".", 1)
             setattr(modules[parent], attr, module)
     modules["sglang"].__file__ = str(official / "sglang" / "__init__.py")
-    modules["sglang_dcu_plugin"].__file__ = str(plugin / "sglang_dcu_plugin" / "__init__.py")
+    modules[package].__file__ = str(plugin / package / "__init__.py")
 
     class Registry:
         _hooks = {}
@@ -42,7 +42,7 @@ def fake_runtime(targets, patched, official, plugin, soft_error=False):
 
     def wrapper(*args):
         pass
-    wrapper.__module__ = "sglang_dcu_plugin.test"
+    wrapper.__module__ = package + ".test"
     modules["sglang.srt.plugins"].load_plugins = load
     modules["sglang.srt.plugins.hook_registry"].HookRegistry = Registry
     modules["sglang.srt.arg_groups.resolution_hooks"]._HOOKS = {
@@ -58,6 +58,15 @@ class RuntimeValidationTests(unittest.TestCase):
             plugin = Path(directory) / "plugin"
             with patch.dict(sys.modules, fake_runtime(targets, patched, official, plugin, soft_error)):
                 return validate(official, plugin)
+
+    def test_current_package_namespace_is_checked_independently(self):
+        with tempfile.TemporaryDirectory() as directory:
+            official, plugin = Path(directory) / "official", Path(directory) / "plugin"
+            modules = fake_runtime(["sglang.target"], ["sglang.target"], official, plugin, package="hcu_sglang")
+            with patch.dict(sys.modules, modules):
+                report = validate(official, plugin, plugin_package="hcu_sglang")
+            self.assertEqual(report["status"], "passed")
+            self.assertEqual(report["plugin_package"], "hcu_sglang")
 
     def test_empty_loader_cannot_pass(self):
         self.assertEqual(self.check([], [])["status"], "failed")

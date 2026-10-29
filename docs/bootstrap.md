@@ -9,9 +9,9 @@
 | 阅读文档、使用 Skill | 完整仓库路径与可读资源 | 不需要 |
 | 审计/清单/台账/回溯、离线测试 | Python 3.10+、Git，标准库 | 不需要 |
 | 检查外部 Hook 签名或导出 targets | 指定官方 SGLang、外部 plugin 与其依赖 | 需要外部实现可导入 |
-| HCU 服务/graph/性能验证 | 固定镜像、依赖、设备和指定部署组合 | 安装外部运行时；已有 V3 输出，按本次范围验收 |
+| HCU 服务/graph/性能验证 | 固定镜像、依赖、设备和指定部署组合 | 安装本仓当前包或指定历史产物；按本次范围验收 |
 
-本仓尚无 `pyproject.toml`、运行时包和 entry point。现阶段安装方式就是获取完整源码并选择合适 Python；不要对本库执行 `pip install -e .`。
+本仓现有 `hcu_sglang/`、`pyproject.toml` 和 `hcu` 入口。仅使用离线方法工具时无需安装运行时；开发或安装当前插件时按 [开发迁移记录](hcu-sglang-development.md) 和 [安装指南](installation.md) 执行。
 
 ## 2. 工作目录与解释器配置
 
@@ -70,11 +70,11 @@ python3 tools/verify_reconstruction.py --help
 
 ## 5. 运行时安装与开发入口
 
-实际安装的完整步骤统一维护在 [安装与启用](installation.md)：选兼容环境→wheel 或 editable→entry point→严格加载→模型验收。当前已有运行时输出在 `output-code/sglang-plugin`，入口为 `dcu`；不是本方法库，也不是只能参考的未来功能。
+实际安装的完整步骤统一维护在 [安装与启用](installation.md)：选兼容环境→wheel 或 editable→entry point→严格加载→模型验收。当前运行时在本仓 `hcu_sglang/`，入口为 `hcu`；旧 `output-code/sglang-plugin` 保留为迁入来源与历史验证基线。
 
 源码所属用户与执行用户匹配时使用常规安装；需要隔离 target 的构建环境可参考 [V3 记录](v3-runtime-validation.md) §4 的任务级 metadata 方案，安装目录必须放在同一 Python 的 sys.path 中。不要为安装修改全局 safe.directory 或 HOME。
 
-第一次写插件从 [最小案例](first-plugin.md) 开始；给现有 dcu 加能力读 [开发指南](plugins.md)，故障读 [排障入口](troubleshooting.md)。
+第一次写插件从 [最小案例](first-plugin.md) 开始；给现有 hcu 加能力读 [开发指南](plugins.md)，故障读 [排障入口](troubleshooting.md)。
 
 ## 6. 常见问题
 

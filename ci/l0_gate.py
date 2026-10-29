@@ -15,8 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def main() -> int:
     errors = []
     files = [p for p in ROOT.rglob("*") if p.is_file()
-             and not any(part in {".git", "artifacts", "__pycache__", ".venv"}
-                         for part in p.relative_to(ROOT).parts)]
+             and not any(part in {".git", "artifacts", "__pycache__", ".venv", "build", "dist", ".pytest_cache"}
+                         for part in p.relative_to(ROOT).parts)
+             and not any(part.endswith(".egg-info") for part in p.relative_to(ROOT).parts)]
     python_files = [p for p in files if p.suffix == ".py"]
     for path in python_files:
         try:
@@ -48,9 +49,26 @@ def main() -> int:
             relative = unquote(target.split("#", 1)[0])
             if relative and not (path.parent / relative).exists():
                 errors.append(f"{path.relative_to(ROOT)}: missing link {target}")
-    for forbidden in ("sglang_dcu_plugin", "sgl_kernel", "sitecustomize.py", "usercustomize.py", "pyproject.toml"):
+    for forbidden in ("sglang_dcu_plugin", "sgl_kernel", "sitecustomize.py", "usercustomize.py"):
         if (ROOT / forbidden).exists():
-            errors.append(f"runtime/build artifact outside current scope: {forbidden}")
+            errors.append(f"legacy or global startup artifact outside current scope: {forbidden}")
+    runtime = ROOT / "hcu_sglang"
+    if runtime.exists():
+        for required in ("hcu_sglang/__init__.py", "hcu_sglang/__main__.py", "pyproject.toml"):
+            if not (ROOT / required).is_file():
+                errors.append("incomplete current runtime layout: " + required)
+        for path in runtime.rglob("*.py"):
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except (SyntaxError, UnicodeError):
+                continue
+            for node in ast.walk(tree):
+                modules = ([node.module or ""] if isinstance(node, ast.ImportFrom) else
+                           [alias.name for alias in node.names] if isinstance(node, ast.Import) else [])
+                if any(name == "sglang_dcu_plugin" or name.startswith("sglang_dcu_plugin.") for name in modules):
+                    errors.append(f"legacy namespace import: {path.relative_to(ROOT)}:{node.lineno}")
+    elif (ROOT / "pyproject.toml").exists():
+        errors.append("packaging exists without the supported hcu_sglang runtime")
     report = {"status": "failed" if errors else "passed", "python_files": len(python_files),
               "skills": len(skills), "errors": errors}
     print(json.dumps(report, indent=2, ensure_ascii=False))

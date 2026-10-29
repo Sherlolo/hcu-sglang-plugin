@@ -33,7 +33,7 @@
 | revision | 明确的官方 commit-ish，交付时记录解析后的 SHA |
 | 新输出路径 | 不与任一来源相同或父子重叠；默认不存在 |
 
-当前方法库没有上述 plugin 业务包，不能作为 `--plugin`。历史工具不自动支持未来 `hcu_sglang_plugin` 包名；若新实现改变布局，要同步修改生成器和测试。
+本仓已有 `hcu_sglang` 包，但当前回溯生成器仍要求旧 `sglang_dcu_plugin` 布局，因此不能直接把本仓传给旧 `--plugin`。本次未修改历史生成器的命名空间契约；适配新包及其测试作为后续独立步骤，见 [开发迁移记录](hcu-sglang-development.md)。
 
 ## 2. 工具执行流程
 
