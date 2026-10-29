@@ -12,7 +12,7 @@ description: 审计 SGLang official、DAS fork 与外部 DCU plugin，生成差�
 
 ## 用途与输入
 
-用于固定基线后的三方差异审计、处置和升级。输入 official/fork/外部 plugin 路径、产物目录；组合使用 adapter 时补充版本与目标交互。本仓现有 `hcu_sglang` 实现；下述旧抽取、审计 profile 与回溯工具部分仍针对 `sglang_dcu_plugin` 布局，不能因目录改名就假定全部工具已支持新包。当前迁入范围与待适配项见 [开发迁移记录](../../docs/hcu-sglang-development.md)。
+用于固定基线后的三方差异审计、处置和升级。输入 official/fork/外部 plugin 路径、产物目录；组合使用 adapter 时补充版本与目标交互。本仓现有 `hcu_sglang` 实现；清单、处置台账、方法抽取、签名检查与回溯工具已支持识别当前包和旧包。DeepSeek 抽取 profile 仍须按当前类拆分预检，支持包名不代表 profile 已覆盖全部模型。当前迁入范围与待适配项见 [开发迁移记录](../../docs/hcu-sglang-development.md)。
 
 详细命令按 [迁移手册](../../docs/migration.md) 执行；先记录 SHA、merge-base、dirty 和环境。审计保留脏文件，不 reset/clean。adapter 与 plugin 可共同部署，实现归属与运行组合分别记录。
 
@@ -51,3 +51,8 @@ V3 中 merge-base 清单包含大量上游历史，结合当前树等价性与�
 ## 团队模块盘点与研发计划
 
 准备将 DAS 按模块转为插件时，先读 [迁移规划指南](../../docs/sglang-das-migration-plan.md) 和 [研发网页](../../migration-plan.html)。可用 [build_migration_plan.py](../../tools/build_migration_plan.py) 对固定三方 HEAD 采集全量路径、顶层 Python 定义、合同与来源线索，按工作域组织建议任务。它不执行运行时加载，不做完整 merge-base 归因，也不把静态线索变成完成率。来源或计划定义变化后重新采集；随后仍按本 Skill 做人工处置、符号/消费者审阅及实际验收。
+
+
+## 分阶段全量实施
+
+先读取 [执行台账维护](../../docs/migration.md#全量差异执行台账)。保持固定盘点快照，逐路径维护 `plans/sglang-das-decisions.json`，再运行 `tools/build_migration_execution.py` 及 `--check`；未审核路径保持 pending，不按静态 mapping clue 自动完成。按 M0 基线/工具、M1 基础/量化、M2 Attention/KV/模型、M3 通信/PD/扩展、M4 产物/回归逐阶段实施；本仓能力直接进入 `hcu_sglang`，不从 DAS 动态导入。每阶段本地提交并更新开发记录；用户要求仅本地时不推送。当前 Hook 合同为 `docs/hcu-sglang-targets.json`，迁入 manifest 保留历史快照。

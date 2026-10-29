@@ -13,7 +13,7 @@
 ```text
 读取 <方法库绝对路径>/skills/hcu-plugin-backtrack/SKILL.md，按该 Skill 执行。
 官方输入：<路径及 revision/SHA>。
-外部 DCU 插件输入：<路径及 SHA，包含 sglang_dcu_plugin>。
+插件输入：<路径及 SHA，包含 hcu_sglang 或旧 sglang_dcu_plugin>。
 新输出目录：<与两输入不重叠的路径>；证据目录：<本次任务目录>。
 运行验收范围：<仅生成与核验，或指定模型/配置>。
 检查输入干净和目录边界，生成内嵌源码树并核验清单。
@@ -29,11 +29,11 @@
 |---|---|
 | 解释器与 Git | Python 3.10+；Git 可执行 |
 | official 来源 | 干净 worktree；有 loader、package initializer 和 `python/pyproject.toml` |
-| 外部 plugin | 干净 worktree；受 Git 跟踪的 `sglang_dcu_plugin/__init__.py`、`compat/aiter.py` |
+| 外部 plugin | 干净 worktree；受 Git 跟踪的 `hcu_sglang/__init__.py`（或旧包）和包内 `compat/aiter.py` |
 | revision | 明确的官方 commit-ish，交付时记录解析后的 SHA |
 | 新输出路径 | 不与任一来源相同或父子重叠；默认不存在 |
 
-本仓已有 `hcu_sglang` 包，但当前回溯生成器仍要求旧 `sglang_dcu_plugin` 布局，因此不能直接把本仓传给旧 `--plugin`。本次未修改历史生成器的命名空间契约；适配新包及其测试作为后续独立步骤，见 [开发迁移记录](hcu-sglang-development.md)。
+生成器 v4 自动识别唯一的 `hcu_sglang` 或旧 `sglang_dcu_plugin` 包；两者并存时必须用 `--plugin-package` 显式选择，缺失包会拒绝生成。当前 HCU 包使用内嵌 `hcu` 注册，并打包 JIT overlay 和 DeepSeek V4 backend csrc；旧输入保留 `dcu`。来源清单增加实际包名，清单文件名为兼容已有核验工具保持不变。源码生成与真实运行分别验收。
 
 ## 2. 工具执行流程
 
@@ -47,9 +47,9 @@ flowchart LR
     O --> H[独立核验清单]
 ```
 
-生成器来自 `plugin_work/reconstruct_sglang_das.py`。它把受 Git 跟踪的 DCU plugin 放进新树，在 SGLang bootstrap 提前安装 AITER 兼容，在 loader 增加内嵌 dcu 注册，并补齐 JIT package data、依赖与第三方许可。
+生成器来自 `plugin_work/reconstruct_sglang_das.py`。它把受 Git 跟踪的 DCU plugin 放进新树，在 SGLang bootstrap 提前安装 AITER 兼容，在 loader 增加对应包的内嵌注册，并补齐 JIT package data、依赖与第三方许可。
 
-生成器版本 3 不再向 bootstrap/loader 插入注释或 BEGIN/END 标记；通过导入符号和历史标记检测拒绝重复集成。复制的来源注释和许可声明保持原样，来源信息仍写入 `.sglang-dcu-embedded.json` 与 `DCU_EMBEDDED.md`。统一要求见[生成代码约定](contributing.md#生成代码约定)。
+生成器版本 3 起不再向 bootstrap/loader 插入注释或 BEGIN/END 标记；通过导入符号和历史标记检测拒绝重复集成。复制的来源注释和许可声明保持原样，来源信息仍写入 `.sglang-dcu-embedded.json` 与 `DCU_EMBEDDED.md`。统一要求见[生成代码约定](contributing.md#生成代码约定)。
 
 ## 3. 源码生成与清单核验
 

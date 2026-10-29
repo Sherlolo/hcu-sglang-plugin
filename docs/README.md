@@ -75,7 +75,7 @@ flowchart TB
 | [source-inventory.json](source-inventory.json) | V1 中 DAS 25 项 Skill 的原始描述、源哈希、取舍和目的地 | 历史抽取索引；不是运行时能力清单 |
 | [source-manifest.json](source-manifest.json) | V1 来源 SHA 与抽取时的源/目标文件哈希 | V1 快照；目标文件未来修改后不能当当前全仓完整性清单 |
 | [skills/](../skills) | 1 个统一入口、7 个专项入口、agents 元信息和按需参考 | 保留共享相对路径 |
-| [tools/](../tools) | 11 个工具的唯一源码 | 用 `--help` 和对应操作手册 |
+| [tools/](../tools) | 审计、开发和交付工具源码 | 用 `--help` 和对应操作手册 |
 | [templates/](../templates) | 人工处置、历史和验证记录 | 复制后填写真实证据，不复用旧 verified |
 | [tests/](../tests) / [ci/](../ci) | 工具契约与结构门禁 | CPU 工具结论不外推成运行时已验证 |
 | `artifacts/` | 本次执行日志、清单和本地产物 | Git 忽略；共享证据时另保存稳定位置 |
@@ -102,3 +102,5 @@ flowchart TB
 存在独立执行目标的操作文档应包含“使用 Skill …”章节，列出适用 Skill、必需输入、调用示例、预期交付及后续任务边界。优先复用职责匹配的现有 Skill；只有任务输入、执行流程和验收标准与现有入口明显不同时才新增，避免按页面数量复制 Skill。设计规范与历史记录无需分别创建执行 Skill。
 
 操作细节与示例维护在对应文档，Skill 保留任务决策、约束和引用；二者互相链接。新增 Skill 同步任务导航、元信息、数量与结构检查，保持完整仓库的共享相对路径。
+
+当前逐路径差异处置见 [迁移执行台账](../plans/sglang-das-execution.json)，维护规则见 [三方迁移](migration.md#全量差异执行台账)；当前 Hook 合同见 [目标清单](hcu-sglang-targets.json)。

@@ -42,3 +42,5 @@ embedded 若属于本次发布范围，按 [产物来源](../upgrading-sglang-hc
 
 
 来源校验保持只读，采用工具当前的 `GIT_OPTIONAL_LOCKS=0` 子进程设置；任务要求索引字节保留时，按 [来源索引保护](../../docs/backtracking.md#9-来源索引保护) 记录前后哈希。索引变化先区分暂存内容与缓存，不重置来源来消除差异。
+
+生成器 v4 自动识别唯一运行时包；双包输入用 `--plugin-package` 显式选择。当前 HCU 内嵌入口为 `hcu`，JIT 和 DeepSeek V4 csrc 随源码保留。核对 manifest 中实际 package、文件哈希与隔离加载来源，不继承旧包运行结果。

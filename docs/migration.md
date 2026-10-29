@@ -42,7 +42,7 @@ flowchart LR
 
 审计允许记录脏输入，不得先 reset/clean。回溯要求干净输入，见 [回溯手册](backtracking.md)。职责归属按 [治理](governance.md) 拆分；官方 + adapter + plugin 可以是同一交付的目标组合，不是互斥去向。
 
-命令均从本库根目录执行；先按 [路径配置](configuration.md#1-当前工具的路径配置) 加载本次输入。`PLUGIN` 必须指向外部实现仓，不能指向当前方法库。审计允许脏树并记录 WORKTREE；不得先 reset/clean。回溯对干净树的要求见单独手册。
+命令均从本库根目录执行；先按 [路径配置](configuration.md#1-当前工具的路径配置) 加载本次输入。`PLUGIN` 指向实际运行时实现仓；迁移当前包时可指向本仓。清单与处置工具会识别 `hcu_sglang` 或旧包，缺失或双包歧义会报错。审计允许脏树并记录 WORKTREE；不得先 reset/clean。回溯对干净树的要求见单独手册。
 
 ```bash
 : "${OFFICIAL:?请设置官方源码路径}"
@@ -81,7 +81,7 @@ PYTHONPATH="$OFFICIAL/python:$PLUGIN" python3 - "$ARTIFACTS/registered_hook_targ
 from pathlib import Path
 import sys
 from sglang.srt.plugins.hook_registry import HookRegistry
-from sglang_dcu_plugin import register
+from hcu_sglang import register
 HookRegistry.reset()
 register()
 Path(sys.argv[1]).write_text(
@@ -103,7 +103,7 @@ V3 的新社区源已将部分配置处理迁入具名 resolution/model override
 
 ## 4. 方法抽取与升级验证
 
-下面两个工具保留历史 `sglang_dcu_plugin/models/deepseek` 布局，不能泛化到任意 plugin 名称。
+下面两个工具自动识别 `hcu_sglang` 或旧包；双包输入用 `--plugin-package` 选择。支持包名不表示 DeepSeek 类 profile 已适配全部来源；先执行只读预检。上面的运行时导出示例使用当前包，验证旧输入时将 import 改为实际旧包名。
 
 ```bash
 # --check 只读；不加 --check 会改外部 PLUGIN 方法文件，需在计划开发的树内执行。
@@ -114,7 +114,7 @@ PYTHONPATH="$OFFICIAL/python:$PLUGIN" python3 tools/validate_hook_signatures.py 
   --output "$ARTIFACTS/hook_signatures.json"
 ```
 
-签名检查只覆盖已注册的 `sglang_dcu_plugin.models` REPLACE Hook，比较参数结构、默认值数量等；不比较默认值语义，不覆盖所有 AROUND/BEFORE/AFTER、动态别名或全部类契约。必须另测完整预期 targets、重复/组合顺序、apply 解析、fallback 与模型语义。空集合不能当作完整通过。
+签名检查只覆盖所选包 `models` 下已注册的 REPLACE Hook，比较参数结构、默认值数量等；不比较默认值语义，不覆盖所有 AROUND/BEFORE/AFTER、动态别名或全部类契约。必须另测完整预期 targets、重复/组合顺序、apply 解析、fallback 与模型语义。空集合不能当作完整通过。
 
 输出 `history/model-pr-history-notes.md` 记录来源 commit、符号、影响的选型和回归风险；模板见 [history-notes](../templates/history-notes.md)。验收按 [validation](validation.md) 的适用矩阵，缺 GPU 的 lane 记 pending。
 
@@ -140,3 +140,15 @@ PYTHONPATH="$OFFICIAL/python:$PLUGIN" python3 tools/validate_hook_signatures.py 
 ## 指定目标升级与发版衔接
 
 三方差异盘点之后，需要升级到用户指定 official ref 并交付 wheel/image/embedded 时，使用 [升级发版 Skill](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md)。它复用本手册工具，补充上游接管判定、测试影响、产物来源与必测矩阵；不会让静态 pending 台账自动成为 verified。取舍见 [迁移分析](vllm-skill-migration.md)。
+
+
+## 全量差异执行台账
+
+[盘点 JSON](../plans/sglang-das-migration.json) 保留固定版本事实；[人工处置](../plans/sglang-das-decisions.json) 记录已评审路径；[执行台账](../plans/sglang-das-execution.json) 包含所有非 same 路径。没有人工决定的条目一律 pending，静态映射线索不会自动改变状态。已有源码映射并不表示尚未实现；pending 表示尚未完成本轮逐项行为验收。
+
+```bash
+python3 tools/build_migration_execution.py
+python3 tools/build_migration_execution.py --check
+```
+
+新增实现须记录目标文件、理由、测试和验证范围；validated 必须有证据。来源变化后重新采集盘点并复审决定，不能仅重建旧台账继承完成结论。具体实施与阶段退出条件见 [当前开发记录](hcu-sglang-development.md)。

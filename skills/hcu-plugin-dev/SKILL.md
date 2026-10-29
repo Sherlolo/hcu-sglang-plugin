@@ -57,3 +57,5 @@ V3 实践要点：按官方 is_record 支持 msgspec/dataclass 输入，额外�
 
 
 Attention 类图、CP 空查询或 native/JIT 迁移按 [测试契约](references/test-contract.md#attention-类图与原生构建边界) 选择针对性回归：核对实际继承和通信顺序、最终编译输入及 provider 的数据载体契约；局部原语通过不能代替完整模型验收。
+
+分阶段 DAS 迁移时关联 [逐路径执行台账](../../docs/migration.md#全量差异执行台账)，新增 Hook 同步 [当前目标合同](../../docs/hcu-sglang-targets.json)。保留迁入 manifest 的历史语义；消费者反例、Hook 加载、CPU 张量测试与 GPU/Graph/服务分别验收。
