@@ -38,4 +38,15 @@ class IndexerCurrentTests(unittest.TestCase):
         expected=weights.unsqueeze(-1)*scales*(32**-.5)*.25
         torch.testing.assert_close(out,expected,rtol=1e-5,atol=1e-6)
 
+class PagedMqaDispatchTests(unittest.TestCase):
+    def test_hcu_auto_and_explicit_backend_use_lightop(self):
+        from hcu_sglang.layers.attention.current_dsa import paged_mqa_logits_backend as P
+        self.assertIs(I.DSAPagedMQALogitsBackend,P.DSAPagedMQALogitsBackend)
+        with patch.object(P,'is_hcu',return_value=True),patch.object(P,'is_hip',return_value=True):
+            self.assertTrue(P.DSAPagedMQALogitsBackend.resolve('auto').is_lightop())
+            self.assertTrue(P.DSAPagedMQALogitsBackend.resolve('lightop').is_lightop())
+            with self.assertRaises(ValueError):P.DSAPagedMQALogitsBackend.resolve('aiter')
+        with patch.object(P,'is_hcu',return_value=False),patch.object(P,'is_hip',return_value=True):
+            self.assertTrue(P.DSAPagedMQALogitsBackend.resolve('auto').is_aiter())
+
 if __name__=='__main__':unittest.main()
