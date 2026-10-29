@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sglang.srt.environ import EnvBool, EnvFloat, EnvInt, EnvStr, Envs, _default_hip
+from sglang.srt.environ import EnvBool, EnvBoolWithAlias, EnvFloat, EnvInt, EnvStr, Envs, _default_hip
 from hcu_sglang.utils.detection import is_dcu
 
 
@@ -113,6 +113,15 @@ def _install_field(name: str, field_type: type, default: Any, *, replace: bool) 
 
 def register_envs() -> None:
     """Install fork-only fields and HCU-specific default overrides."""
+    for name, alias in {
+        "SGLANG_DSA_HCU_LIGHTOP_MASK_TOPK": "SGLANG_USE_LIGHTOP_MASK_TOPK",
+        "SGLANG_DSA_HCU_REUSE_SORTED_TOPK": "SGLANG_NSA_HCU_REUSE_SORTED_TOPK",
+    }.items():
+        if not hasattr(Envs, name):
+            field = EnvBoolWithAlias(False, deprecated_name=alias)
+            field.name = name
+            setattr(Envs, name, field)
+
     for name, (field_type, default) in _ENV_SPECS.items():
         _install_field(name, field_type, default, replace=False)
 

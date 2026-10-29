@@ -154,6 +154,8 @@
     "sglang.srt.layers.attention.deepseek_v4_backend._low_ratio_source_projections",
     "sglang.srt.layers.attention.deepseek_v4_backend._tail_rows",
     "sglang.srt.layers.attention.dsa.dsa_topk_backend.DSATopKBackend.topk_transform",
+    "sglang.srt.layers.attention.dsa_backend.DeepseekSparseAttnBackend",
+    "sglang.srt.layers.attention.dsa_backend.DeepseekSparseAttnMultiStepBackend",
     "sglang.srt.layers.attention.dsv4.compress_hip.fused_norm_rope_inplace_triton",
     "sglang.srt.layers.attention.dsv4.compress_hip.fused_softmax_pool_triton",
     "sglang.srt.layers.attention.dsv4.compressor.Compressor",
