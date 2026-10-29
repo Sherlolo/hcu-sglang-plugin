@@ -9,6 +9,7 @@ from hcu_sglang.utils.detection import is_dcu
 
 
 _ENV_SPECS: dict[str, tuple[type, Any]] = {
+    "SGLANG_NSA_MQA_LOGITS_MEMORY_BUDGET_GB": (EnvFloat, None),
     "SGLANG_HCU_TOPK_V2_PAGED": (EnvBool, False),
     'SGLANG_DSV4_COMPRESS_RLC': (EnvBool, False),
     'SGLANG_DSV4_FP4_LOGITS_BUDGET_MB': (EnvInt, 2048),
