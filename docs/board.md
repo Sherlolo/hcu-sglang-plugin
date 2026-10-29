@@ -35,3 +35,10 @@ V1 已建立方法、Skill、审计/回溯工具和 CPU 测试；V2 重整架构
 ## 4. 完成与交接
 
 任务完成后把规则沉淀到相应设计/操作文档，把结果写入 [交付记录](delivery-validation.md)，更新 Skill 路由和兼容范围。看板保留可追踪入口，不把已经失效的日志摘要当成后续版本的通过结论。
+
+
+## 5. plugin-v3-1028 全量迁移执行
+
+状态：in-progress。固定来源、阶段与实际结果见 [开发迁移记录](hcu-sglang-development.md#6-2026-10-29-分阶段继续迁移)，逐路径范围见 [执行台账](../plans/sglang-das-execution.json)。2026-10-29 已完成当前包工具支持、HCU 标准分发哨兵修复及源码/wheel/embedded 加载复验；全量源码与行为处置仍未闭合。
+
+下一阶段先审查 DeepSeek V4 平台类拆分和当前 `current_v4` profile，随后按领域继续审阅 Attention/KV、量化/通信、GLM5-next/Muse Spark 与扩展功能。每项补充行为、实现、支持/回退及 CPU/GPU/Graph/模型证据；只有实际满足该阶段退出条件才更新状态。保持用户要求：提交本地仓库，不推送远程。
