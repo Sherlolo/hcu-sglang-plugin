@@ -9,6 +9,7 @@ from hcu_sglang.utils.detection import is_dcu
 
 
 _ENV_SPECS: dict[str, tuple[type, Any]] = {
+    'SGLANG_OPT_USE_FUSED_CLAMP_ACT_MUL': (EnvBool, True),
     'SGLANG_USE_FUSED_SILU_MUL_FP8_QUANT': (EnvBool, False),
     'SGLANG_AITER_INTREE_GEMM_TUNE': (EnvBool, True),
     'SGLANG_AITER_INTREE_MHC_TILE_M16': (EnvBool, True),

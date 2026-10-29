@@ -214,3 +214,61 @@ def forward(
         x = self.act_fn(gate_up)
     x, _ = self.down_proj(x)
     return x
+
+
+def __init__(
+    self,
+    hidden_size: int,
+    intermediate_size: int,
+    hidden_act: str,
+    quant_config: N0.Optional[N0.QuantizationConfig] = None,
+    reduce_results: bool = True,
+    prefix: str = "",
+    swiglu_limit: N0.Optional[float] = None,
+    allow_fused_down: N0.Optional[bool] = None,
+    *,
+    parallel_group: N0.LinearParallelGroup = "tp",
+) -> None:
+    super(N0.DeepseekV2MLP, self).__init__()
+    self.is_replicated = parallel_group == "replicated"
+    self.swiglu_limit = swiglu_limit
+    # The fused down path calls deepgemm directly and runs no all-reduce.
+    self.allow_fused_down = (
+        not reduce_results if allow_fused_down is None else allow_fused_down
+    )
+
+    self.gate_up_proj = N0.MergedColumnParallelLinear(
+        hidden_size,
+        [intermediate_size] * 2,
+        bias=False,
+        quant_config=quant_config,
+        prefix=N0.add_prefix("gate_up_proj", prefix),
+        parallel_group=parallel_group,
+    )
+    self.down_proj = N0.RowParallelLinear(
+        intermediate_size,
+        hidden_size,
+        bias=False,
+        quant_config=quant_config,
+        reduce_results=reduce_results,
+        prefix=N0.add_prefix("down_proj", prefix),
+        parallel_group=parallel_group,
+    )
+    if not hasattr(self.gate_up_proj, "weight") and hasattr(
+        self.gate_up_proj, "weight_packed"
+    ):
+        self.gate_up_proj.weight = self.gate_up_proj.weight_packed
+    if not hasattr(self.down_proj, "weight") and hasattr(
+        self.down_proj, "weight_packed"
+    ):
+        self.down_proj.weight = self.down_proj.weight_packed
+    if hidden_act != "silu":
+        raise ValueError(
+            f"Unsupported activation: {hidden_act}. Only silu is supported for now."
+        )
+    self.act_fn = N0.SiluAndMul()
+    self.use_fused_clamp_act_mul = (
+        N0._is_hip and not C._is_dcu and N0.envs.SGLANG_OPT_USE_FUSED_CLAMP_ACT_MUL.get()
+    )
+    self._fused_clamp_fp8_checked = False
+    self._fused_clamp_use_fp8 = False

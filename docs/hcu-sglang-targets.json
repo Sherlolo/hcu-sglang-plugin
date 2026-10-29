@@ -318,6 +318,7 @@
     "sglang.srt.models.deepseek_nextn.DeepseekModelNextN.forward",
     "sglang.srt.models.deepseek_v2.DeepseekV2AttentionMLA.__init__",
     "sglang.srt.models.deepseek_v2.DeepseekV2AttentionMLA.prepare_qkv_latent",
+    "sglang.srt.models.deepseek_v2.DeepseekV2MLP.__init__",
     "sglang.srt.models.deepseek_v2.DeepseekV2MLP.forward",
     "sglang.srt.models.deepseek_v2.DeepseekV2MoE.__init__",
     "sglang.srt.models.deepseek_v2.DeepseekV2MoE._forward_shared_experts",

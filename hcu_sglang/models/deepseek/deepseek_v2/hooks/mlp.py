@@ -14,6 +14,6 @@ def register_hooks() -> int:
     return register_method_replaces_from_path(
         _BASE,
         "DeepseekV2MLP",
-        ("forward",),
+        ("__init__", "forward"),
         _SRC,
     )
