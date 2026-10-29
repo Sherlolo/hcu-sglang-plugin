@@ -77,6 +77,34 @@ class ReconstructionTest(unittest.TestCase):
         _write(self.plugin / "requirements-dcu.txt", "vendor-package\n")
         _init_repo(self.plugin)
 
+    def test_current_hcu_namespace_executes_embedded_loader_and_preserves_native_data(self):
+        import runpy
+        import sys
+        from tools.verify_reconstruction import verify
+        old = self.plugin / "sglang_dcu_plugin"
+        old.rename(self.plugin / "hcu_sglang")
+        _write(self.plugin / "hcu_sglang/models/deepseek/current_v4/hcu_backend/csrc/kernel.cu", "native data\n")
+        _run("git", "add", "-A", cwd=self.plugin)
+        _run("git", "commit", "-qm", "hcu namespace", cwd=self.plugin)
+        reconstruct_sglang_das(self.upstream, self.plugin, self.output)
+        self.assertEqual(verify(self.output)["status"], "passed")
+        manifest = json.loads((self.output / MANIFEST_NAME).read_text())
+        self.assertEqual(manifest["plugin"]["package"], "hcu_sglang")
+        self.assertFalse((self.output / "python/sglang_dcu_plugin").exists())
+        metadata = (self.output / "python/pyproject.toml").read_text()
+        self.assertIn('"models/deepseek/current_v4/hcu_backend/csrc/*"', metadata)
+        subprocess.run(
+            [sys.executable, "-c",
+             "import runpy,sys; from pathlib import Path; "
+             "loader=runpy.run_path(sys.argv[1]); loader['load_plugins'](); "
+             "assert Path(sys.modules['hcu_sglang'].__file__).resolve() == Path(sys.argv[2]).resolve()",
+             str(self.output / "python/sglang/srt/plugins/__init__.py"),
+             str(self.output / "python/hcu_sglang/__init__.py")],
+            cwd=self.root,
+            env={**os.environ, "PYTHONPATH": str(self.output / "python")},
+            check=True, capture_output=True, text=True,
+        )
+
     def tearDown(self) -> None:
         self.temp.cleanup()
 

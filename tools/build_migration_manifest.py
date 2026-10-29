@@ -9,6 +9,11 @@ import json
 import subprocess
 from pathlib import Path
 
+if __package__:
+    from .plugin_layout import resolve_plugin_package
+else:
+    from plugin_layout import resolve_plugin_package
+
 
 def run(repo: Path, *args: str) -> str:
     return subprocess.run(
@@ -140,8 +145,8 @@ def classify(path: str, content: str) -> tuple[str, list[str]]:
     return "manual_review", signals
 
 
-def plugin_env_names(plugin_repo: Path) -> set[str]:
-    environ_path = plugin_repo / "sglang_dcu_plugin" / "environ.py"
+def plugin_env_names(plugin_repo: Path, package: str | None = None) -> set[str]:
+    environ_path = plugin_repo / resolve_plugin_package(plugin_repo, package) / "environ.py"
     if not environ_path.is_file():
         return set()
     tree = ast.parse(environ_path.read_text(encoding="utf-8"))
@@ -192,9 +197,9 @@ def added_hardware_signals(
     return sorted(signals)
 
 
-def plugin_targets(plugin_repo: Path) -> list[str]:
+def plugin_targets(plugin_repo: Path, package: str | None = None) -> list[str]:
     targets: set[str] = set()
-    for path in (plugin_repo / "sglang_dcu_plugin").rglob("*.py"):
+    for path in (plugin_repo / resolve_plugin_package(plugin_repo, package)).rglob("*.py"):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except Exception:
@@ -211,6 +216,7 @@ def main() -> None:
     parser.add_argument("--official-repo", required=True)
     parser.add_argument("--fork-repo", required=True)
     parser.add_argument("--plugin-repo", required=True)
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
     parser.add_argument("--official-ref", default="refs/remotes/github-official/main")
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()
@@ -229,8 +235,8 @@ def main() -> None:
     fork_changes = name_status(fork_repo, merge_base, fork_head)
     official_changes = name_status(fork_repo, merge_base, official_head)
     dirty = dirty_paths(fork_repo)
-    targets = plugin_targets(plugin_repo)
-    tracked_env_names = plugin_env_names(plugin_repo)
+    targets = plugin_targets(plugin_repo, args.plugin_package)
+    tracked_env_names = plugin_env_names(plugin_repo, args.plugin_package)
 
     items = []
     primary_paths = set(fork_changes) | set(dirty)

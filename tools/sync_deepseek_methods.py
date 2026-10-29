@@ -11,6 +11,11 @@ import textwrap
 import os
 from pathlib import Path
 
+if __package__:
+    from .plugin_layout import resolve_plugin_package
+else:
+    from plugin_layout import resolve_plugin_package
+
 
 V2_CONSTANT_MAP = {
     "_is_hcu": "C._is_dcu",
@@ -223,11 +228,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fork-python", type=Path, required=True)
     parser.add_argument("--plugin-root", type=Path, required=True)
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
 
     models = args.fork_python / "sglang/srt/models"
-    plugin_models = args.plugin_root / "sglang_dcu_plugin/models"
+    try:
+        package = resolve_plugin_package(args.plugin_root, args.plugin_package)
+    except ValueError as error:
+        parser.error(str(error))
+    plugin_models = args.plugin_root / package / "models"
     v2_source = models / "deepseek_v2.py"
     v4_source = models / "deepseek_v4.py"
     forward_methods = models / "deepseek_common/attention_forward_methods"
@@ -354,6 +364,8 @@ def main() -> int:
     ]
 
     try:
+        jobs = [(dest, header.replace("sglang_dcu_plugin", package), specs, mapping)
+                for dest, header, specs, mapping in jobs]
         updates = plan_updates(jobs)
     except (ExtractionError, OSError, SyntaxError) as error:
         print(f"error: {error}\nSource preflight failed; no output files were written.", file=sys.stderr)

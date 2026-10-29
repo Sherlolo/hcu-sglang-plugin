@@ -6,7 +6,14 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import importlib
+import sys
 from pathlib import Path
+
+if __package__:
+    from .plugin_layout import resolve_plugin_package
+else:
+    from plugin_layout import resolve_plugin_package
 from typing import Any
 
 
@@ -71,11 +78,14 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--official-python", type=Path, required=True)
     parser.add_argument("--plugin-root", type=Path, required=True)
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
+    package = resolve_plugin_package(args.plugin_root, args.plugin_package)
+    sys.path[:0] = [str(args.plugin_root.resolve()), str(args.official_python.resolve())]
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
-    from sglang_dcu_plugin import register
+    register = importlib.import_module(package).register
 
     HookRegistry.reset()
     register()
@@ -86,7 +96,7 @@ def main() -> int:
             source_module = getattr(hook, "__module__", "")
             source_name = getattr(hook, "__name__", "")
             if hook_type is not HookType.REPLACE or not source_module.startswith(
-                "sglang_dcu_plugin.models"
+                f"{package}.models"
             ):
                 continue
 

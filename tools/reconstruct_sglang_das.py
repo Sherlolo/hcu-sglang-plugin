@@ -13,12 +13,17 @@ import subprocess
 import tempfile
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+if __package__:
+    from .plugin_layout import resolve_plugin_package
+else:
+    from plugin_layout import resolve_plugin_package
 from typing import Iterable, Sequence
 
 
 MANIFEST_NAME = ".sglang-dcu-embedded.json"
 MANIFEST_KIND = "sglang-dcu-embedded-source"
-GENERATOR_VERSION = 3
+GENERATOR_VERSION = 4
 
 PLUGIN_PACKAGE = Path("sglang_dcu_plugin")
 UPSTREAM_PLUGIN_LOADER = Path("python/sglang/srt/plugins/__init__.py")
@@ -121,16 +126,16 @@ def _require_file(root: Path, relative: Path, label: str) -> Path:
     return path
 
 
-def _tracked_plugin_files(plugin: Path) -> list[Path]:
-    output = _git(plugin, "ls-files", "-z", "--", str(PLUGIN_PACKAGE))
+def _tracked_plugin_files(plugin: Path, package: str = "sglang_dcu_plugin") -> list[Path]:
+    output = _git(plugin, "ls-files", "-z", "--", str(Path(package)))
     relative_paths = [Path(value) for value in output.split("\0") if value]
     if not relative_paths:
         raise ReconstructionError(
-            f"plugin has no tracked files under {plugin / PLUGIN_PACKAGE}"
+            f"plugin has no tracked files under {plugin / Path(package)}"
         )
     required = {
-        PLUGIN_PACKAGE / "__init__.py",
-        PLUGIN_PACKAGE / "compat/aiter.py",
+        Path(package) / "__init__.py",
+        Path(package) / "compat/aiter.py",
     }
     missing = required.difference(relative_paths)
     if missing:
@@ -187,9 +192,12 @@ def _inject_once(
     path.write_text(updated, encoding="utf-8")
 
 
-def _add_package_data(path: Path) -> None:
+def _add_package_data(path: Path, package: str = "sglang_dcu_plugin") -> None:
     source = path.read_text(encoding="utf-8")
-    if PACKAGE_DATA_LINE.strip() in source:
+    data_line = PACKAGE_DATA_LINE.replace("sglang_dcu_plugin", package)
+    if package == "hcu_sglang":
+        data_line = '\"hcu_sglang\" = [\"jit_overlay/**/*\", \"models/deepseek/current_v4/hcu_backend/csrc/*\"]\n'
+    if data_line.strip() in source:
         raise ReconstructionError(f"DCU package-data entry already exists: {path}")
     if source.count(PACKAGE_DATA_TABLE) != 1:
         raise ReconstructionError(
@@ -197,7 +205,7 @@ def _add_package_data(path: Path) -> None:
         )
     updated = source.replace(
         PACKAGE_DATA_TABLE,
-        PACKAGE_DATA_TABLE + PACKAGE_DATA_LINE,
+        PACKAGE_DATA_TABLE + data_line,
         1,
     )
     path.write_text(updated, encoding="utf-8")
@@ -220,6 +228,7 @@ def _write_provenance(
     plugin_commit: str,
     branch: str,
     vendored_files: list[Path],
+    package: str = "sglang_dcu_plugin",
 ) -> Path:
     license_source = _require_file(plugin, Path("LICENSE"), "plugin license")
     license_target = output / "THIRD_PARTY_LICENSES/sglang-dcu-plugin.LICENSE"
@@ -239,12 +248,13 @@ This repository was reconstructed from upstream SGLang and
 `python/sglang_dcu_plugin` and registered by SGLang's own plugin loader.
 
 No separately installed `sglang-dcu-plugin` distribution and no
-`SGLANG_PLUGINS=dcu` setting are required. DCU vendor dependencies remain
-required; see `python/requirements-dcu.txt`.
+`SGLANG_PLUGINS=dcu` setting are required. Compatible vendor dependencies remain required. When copied,
+`python/requirements-dcu.txt` records the legacy dependency list; otherwise
+use the plugin source documentation for the pinned execution environment.
 
 The exact source revisions and vendored file hashes are recorded in
 `.sglang-dcu-embedded.json`.
-""",
+""".replace("sglang_dcu_plugin", package).replace("sglang-plugin-das", "hcu-sglang-plugin" if package == "hcu_sglang" else "sglang-plugin-das").replace("SGLANG_PLUGINS=dcu", "SGLANG_PLUGINS=hcu" if package == "hcu_sglang" else "SGLANG_PLUGINS=dcu"),
         encoding="utf-8",
     )
 
@@ -270,7 +280,7 @@ The exact source revisions and vendored file hashes are recorded in
         "generator_version": GENERATOR_VERSION,
         "mode": "source-vendored-hooks",
         "upstream": {"path": str(upstream), "commit": upstream_commit},
-        "plugin": {"path": str(plugin), "commit": plugin_commit},
+        "plugin": {"path": str(plugin), "commit": plugin_commit, "package": package},
         "branch": branch,
         "vendored_file_count": len(vendored_files),
         "files": hashes,
@@ -300,6 +310,7 @@ def reconstruct_sglang_das(
     revision: str = "HEAD",
     branch: str = "embedded-dcu",
     force: bool = False,
+    plugin_package: str | None = None,
 ) -> ReconstructionResult:
     """Create a standalone SGLang source repository with the DCU plugin embedded.
 
@@ -320,7 +331,15 @@ def reconstruct_sglang_das(
     _require_file(upstream_path, UPSTREAM_PLUGIN_LOADER, "SGLang plugin loader")
     _require_file(upstream_path, UPSTREAM_PACKAGE_INIT, "SGLang package initializer")
     _require_file(upstream_path, UPSTREAM_PYPROJECT, "SGLang pyproject")
-    vendored_files = _tracked_plugin_files(plugin_path)
+    try:
+        package = resolve_plugin_package(plugin_path, plugin_package)
+    except ValueError as exc:
+        raise ReconstructionError(str(exc)) from exc
+    vendored_files = _tracked_plugin_files(plugin_path, package)
+    loader_block = LOADER_BLOCK.replace("sglang_dcu_plugin", package)
+    if package == "hcu_sglang":
+        loader_block = loader_block.replace('"dcu"', '"hcu"').replace("sglang-dcu-embedded", "sglang-hcu-embedded")
+    bootstrap_block = BOOTSTRAP_BLOCK.replace("sglang_dcu_plugin", package)
 
     try:
         resolved_revision = _git(upstream_path, "rev-parse", f"{revision}^{{commit}}")
@@ -360,7 +379,7 @@ def reconstruct_sglang_das(
         _inject_once(
             temp_path / UPSTREAM_PLUGIN_LOADER,
             LOADER_ANCHOR,
-            LOADER_BLOCK,
+            loader_block,
             LOADER_BEGIN,
             LOADER_END,
             symbol="register_embedded_dcu",
@@ -368,13 +387,13 @@ def reconstruct_sglang_das(
         _inject_once(
             temp_path / UPSTREAM_PACKAGE_INIT,
             BOOTSTRAP_ANCHOR,
-            BOOTSTRAP_BLOCK,
+            bootstrap_block,
             BOOTSTRAP_BEGIN,
             BOOTSTRAP_END,
             symbol="_bootstrap_dcu_aiter_compat",
             after=True,
         )
-        _add_package_data(temp_path / UPSTREAM_PYPROJECT)
+        _add_package_data(temp_path / UPSTREAM_PYPROJECT, package)
         manifest_path = _write_provenance(
             temp_path,
             upstream=upstream_path,
@@ -383,6 +402,7 @@ def reconstruct_sglang_das(
             plugin_commit=plugin_commit,
             branch=branch,
             vendored_files=vendored_files,
+            package=package,
         )
 
         compile_targets = [
@@ -419,6 +439,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--upstream", required=True, help="clean upstream SGLang repo")
     parser.add_argument("--plugin", required=True, help="clean sglang-plugin-das repo")
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
     parser.add_argument("--output", required=True, help="new reconstructed repository")
     parser.add_argument("--revision", default="HEAD", help="upstream commit-ish")
     parser.add_argument("--branch", default="embedded-dcu", help="branch in output repo")
@@ -440,6 +461,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             revision=args.revision,
             branch=args.branch,
             force=args.force,
+            plugin_package=args.plugin_package,
         )
     except ReconstructionError as exc:
         print(f"error: {exc}", file=os.sys.stderr)

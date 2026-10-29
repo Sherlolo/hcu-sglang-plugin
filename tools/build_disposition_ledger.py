@@ -6,6 +6,11 @@ import ast
 import json
 from collections import Counter
 from pathlib import Path
+
+if __package__:
+    from .plugin_layout import resolve_plugin_package
+else:
+    from plugin_layout import resolve_plugin_package
 from typing import Any
 
 
@@ -20,9 +25,9 @@ def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def plugin_targets(plugin_repo: Path) -> list[str]:
+def plugin_targets(plugin_repo: Path, package: str | None = None) -> list[str]:
     targets: set[str] = set()
-    for path in (plugin_repo / "sglang_dcu_plugin").rglob("*.py"):
+    for path in (plugin_repo / resolve_plugin_package(plugin_repo, package)).rglob("*.py"):
         try:
             tree = ast.parse(path.read_text(encoding="utf-8"))
         except (OSError, SyntaxError, UnicodeDecodeError):
@@ -207,6 +212,7 @@ def main() -> None:
     parser.add_argument("--official-repo", required=True)
     parser.add_argument("--fork-repo", required=True)
     parser.add_argument("--plugin-repo", required=True)
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
     parser.add_argument("--hook-targets-file")
     parser.add_argument("--overrides", required=True)
     parser.add_argument("--output-json", required=True)
@@ -231,7 +237,7 @@ def main() -> None:
             }
         )
     else:
-        targets = plugin_targets(plugin_repo)
+        targets = plugin_targets(plugin_repo, args.plugin_package)
     source_targets: dict[str, list[str]] = {}
     for target in targets:
         source_path = target_source_path(target, official_repo)
