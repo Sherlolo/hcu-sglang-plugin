@@ -2,6 +2,8 @@
 
 import logging
 
+import torch
+
 from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 from hcu_sglang.models.fused_rotary import (
     fused_rms_rotary_kv_store,
@@ -22,7 +24,13 @@ def register() -> None:
 
 def replacement_apply_qk_norm_rope(self, qkv, positions, forward_batch):
     original = get_original_attr(_MODULE, "Qwen3MoeAttention.apply_qk_norm_rope")
-    if not use_fused_rms_rotary():
+    use_fused = (
+        self.use_fused_qk_norm_rope and qkv.dtype == torch.bfloat16
+    ) or (
+        self.use_fused_qk_norm_rope_cpu
+        and qkv.dtype in (torch.bfloat16, torch.float16)
+    )
+    if use_fused or not use_fused_rms_rotary():
         return original(self, qkv, positions, forward_batch)
 
     try:
