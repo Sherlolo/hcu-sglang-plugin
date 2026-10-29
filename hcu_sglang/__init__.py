@@ -33,6 +33,7 @@ def register() -> None:
         debug_flash_mla_adapter,
         dsa_kernels,
         dsa_topk,
+        current_dsa,
         dsv4_compressor,
         flashattention_backend,
         triton_hcu,
@@ -88,6 +89,7 @@ def register() -> None:
     debug_flash_mla_adapter.register_hooks()
     dsa_kernels.register_hooks()
     dsa_topk.register_hooks()
+    current_dsa.register_hooks()
     dsv4_compressor.register_hooks()
     triton_hcu.register_hooks()
     gdn_backend.register()
