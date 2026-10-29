@@ -9,6 +9,11 @@ from hcu_sglang.utils.detection import is_dcu
 
 
 _ENV_SPECS: dict[str, tuple[type, Any]] = {
+    'SGLANG_AITER_INTREE_GEMM_TUNE': (EnvBool, True),
+    'SGLANG_AITER_INTREE_MHC_TILE_M16': (EnvBool, True),
+    'SGLANG_DSV4_DECODER_TAIL_GRAPH_MAX_ROWS': (EnvInt, 2048),
+    'SGLANG_DSV4_DENSE_MXSCALE': (EnvBool, False),
+    'SGLANG_DSV4_FUSE_MHC_REPEAT_CP_SPLIT': (EnvBool, False),
     "SGLANG_W4A8_TPMOE_BACKEND": (EnvStr, "auto"),
     "SGLANG_FORCE_AITER_MOE_C": (EnvBool, False),
     "SGLANG_DSPARK_FORCE_W4A8_TPMOE_BACKEND": (EnvStr, None),

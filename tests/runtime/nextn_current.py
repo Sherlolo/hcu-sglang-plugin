@@ -51,13 +51,15 @@ class NextNCurrentTests(unittest.TestCase):
     def test_forward_uses_two_value_stage_result_and_residual_boundaries(self):
         layer,_,_=self.make();layer.eh_proj.weight.data.fill_(1.)
         x=torch.ones(2,8);ids=torch.tensor([1,2]);positions=torch.tensor([0,1]);events=[]
-        batch=SimpleNamespace(spec_info=SimpleNamespace(hidden_states=torch.zeros_like(x)),forward_mode=SimpleNamespace(is_idle=lambda:False))
+        batch=SimpleNamespace(attn_cp_metadata=None,spec_info=SimpleNamespace(hidden_states=torch.zeros_like(x)),forward_mode=SimpleNamespace(is_idle=lambda:False))
         state=SimpleNamespace(topk_indices=None,should_publish=False,update=lambda value:events.append('update'),publish=lambda:events.append('publish'))
         residual=SimpleNamespace(start=lambda batch:events.append('start'),complete_output=lambda x,batch:(events.append('complete') or x),final_norm=lambda x,batch,norm:(events.append('norm') or norm(x)))
         with ExitStack() as stack:
             stack.enter_context(patch('sglang.srt.model_executor.forward_context.get_token_to_kv_pool',return_value=object()))
-            stack.enter_context(patch.object(plugin,'enable_cp_v2',return_value=True))
+            stack.enter_context(patch.object(plugin,'enable_cp_v2',return_value=False))
             stack.enter_context(patch.object(S,'get_parallel',return_value=SimpleNamespace(enable_dsa_cache_layer_split=False)))
+            stack.enter_context(patch.object(plugin.D,'dsa_use_prefill_cp',return_value=False))
+            stack.enter_context(patch.object(plugin.C,'get_parallel',return_value=SimpleNamespace(enable_prefill_cp=False)))
             stack.enter_context(patch.object(S,'residual_batch',residual))
             stack.enter_context(patch.object(S.IndexTopKShareState,'from_mtp_carry',return_value=state))
             stack.enter_context(patch.object(S,'get_global_expert_distribution_recorder',return_value=SimpleNamespace(disable_this_region=nullcontext)))

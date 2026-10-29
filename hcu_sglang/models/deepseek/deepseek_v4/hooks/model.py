@@ -1,19 +1,11 @@
-"""DeepseekV4Model method hooks."""
-
-from __future__ import annotations
-
-from hcu_sglang.models.deepseek.hook_utils import (
-    register_method_replaces_from_path,
-)
-
-_BASE = "sglang.srt.models.deepseek_v4"
-_SRC = "hcu_sglang.models.deepseek.deepseek_v4.methods.model"
+from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.models.deepseek.hook_utils import register_method_replaces_from_path
 
 
-def register_hooks() -> int:
+def register_hooks():
+    if not is_dcu():
+        return 0
     return register_method_replaces_from_path(
-        _BASE,
-        "DeepseekV4Model",
-        ("__init__", "forward"),
-        _SRC,
+        "sglang.srt.models.deepseek_v4", "DeepseekV4Model", ('__init__', '_check_late_layer_tail_readers', '_forward_layers_hc_pre_from_prev', '_forward_layers_tbo', 'forward'),
+        "hcu_sglang.models.deepseek.deepseek_v4.methods.model",
     )

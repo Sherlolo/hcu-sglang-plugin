@@ -10,7 +10,7 @@ from hcu_sglang.models.deepseek.current_v4.hcu_backend.compat import attn_cp_ove
 from sglang.srt.layers.moe import get_moe_a2a_backend
 from sglang.srt.mem_cache.memory_pool import KVWriteLoc
 from sglang.srt.model_executor.forward_context import get_token_to_kv_pool
-from sglang.srt.runtime_context import get_parallel, uses_mla_backend
+from sglang.srt.runtime_context import get_parallel, get_exec, uses_mla_backend
 
 @dataclass
 class ContextParallelMetadata:
@@ -39,10 +39,14 @@ class ContextParallelMetadata:
     bs: int = 1
 
 def is_prefill_context_parallel_enabled():
-    return get_parallel().enable_prefill_context_parallel
+    parallel = get_parallel()
+    try:
+        return parallel.enable_prefill_context_parallel
+    except AttributeError:
+        return parallel.enable_prefill_cp and get_exec().kernel.attention_backend not in ("dsa", "dsv4")
 
 def is_mla_prefill_cp_enabled() -> bool:
-    return get_parallel().enable_prefill_context_parallel and uses_mla_backend()
+    return is_prefill_context_parallel_enabled() and uses_mla_backend()
 
 def mla_use_prefill_cp(forward_batch, mla_enable_prefill_cp=None):
     if mla_enable_prefill_cp is None:

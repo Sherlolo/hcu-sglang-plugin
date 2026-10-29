@@ -1,19 +1,13 @@
-"""DeepseekV4DecoderLayer method hooks."""
-
-from __future__ import annotations
-
-from hcu_sglang.models.deepseek.hook_utils import (
-    register_method_replaces_from_path,
-)
-
-_BASE = "sglang.srt.models.deepseek_v4"
-_SRC = "hcu_sglang.models.deepseek.deepseek_v4.methods.decoder"
+from hcu_sglang.utils.detection import is_dcu
 
 
-def register_hooks() -> int:
-    return register_method_replaces_from_path(
-        _BASE,
-        "DeepseekV4DecoderLayer",
-        ("hc_pre", "hc_post", "forward"),
-        _SRC,
-    )
+def register_hooks():
+    if not is_dcu():
+        return 0
+    from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+    from hcu_sglang.models.deepseek.current_v4.execution import core, mhc
+
+    HookRegistry.register("sglang.srt.models.deepseek_v4.DeepseekV4DecoderLayer", core.DeepseekV4PlatformDecoderLayer, HookType.REPLACE)
+    for name in ("_mix_stats_impl", "post"):
+        HookRegistry.register("sglang.srt.models.deepseek_v4_mhc." + name, getattr(mhc, name), HookType.REPLACE)
+    return 3
