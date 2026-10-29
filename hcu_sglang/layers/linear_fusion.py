@@ -37,6 +37,8 @@ def around_column_forward(original, layer, input_, rms_weight=None,
 
 
 def register_hooks():
+    from . import row_fusion
+    row_fusion.register_hooks()
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
     HookRegistry.register("sglang.srt.layers.linear.ColumnParallelLinear.forward",
                           around_column_forward, HookType.AROUND)
