@@ -1,0 +1,9 @@
+{
+  "python/sglang/srt/layers/moe/token_dispatcher/standard.py": {
+    "status": "implemented",
+    "rationale": "Port the DAS dispatch method with explicit official module globals and an HCU-only AROUND hook. Preserve negative and out-of-range global expert IDs as the -1 drop sentinel. Keep the effective original callable for non-HCU devices.",
+    "implementation": ["hcu_sglang/layers/moe/standard_dispatcher.py", "hcu_sglang/__init__.py"],
+    "validation_scope": "CPU public dispatcher regression; GPU EP/Graph/model lanes pending.",
+    "tests": ["tests/runtime/standard_dispatcher.py"]
+  }
+}
