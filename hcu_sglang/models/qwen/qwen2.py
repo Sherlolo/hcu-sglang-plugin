@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from sglang.srt.model_executor.forward_context import get_token_to_kv_pool
+
 import logging
 import os
 
@@ -47,7 +49,7 @@ def around_forward(original, attention, positions, hidden_states, forward_batch)
             qkv.device, dtype=qkv.dtype, non_blocking=True
         )
         attention.rotary_emb.cos_sin_cache = cos_sin_cache
-    k_buffer, v_buffer = forward_batch.token_to_kv_pool.get_kv_buffer(
+    k_buffer, v_buffer = get_token_to_kv_pool().get_kv_buffer(
         attention.layer_id
     )
     q, k, v = split_qkv_rms_rotary_embedding_fuse_with_kv_store_quant(

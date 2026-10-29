@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from sglang.srt.arg_groups.arg_utils import is_record
 from hcu_sglang.config import minimax_opt_enabled
+from hcu_sglang.layers.quantization.registry import (
+    QUANTIZATION_NAME,
+    SLIMQUANT_NAME,
+    SLIMQUANT_MARLIN_NAME,
+)
 
 HCU_ATTENTION_BACKEND = "hcu_mla"
-HCU_QUANTIZATION_METHODS = ("w4a8_int8",)
+HCU_QUANTIZATION_METHODS = (QUANTIZATION_NAME, SLIMQUANT_NAME, SLIMQUANT_MARLIN_NAME)
 HCU_SERVER_ARG_DEFAULTS = {
     "minimax_opt": False,
 }

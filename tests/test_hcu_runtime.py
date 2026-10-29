@@ -59,6 +59,40 @@ class HcuRuntimeTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('spawn bootstrap passed', result.stdout)
 
+    def test_cli_choices_include_all_plugin_quantization_methods_without_loading_configs(self):
+        code = """
+import argparse
+import sys
+import types
+module = types.ModuleType('sglang.srt.arg_groups.arg_utils')
+module.is_record = lambda cls: False
+sys.modules[module.__name__] = module
+from hcu_sglang.server_args import ensure_choices
+from hcu_sglang.layers.quantization.registry import _HCU_QUANTIZATION_NAMES
+class Args:
+    ATTENTION_BACKEND_CHOICES = ['triton']
+    DRAFT_ATTENTION_BACKEND_CHOICES = ['triton']
+    QUANTIZATION_CHOICES = ['fp8']
+    CHUNKED_PREFIX_CACHE_SUPPORTED_ATTENTION_BACKENDS = []
+    ServerArgs = type('ServerArgs', (), {})
+    @classmethod
+    def add_chunked_prefix_cache_attention_backend(cls, name):
+        cls.CHUNKED_PREFIX_CACHE_SUPPORTED_ATTENTION_BACKENDS.append(name)
+assert ensure_choices(Args)
+assert ensure_choices(Args)
+parser = argparse.ArgumentParser()
+parser.add_argument('--quantization', choices=Args.QUANTIZATION_CHOICES)
+for name in _HCU_QUANTIZATION_NAMES:
+    assert parser.parse_args(['--quantization', name]).quantization == name
+    assert Args.QUANTIZATION_CHOICES.count(name) == 1
+assert parser.parse_args(['--quantization', 'fp8']).quantization == 'fp8'
+assert 'torch' not in sys.modules
+assert not any(name.endswith('slimquant_w4a8_marlin') for name in sys.modules)
+"""
+        result = subprocess.run([sys.executable, '-c', code], cwd=ROOT,
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_runtime_does_not_import_legacy_namespace(self):
         for path in (ROOT / 'hcu_sglang').rglob('*.py'):
             tree = ast.parse(path.read_bytes())
