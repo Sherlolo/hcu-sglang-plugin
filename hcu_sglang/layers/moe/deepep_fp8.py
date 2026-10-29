@@ -22,6 +22,9 @@ globals().update({name:value for name,value in vars(_native_ep).items() if not n
 from hcu_sglang.utils.detection import is_dcu
 from hcu_sglang.layers.moe import deepep_current as D
 from sglang.srt.runtime_context import get_disagg
+from hcu_sglang.layers.moe.deepep_ep_kernels import ep_scatter, ep_gather, build_m_indices_triton
+from sglang.srt.utils.offloader import get_offloader
+from sglang.srt.layers.moe.moe_runner.deep_gemm import copy_list_to_gpu_no_ce
 from lightop import moe as lightop_op
 from lightop.activation import fuse_silu_mul_fp8_quant, fuse_silu_mul_fp8_quant_ep
 from deepgemm import m_grouped_fp8_gemm_nt_contiguous
