@@ -153,6 +153,7 @@
     "sglang.srt.layers.attention.deepseek_v4_backend._create_flashmla_metadata",
     "sglang.srt.layers.attention.deepseek_v4_backend._low_ratio_source_projections",
     "sglang.srt.layers.attention.deepseek_v4_backend._tail_rows",
+    "sglang.srt.layers.attention.deepseek_v4_backend_hip_radix._create_flashmla_metadata",
     "sglang.srt.layers.attention.dsa.dsa_indexer.Indexer",
     "sglang.srt.layers.attention.dsa.dsa_indexer.rotate_activation",
     "sglang.srt.layers.attention.dsa.dsa_topk_backend.DSATopKBackend.topk_transform",

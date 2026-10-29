@@ -219,8 +219,24 @@ def around_flash_mla_with_kvcache_entrypoint(original, backend: str, **kwargs):
     )
 
 
+def around_hip_create_flashmla_metadata(original):
+    from hcu_sglang.utils.detection import is_dcu
+
+    if not is_dcu():
+        return original()
+    from hcu_sglang.layers.attention.current_dsa.flashmla_backend import get_flashmla_op
+
+    return get_flashmla_op("get_mla_metadata", is_hcu=True)()[0]
+
+
 def register_hooks() -> None:
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+
+    HookRegistry.register(
+        "sglang.srt.layers.attention.deepseek_v4_backend_hip_radix._create_flashmla_metadata",
+        around_hip_create_flashmla_metadata,
+        HookType.AROUND,
+    )
 
     HookRegistry.register(
         "sglang.srt.layers.attention.hip_flash_mla."
