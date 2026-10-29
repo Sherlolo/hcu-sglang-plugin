@@ -98,6 +98,11 @@ def register() -> None:
     topk.register()
     standard_dispatcher.register_hooks()
     alignment.register_hooks()
+    from hcu_sglang.utils.detection import is_dcu
+    if is_dcu():
+        from hcu_sglang.layers.moe import deepep_current, deepep_fp8
+        deepep_current.register_hooks()
+        deepep_fp8.register_hooks()
     aiter_w4a8.register_hooks()
     lightop_runner.register_hooks()
     mega_moe.register_hooks()
