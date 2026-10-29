@@ -45,7 +45,7 @@ def register() -> None:
     )
     from hcu_sglang.layers.attention.linear import gdn_backend
     from hcu_sglang.layers import norm_activation, quantization, linear_fusion, layer_boundary, rotary
-    from hcu_sglang.layers.moe import aiter_w4a8, lightop_runner, mega_moe, topk, standard_dispatcher
+    from hcu_sglang.layers.moe import alignment, aiter_w4a8, lightop_runner, mega_moe, topk, standard_dispatcher
     from hcu_sglang.mem_cache import allocation as mem_cache_allocation
     from hcu_sglang.mem_cache import (
         dsa,
@@ -97,6 +97,7 @@ def register() -> None:
     layernorm_gated.register()
     topk.register()
     standard_dispatcher.register_hooks()
+    alignment.register_hooks()
     aiter_w4a8.register_hooks()
     lightop_runner.register_hooks()
     mega_moe.register_hooks()

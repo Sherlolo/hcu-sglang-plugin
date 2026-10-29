@@ -9,6 +9,9 @@ from hcu_sglang.utils.detection import is_dcu
 
 
 _ENV_SPECS: dict[str, tuple[type, Any]] = {
+    "SGLANG_W4A8_TPMOE_BACKEND": (EnvStr, "auto"),
+    "SGLANG_FORCE_AITER_MOE_C": (EnvBool, False),
+    "SGLANG_DSPARK_FORCE_W4A8_TPMOE_BACKEND": (EnvStr, None),
     "SGLANG_NSA_MQA_LOGITS_MEMORY_BUDGET_GB": (EnvFloat, None),
     "SGLANG_HCU_TOPK_V2_PAGED": (EnvBool, False),
     'SGLANG_DSV4_COMPRESS_RLC': (EnvBool, False),

@@ -230,6 +230,7 @@
     "sglang.srt.layers.moe.mega_moe.should_use_mega_moe",
     "sglang.srt.layers.moe.moe_runner.aiter.AiterRunnerCore.run",
     "sglang.srt.layers.moe.moe_runner.runner.MoeRunner.__init__",
+    "sglang.srt.layers.moe.moe_runner.triton_utils.moe_align_block_size.moe_align_block_size",
     "sglang.srt.layers.moe.token_dispatcher.standard.StandardDispatcher.dispatch",
     "sglang.srt.layers.moe.topk.fused_topk",
     "sglang.srt.layers.quantization.compressed_tensors.compressed_tensors.CompressedTensorsConfig.get_moe_scheme",
