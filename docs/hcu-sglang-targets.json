@@ -275,6 +275,7 @@
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.get_index_k_with_scale_buffer",
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.get_kv_size_bytes",
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.get_state_buf_infos",
+    "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.host_pool_decls",
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.load_cpu_copy",
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.move_kv_cache",
     "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool.set_index_k_scale_buffer",

@@ -10,14 +10,11 @@ from hcu_sglang.utils.detection import is_dcu
 
 
 def around_handle_dspark(original: Callable[..., None], server_args: Any) -> None:
-    if not is_dcu() or server_args.device.startswith(("cuda", "npu")):
+    if not is_dcu():
         return original(server_args)
-    original_device = server_args.device
-    server_args.device = "cuda"
-    try:
-        return original(server_args)
-    finally:
-        server_args.device = original_device
+    from hcu_sglang.speculative_dspark import _handle_dspark
+
+    return _handle_dspark(server_args)
 
 
 def around_inference_only(original: Callable[..., Any], *args, **kwargs):

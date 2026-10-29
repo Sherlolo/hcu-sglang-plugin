@@ -53,87 +53,20 @@ def _create_bf16_index_k_buffer(pool: Any) -> None:
         ]
 
 
-def around_init(
-    original: Callable[..., None],
-    pool: Any,
-    size: int,
-    page_size: int,
-    kv_lora_rank: int,
-    dtype: torch.dtype,
-    qk_rope_head_dim: int,
-    layer_num: int,
-    device: str,
-    index_head_dim: int,
-    enable_memory_saver: bool,
-    kv_cache_dim: int,
-    start_layer: Optional[int] = None,
-    end_layer: Optional[int] = None,
-    index_buf_size: Optional[int] = None,
-    skip_topk_layers: Optional[list[bool]] = None,
-) -> None:
+def around_init(original, pool, *args, **kwargs):
     if not is_dcu():
-        return original(
-            pool,
-            size,
-            page_size,
-            kv_lora_rank,
-            dtype,
-            qk_rope_head_dim,
-            layer_num,
-            device,
-            index_head_dim,
-            enable_memory_saver,
-            kv_cache_dim,
-            start_layer,
-            end_layer,
-            index_buf_size,
-            skip_topk_layers,
-        )
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool
-
-    override_dim = (
-        kv_cache_dim if kv_cache_dim != kv_lora_rank + qk_rope_head_dim else None
-    )
-    MLATokenToKVPool.__init__(
-        pool,
-        size,
-        page_size,
-        dtype,
-        kv_lora_rank,
-        qk_rope_head_dim,
-        layer_num,
-        device,
-        enable_memory_saver,
-        start_layer,
-        end_layer,
-        use_dsa=True,
-        override_kv_cache_dim=override_dim,
-    )
-
-    pool.index_head_dim = index_head_dim
-    pool.index_buf_size = size if index_buf_size is None else index_buf_size
-    assert index_head_dim == 128
-    pool.skip_topk_layers = (
-        list(skip_topk_layers) if skip_topk_layers is not None else [False] * layer_num
-    )
-    assert len(pool.skip_topk_layers) == layer_num
-
-    pool.use_fp8_index_k_cache = not _should_use_bf16_index_cache(dtype)
-    pool.index_k_buffer_dtype = dtype if pool.use_fp8_index_k_cache else torch.bfloat16
-    assert page_size == 64, f"HCU DSA path requires page_size == 64, got {page_size}"
-    pool.index_key_cache = pool._create_index_key_cache()
-    pool._finalize_allocation_log(size)
+    return P.__init__(pool, *args, **kwargs)
 
 
-def around_create_index_key_cache(original: Callable[..., Any], pool: Any):
+def around_create_index_key_cache(original, pool, *args, **kwargs):
     if not is_dcu():
-        return original(pool)
-    if not pool.use_fp8_index_k_cache:
-        _create_bf16_index_k_buffer(pool)
-        return None
-    pool.index_k_buffer = None
-    return original(pool)
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P._create_index_key_cache(pool, *args, **kwargs)
 
 
 def get_index_k_with_scale_buffer_property(pool: Any):
@@ -141,39 +74,20 @@ def get_index_k_with_scale_buffer_property(pool: Any):
     return None if index_key_cache is None else index_key_cache.buffer
 
 
-def around_clear_buffers(original: Callable[..., None], pool: Any) -> None:
-    if not _uses_bf16_index_cache(pool):
-        return original(pool)
+def around_clear_buffers(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool
-
-    MLATokenToKVPool._clear_buffers(pool)
-    if hasattr(pool, "index_k_buffer"):
-        del pool.index_k_buffer
+    return P._clear_buffers(pool, *args, **kwargs)
 
 
-def around_move_kv_cache(
-    original: Callable[..., None],
-    pool: Any,
-    tgt_loc: torch.Tensor,
-    src_loc: torch.Tensor,
-) -> None:
-    if not _uses_bf16_index_cache(pool):
-        return original(pool, tgt_loc, src_loc)
+def around_move_kv_cache(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool
-
-    MLATokenToKVPool.move_kv_cache(pool, tgt_loc, src_loc)
-    if tgt_loc.numel() == 0:
-        return None
-    tgt_loc_flat = tgt_loc.view(-1).long()
-    src_loc_flat = src_loc.view(-1).long()
-    for index_k in pool.index_k_buffer:
-        if index_k.shape[0] == 0:
-            continue
-        flat_index_k = index_k.view(-1, 1, pool.index_head_dim)
-        flat_index_k[tgt_loc_flat] = flat_index_k[src_loc_flat]
-    return None
+    return P.move_kv_cache(pool, *args, **kwargs)
 
 
 def get_index_k_buffer(pool: Any, layer_id: int) -> torch.Tensor:
@@ -183,25 +97,20 @@ def get_index_k_buffer(pool: Any, layer_id: int) -> torch.Tensor:
     return pool.index_k_buffer[layer_id - pool.start_layer]
 
 
-def around_get_index_k_with_scale_buffer(
-    original: Callable[..., torch.Tensor], pool: Any, layer_id: int
-):
-    assert not _uses_bf16_index_cache(pool), "FP8 index K cache is not enabled"
-    return original(pool, layer_id)
+def around_get_index_k_with_scale_buffer(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.get_index_k_with_scale_buffer(pool, *args, **kwargs)
 
 
-def around_get_index_k_continuous(
-    original: Callable[..., torch.Tensor],
-    pool: Any,
-    layer_id: int,
-    seq_len: int,
-    page_indices: torch.Tensor,
-):
-    if not _uses_bf16_index_cache(pool):
-        return original(pool, layer_id, seq_len, page_indices)
-    num_pages = (seq_len + pool.page_size - 1) // pool.page_size
-    buf = get_index_k_buffer(pool, layer_id)
-    return buf[page_indices[:num_pages]].view(-1, 1, pool.index_head_dim)[:seq_len]
+def around_get_index_k_continuous(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.get_index_k_continuous(pool, *args, **kwargs)
 
 
 def _assert_fp8_index_cache(pool: Any) -> None:
@@ -246,24 +155,12 @@ def _copy_bf16_index_cache_to_cpu(pool: Any, indices: torch.Tensor):
     return index_k_cpu
 
 
-def around_get_cpu_copy(
-    original: Callable[..., Any],
-    pool: Any,
-    indices: torch.Tensor,
-    mamba_indices=None,
-):
-    if not _uses_bf16_index_cache(pool):
-        return original(pool, indices, mamba_indices=mamba_indices)
+def around_get_cpu_copy(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool
-
-    kv_cache_cpu = MLATokenToKVPool.get_cpu_copy(
-        pool, indices, mamba_indices=mamba_indices
-    )
-    return {
-        "kv": kv_cache_cpu,
-        "index_k": _copy_bf16_index_cache_to_cpu(pool, indices),
-    }
+    return P.get_cpu_copy(pool, *args, **kwargs)
 
 
 def _load_bf16_index_cache_from_cpu(
@@ -283,49 +180,28 @@ def _load_bf16_index_cache_from_cpu(
     torch.cuda.synchronize()
 
 
-def around_load_cpu_copy(
-    original: Callable[..., None],
-    pool: Any,
-    kv_cache_cpu_dict: Any,
-    indices: torch.Tensor,
-    mamba_indices=None,
-) -> None:
-    if not _uses_bf16_index_cache(pool):
-        return original(pool, kv_cache_cpu_dict, indices, mamba_indices=mamba_indices)
+def around_load_cpu_copy(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool
-
-    MLATokenToKVPool.load_cpu_copy(
-        pool,
-        kv_cache_cpu_dict["kv"],
-        indices,
-        mamba_indices=mamba_indices,
-    )
-    _load_bf16_index_cache_from_cpu(pool, kv_cache_cpu_dict["index_k"], indices)
+    return P.load_cpu_copy(pool, *args, **kwargs)
 
 
-def around_get_state_buf_infos(original: Callable[..., Any], pool: Any):
-    if not _uses_bf16_index_cache(pool):
-        return original(pool)
-    data_ptrs = [buffer.data_ptr() for buffer in pool.index_k_buffer]
-    data_lens = [buffer.nbytes for buffer in pool.index_k_buffer]
-    item_lens = [
-        0 if buffer.shape[0] == 0 else buffer[0].nbytes
-        for buffer in pool.index_k_buffer
-    ]
-    return data_ptrs, data_lens, item_lens
+def around_get_state_buf_infos(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.get_state_buf_infos(pool, *args, **kwargs)
 
 
-def around_get_kv_size_bytes(original: Callable[..., int], pool: Any) -> int:
-    if not _uses_bf16_index_cache(pool):
-        return original(pool)
+def around_get_kv_size_bytes(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
-    from sglang.srt.mem_cache.memory_pool import MLATokenToKVPool, get_tensor_size_bytes
-
-    size_bytes = MLATokenToKVPool.get_kv_size_bytes(pool)
-    return size_bytes + sum(
-        get_tensor_size_bytes(index_k) for index_k in pool.index_k_buffer
-    )
+    return P.get_kv_size_bytes(pool, *args, **kwargs)
 
 
 def around_compute_dsa_indexer_cell_size(
@@ -437,18 +313,15 @@ def _compat_index_scale_continuous(pool, layer_id, seq_len, page_indices):
 
 def _install_compat_members() -> None:
     from sglang.srt.mem_cache.memory_pool import DSATokenToKVPool
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
 
     if not hasattr(DSATokenToKVPool, "get_index_k_continuous"):
         DSATokenToKVPool.get_index_k_continuous = _compat_index_k_continuous
     if not hasattr(DSATokenToKVPool, "get_index_k_scale_continuous"):
         DSATokenToKVPool.get_index_k_scale_continuous = _compat_index_scale_continuous
-    DSATokenToKVPool.index_k_with_scale_buffer = property(
-        get_index_k_with_scale_buffer_property
-    )
-    if not hasattr(DSATokenToKVPool, "get_index_k_buffer"):
-        DSATokenToKVPool.get_index_k_buffer = get_index_k_buffer
-    if not hasattr(DSATokenToKVPool, "set_index_k_buffer"):
-        DSATokenToKVPool.set_index_k_buffer = set_index_k_buffer
+    DSATokenToKVPool.index_k_with_scale_buffer = P.index_k_with_scale_buffer
+    for name in ('_initialize_int8_index_k_workspace', '_create_index_k_buffer', '_get_indexer_cache_index', '_clear_index_k_buffers', 'get_index_k_with_scale_write_buffer', 'get_index_k_buffer', 'dequantize_index_k_int8_paged', 'set_index_k_int8_buffer', 'set_index_k_buffer', 'get_kv_layer_ids', 'get_state_layer_ids', 'get_index_k_cache_transfer_abi'):
+        setattr(DSATokenToKVPool, name, getattr(P, name))
 
 
 def register_hooks() -> None:
@@ -457,15 +330,16 @@ def register_hooks() -> None:
     _install_compat_members()
     target = "sglang.srt.mem_cache.memory_pool.DSATokenToKVPool"
     hooks = {
+        "host_pool_decls": around_host_pool_decls,
         "__init__": around_init,
         "_create_index_key_cache": around_create_index_key_cache,
         "_clear_buffers": around_clear_buffers,
         "move_kv_cache": around_move_kv_cache,
         "get_index_k_with_scale_buffer": around_get_index_k_with_scale_buffer,
         "get_index_k_continuous": around_get_index_k_continuous,
-        "get_index_k_scale_continuous": around_fp8_only,
-        "get_index_k_scale_buffer": around_fp8_only,
-        "set_index_k_scale_buffer": around_fp8_only,
+        "get_index_k_scale_continuous": around_get_index_k_scale_continuous,
+        "get_index_k_scale_buffer": around_get_index_k_scale_buffer,
+        "set_index_k_scale_buffer": around_set_index_k_scale_buffer,
         "get_cpu_copy": around_get_cpu_copy,
         "load_cpu_copy": around_load_cpu_copy,
         "get_state_buf_infos": around_get_state_buf_infos,
@@ -483,3 +357,35 @@ def register_hooks() -> None:
         after_hybrid_swa_init,
         HookType.AFTER,
     )
+
+
+def around_get_index_k_scale_continuous(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.get_index_k_scale_continuous(pool, *args, **kwargs)
+
+
+def around_get_index_k_scale_buffer(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.get_index_k_scale_buffer(pool, *args, **kwargs)
+
+
+def around_set_index_k_scale_buffer(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.set_index_k_scale_buffer(pool, *args, **kwargs)
+
+
+def around_host_pool_decls(original, pool, *args, **kwargs):
+    if not is_dcu():
+        return original(pool, *args, **kwargs)
+    from hcu_sglang.mem_cache import dsa_pool_methods as P
+
+    return P.host_pool_decls(pool, *args, **kwargs)
