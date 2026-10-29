@@ -10,7 +10,7 @@ from sglang.srt.environ import envs
 from hcu_sglang.layers.attention.current_dsa.dsa_backend_mtp_precompute import (
     compute_cu_seqlens,
 )
-from sglang.srt.layers.attention.dsa.dsa_topk_backend import (
+from hcu_sglang.layers.attention.current_dsa.dsa_topk_backend import (
     DSATopKBackend,
     TopkTransformMethod,
 )

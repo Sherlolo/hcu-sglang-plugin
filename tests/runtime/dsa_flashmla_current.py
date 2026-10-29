@@ -42,4 +42,25 @@ class FlashMlaCurrentTests(unittest.TestCase):
         self.assertTrue(F.can_fuse_flashmla_metadata(dest,src))
         self.assertFalse(F.can_fuse_flashmla_metadata(F.DSAFlashMLAMetadata(object(),None)))
 
+
+class DsaTopkCurrentTests(unittest.TestCase):
+    def test_hcu_paged_v2_opt_in_reaches_graph_metadata_producer(self):
+        from hcu_sglang.environ import register_envs
+        register_envs()
+        from hcu_sglang.layers.attention.current_dsa import dsa_topk_backend as T
+        backend=SimpleNamespace(dsa_topk_backend=T.DSATopKBackend.SGL_KERNEL)
+        with patch.object(T,'_is_hcu',True),patch.dict(os.environ,{'SGLANG_OPT_USE_TOPK_V2':'1','SGLANG_HCU_TOPK_V2_PAGED':'0'}):
+            self.assertTrue(backend.dsa_topk_backend.should_use_topk_v2())
+            self.assertFalse(backend.dsa_topk_backend.should_use_topk_v2_paged())
+            self.assertIsNone(B.DeepseekSparseAttnBackend._build_topk_v2_plan(backend,torch.tensor([1],dtype=torch.int32)))
+        with patch.object(T,'_is_hcu',True),patch.dict(os.environ,{'SGLANG_OPT_USE_TOPK_V2':'1','SGLANG_HCU_TOPK_V2_PAGED':'1'}):
+            self.assertTrue(backend.dsa_topk_backend.should_use_topk_v2_paged())
+
+    def test_ragged_v2_layout_preserves_vector_load_constraints(self):
+        from hcu_sglang.layers.attention.current_dsa import dsa_topk_backend as T
+        self.assertTrue(T._supports_topk_v2_ragged_layout(torch.zeros(2,8)))
+        self.assertFalse(T._supports_topk_v2_ragged_layout(torch.zeros(2,7)))
+        self.assertFalse(T._supports_topk_v2_ragged_layout(torch.zeros(2,8).half()))
+        self.assertFalse(T._supports_topk_v2_ragged_layout(torch.zeros(8,2).T))
+
 if __name__=='__main__':unittest.main()
