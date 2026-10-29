@@ -55,6 +55,8 @@ def add_hcu_mla_to_draft_backend_map(
 
 
 def register() -> None:
+    from . import dsv4_registry
+    dsv4_registry.register()
     from sglang.srt.layers.attention.attention_registry import ATTENTION_BACKENDS
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 
