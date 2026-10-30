@@ -97,14 +97,20 @@ def flash_attn_with_kvcache(
     )
 
     k_cache, v_cache = _restore_hcu_cache_layout(k_cache, v_cache)
-    q_4d = q
-    if q.ndim == 3:
-        query_len = max_seqlen_q or 1
-        q_4d = q.contiguous().view(-1, query_len, q.shape[-2], q.shape[-1])
 
-    if _layout_enabled() and max_seqlen_q is not None and max_seqlen_q > 1:
+    # Varlen calls (prefill / MTP verify carry cu_seqlens_q) must go through
+    # the wheel's varlen entry: flash_attn_with_kvcache has no cu_seqlens
+    # parameter, and viewing a packed q to [B, S, H, D] makes the wrapper
+    # classify S > 1 as mtp packing (its PA kernel then trips the
+    # qheads*mtp/kvheads < 48 assert). The varlen entry takes the pool plus
+    # block_table directly and handles both page layouts (pa_layout).
+    if cu_seqlens_q is not None:
+        if _layout_enabled():
+            page_size = k_cache.shape[2]  # [NP, H, PS, D]
+        else:
+            page_size = k_cache.shape[1]  # [NP, PS, H, D]
         page_capacity = (
-            page_table.shape[1] * k_cache.shape[2]
+            page_table.shape[1] * page_size
             if max_seqlen_k is None and page_table is not None
             else max_seqlen_k
         )
@@ -126,6 +132,11 @@ def flash_attn_with_kvcache(
             v_descale=v_descale,
         )
         return _apply_out(result, out, return_softmax_lse)
+
+    q_4d = q
+    if q.ndim == 3:
+        query_len = max_seqlen_q or 1
+        q_4d = q.contiguous().view(-1, query_len, q.shape[-2], q.shape[-1])
 
     if _layout_enabled():
         result = vllm_flash_attn_with_kvcache(

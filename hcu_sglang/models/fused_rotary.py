@@ -16,7 +16,16 @@ _FUSED_KV_LAYERS_ATTR = "_dcu_fused_rms_rotary_kv_layers"
 
 
 def use_fused_rms_rotary() -> bool:
-    return is_dcu()
+    # Opt-in only (SGLANG_HCU_QWEN_FUSED_ROTARY=1). The das production stack
+    # never routed Qwen3.5 through this op: it used the upstream HIP path
+    # (fused_qk_gemma_rmsnorm_with_gate + rotary_emb + backend KV store), which
+    # official v0.5.22 already ships as a triton kernel in models/utils.py.
+    # The lightop gammarms kv-store fusion also trips its non-fused fallback
+    # branch when the KV pool is bf16 (positions are stacked to [3, T] for the
+    # fused kernel but the fallback op reads them as batch=3).
+    from sglang.srt.utils import get_bool_env_var
+
+    return is_dcu() and get_bool_env_var("SGLANG_HCU_QWEN_FUSED_ROTARY")
 
 
 def mark_fused_kv_store(forward_batch, layer_id: int) -> None:
@@ -67,7 +76,14 @@ def fused_rms_rotary_kv_store(
         module.rotary_emb.cos_sin_cache = cos_sin_cache
 
     layer_id = get_layer_id(module)
-    k_buffer, v_buffer = forward_batch.token_to_kv_pool.get_kv_buffer(layer_id)
+    # Official v0.5.22: the KV pool hangs off the attention backend /
+    # model_runner, not ForwardBatch (older forks exposed it there).
+    pool = getattr(forward_batch, "token_to_kv_pool", None)
+    if pool is None:
+        from sglang.srt.model_executor.forward_context import get_attn_backend
+
+        pool = get_attn_backend().token_to_kv_pool
+    k_buffer, v_buffer = pool.get_kv_buffer(layer_id)
 
     result = fused_op(
         positions,

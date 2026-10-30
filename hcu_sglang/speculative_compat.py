@@ -75,24 +75,30 @@ def _needs_mhc_hidden_states(model_runner: Any) -> bool:
 
 
 def around_prepare_for_draft(original: Callable[..., Any], *args, **kwargs):
-    forward_batch, can_run_decode_cuda_graph = original(*args, **kwargs)
+    # Official v0.5.22 returns (forward_batch, can_run_decode_cuda_graph,
+    # kv_loc_plan); the das fork returned a 2-tuple. Stay arity-agnostic:
+    # only the ForwardBatch is touched (in place), the rest passes through.
+    result = original(*args, **kwargs)
+    forward_batch = result[0]
     draft_model_runner = kwargs.get("draft_model_runner")
     if draft_model_runner is None and len(args) >= 4:
         draft_model_runner = args[3]
     if _needs_mhc_hidden_states(draft_model_runner):
         forward_batch.return_hidden_states_before_norm = True
-    return forward_batch, can_run_decode_cuda_graph
+    return result
 
 
 def around_eagle_prepare_for_verify(original: Callable[..., Any], *args, **kwargs):
-    forward_batch, can_run_cuda_graph = original(*args, **kwargs)
+    # See around_prepare_for_draft: return arity differs across versions.
+    result = original(*args, **kwargs)
+    forward_batch = result[0]
     target_worker = kwargs.get("target_worker")
     if target_worker is None and len(args) >= 4:
         target_worker = args[3]
     model_runner = getattr(target_worker, "model_runner", None)
     if _needs_mhc_hidden_states(model_runner):
         forward_batch.return_hidden_states_before_norm = True
-    return forward_batch, can_run_cuda_graph
+    return result
 
 
 def around_tbo_filter_batch(
