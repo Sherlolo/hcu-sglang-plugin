@@ -4,6 +4,34 @@ SGLang HCU 插件代码与开发方法仓库。运行时代码位于 `hcu_sglang
 
 面向研发同事评审 `sglang-das → sglang-plugin` 时，先打开 [模块盘点与开发计划](migration-plan.html)：可查看三方基线、26 个工作域、完整源码与符号明细，以及分阶段建议任务。统计和维护方法见 [迁移规划指南](docs/sglang-das-migration-plan.md)。
 
+## 快速安装与使用
+
+在已安装匹配的官方 SGLang 0.5.22、Torch/DTK 和 HCU 依赖的 Python 环境中，从本仓库根目录安装：
+
+```bash
+python3 -m pip install --no-deps --no-build-isolation .
+```
+
+该命令构建 wheel 并安装到当前 Python 环境。已有 wheel 时，也可用 `python3 -m pip install --no-deps <wheel文件路径>` 安装。
+
+以本地 Qwen3-0.6B 模型为例，将模型路径替换为实际目录：
+
+```bash
+SGLANG_PLUGINS=hcu python3 -m hcu_sglang \
+  --model-path /path/to/Qwen3-0.6B \
+  --served-model-name qwen3 --host 127.0.0.1 --port 30000
+```
+
+服务 ready 后，在另一终端发送请求：
+
+```bash
+curl http://127.0.0.1:30000/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"qwen3","messages":[{"role":"user","content":"计算17×19，只输出整数。"}],"temperature":0,"max_tokens":128,"chat_template_kwargs":{"enable_thinking":false}}'
+```
+
+预期答案为 `323`。仅设置插件白名单 `SGLANG_PLUGINS=hcu`，不额外指定 PYTHONPATH、缓存或工具链变量；前提是当前 Python 环境的官方 SGLang 和 HCU 依赖已就绪。完整安装与检查见 [安装指南](docs/installation.md)。
+
 ## 1. 首次使用
 
 保留完整仓库，在 Agent 中打开或提供仓库位置，然后描述你想完成的工作。无需先了解全部文档或记住专项 Skill 名称。
