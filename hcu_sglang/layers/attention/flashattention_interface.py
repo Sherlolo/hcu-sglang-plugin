@@ -108,7 +108,18 @@ def flash_attn_with_kvcache(
         if _layout_enabled():
             page_size = k_cache.shape[2]  # [NP, H, PS, D]
         else:
-            page_size = k_cache.shape[1]  # [NP, PS, H, D]
+            # Official pool is NHD [slots, H, D] (SGLANG_USE_HND_KVCACHE off):
+            # the page size is not derivable from the tensor shape — take it
+            # from the attention backend, else the max_seqlen_k hint ends up
+            # scaled by head_num instead of page_size.
+            try:
+                from sglang.srt.model_executor.forward_context import (
+                    get_attn_backend,
+                )
+
+                page_size = get_attn_backend().page_size
+            except Exception:
+                page_size = k_cache.shape[1]  # last resort: [NP, PS, H, D]
         page_capacity = (
             page_table.shape[1] * page_size
             if max_seqlen_k is None and page_table is not None
