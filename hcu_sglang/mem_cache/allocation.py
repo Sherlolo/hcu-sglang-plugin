@@ -18,6 +18,53 @@ def _enabled(name: str) -> bool:
 def _load_kvcacheio():
     from sgl_kernel import kvcacheio
 
+    # sgl_kernel.kvcacheio may be shadowed by a port-only copy (the adapter
+    # ships pure-torch ports of the transfer ops but not the alloc kernels).
+    # The compiled library still registers the ops on torch.ops.sgl_kernel,
+    # so shim any missing attribute with a wrapper carrying the wheel's
+    # python signature (keyword-friendly, forwards positionally).
+    needed = (
+        "hcu_alloc_extend_kernel",
+        "hcu_alloc_decode_kernel",
+        "hcu_get_last_loc",
+        "hcu_assign_req_to_token_pool",
+    )
+    missing = [n for n in needed if not hasattr(kvcacheio, n)]
+    if missing:
+        ops = torch.ops.sgl_kernel
+
+        def _alloc_extend(pre_lens_ptr, seq_lens_ptr, last_loc_ptr,
+                          free_page_ptr, out_indices, bs, page_size):
+            ops.hcu_alloc_extend_kernel(
+                pre_lens_ptr, seq_lens_ptr, last_loc_ptr, free_page_ptr,
+                out_indices, bs, page_size)
+
+        def _alloc_decode(seq_lens_ptr, last_loc_ptr, free_page_ptr,
+                          out_indices, bs, page_size):
+            ops.hcu_alloc_decode_kernel(
+                seq_lens_ptr, last_loc_ptr, free_page_ptr, out_indices,
+                bs, page_size)
+
+        def _get_last_loc(req_to_token, req_pool_indices, prefix_lens):
+            return ops.hcu_get_last_loc(
+                req_to_token, req_pool_indices, prefix_lens)
+
+        def _assign_req_to_token_pool(req_pool_indices, req_to_token,
+                                      allocate_lens, new_allocate_lens,
+                                      out_cache_loc, shape, bs):
+            ops.hcu_assign_req_to_token_pool(
+                req_pool_indices, req_to_token, allocate_lens,
+                new_allocate_lens, out_cache_loc, shape, bs)
+
+        shims = {
+            "hcu_alloc_extend_kernel": _alloc_extend,
+            "hcu_alloc_decode_kernel": _alloc_decode,
+            "hcu_get_last_loc": _get_last_loc,
+            "hcu_assign_req_to_token_pool": _assign_req_to_token_pool,
+        }
+        for name in missing:
+            if hasattr(ops, name):
+                setattr(kvcacheio, name, shims[name])
     return kvcacheio
 
 
