@@ -9,7 +9,7 @@
 | `REPO` | 当前方法库 | 在仓库根目录用 `pwd -P` 获取；执行 L0、工具测试和脚本的位置 |
 | `OFFICIAL` | 指定 SGLang 官方工作树 | 固定 SHA；与清单工具的 official-ref 匹配 |
 | `FORK` | DAS 来源树 | 审计保留 dirty；不能作为正式运行时 import 来源 |
-| `PLUGIN` | 外部含业务实现的 plugin 树 | 当前历史工具针对 `sglang_dcu_plugin` 布局 |
+| `PLUGIN` | 含业务实现的 plugin 树；当前实现可与 `REPO` 相同 | 当前包为 `hcu_sglang`；支持旧布局的工具按需显式选择 `--plugin-package` |
 | `ARTIFACTS` | 本次审计/日志输出目录 | 建议位于 `REPO/artifacts/<task>`，不要落到来源树内 |
 | `OUTPUT` | 源码回溯新输出树 | 不与任一输入相同、互为父目录或子目录 |
 | `WHEEL` | 本次安装的 wheel 文件 | 安装前核对交付方 SHA256；不从旧任务目录自动选择 |
@@ -46,7 +46,7 @@ set +a
 | `SGLANG_PLUGINS` 与框架参数 | pinned SGLang | 按该版本 loader/CLI 语义使用 |
 | SGLang 自有 `Envs` / typed descriptor | pinned SGLang | 有对应 API 时使用 `.get()` / `.override()`，不在 Hook 中散落重复解析 |
 | adapter 的配置/快关 | adapter | 引用其固定版本手册；不复制同名注册表或改写它的默认值 |
-| plugin 自有能力开关 | 未来 plugin 实现 | 集中定义、记录类型/默认/支持条件，独立命名并可诊断 |
+| plugin 自有能力开关 | plugin 实现 | 集中定义、记录类型/默认/支持条件，独立命名并可诊断 |
 | NCCL / driver / launcher / OS 变量 | 外部依赖或部署 | 按所有者的接口消费，不擅自改变语义 |
 
 本仓 `hcu_sglang` 已包含来源插件的配置开关和 `hcu` 入口；具体以当前代码为准，不假定存在统一的 `HCU_DISABLE_OPS` 或额外配置服务。

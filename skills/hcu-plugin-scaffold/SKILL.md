@@ -26,4 +26,4 @@ description: 在指定外部目录创建独立 SGLang 插件工程，确定包�
 
 交付外部工程路径、命名与入口映射、官方版本、安装/执行命令、模块来源、三个对照结果和未验证项，记录到 [验证模板](../../templates/validation-record.md)。对于仅初始化的任务，完成标准是新工程可打包、可发现、可实际调用且关闭后保留基线；不要求额外迁移、升级或生成 embedded 产物。
 
-任意新插件都不能套用 DCU 专用的 `validate_plugin_runtime.py` 合同；该工具要求 sglang_dcu_plugin 与其具名 seam。新工程按自己的入口和目标建立断言。使用示例及输入填写方式见 [文档中的 Skill 调用指南](../../docs/first-plugin.md#使用-skill-创建新插件)。
+任意新插件都不能套用本仓 HCU 专用的 `validate_plugin_runtime.py` 合同；当前包需显式指定 `--plugin-package hcu_sglang`，工具另保留旧包支持，并检查完整目标与三个具名 seam。新工程按自己的入口和目标建立断言。使用示例及输入填写方式见 [文档中的 Skill 调用指南](../../docs/first-plugin.md#使用-skill-创建新插件)。

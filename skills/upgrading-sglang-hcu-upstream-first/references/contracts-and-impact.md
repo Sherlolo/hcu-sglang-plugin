@@ -12,7 +12,7 @@ SGLang 特别检查：ServerArgs 的实际 record 类型及解析/冻结阶段�
 
 - [审计与清单工具](../../../docs/migration.md) 产生静态候选，不能替代 runtime。
 - [validate_hook_signatures.py](../../../tools/validate_hook_signatures.py) 会加载外部插件，仅覆盖 models REPLACE 子集，默认值数量相同不代表值相同；空结果不是兼容证明。
-- [validate_plugin_runtime.py](../../../tools/validate_plugin_runtime.py) 按当前外部 `sglang_dcu_plugin`/框架接口检查非空加载、预期集合、apply、软错误、来源及具名 seam；不支持的新布局需适配工具并验证，不能靠删预期目标绕过。它不证明每条模型路径实际执行或 native ABI 正确。
+- [validate_plugin_runtime.py](../../../tools/validate_plugin_runtime.py) 使用 `--plugin-package hcu_sglang` 按当前 HCU 包/框架接口检查（旧包需另行显式选择），覆盖非空加载、预期集合、apply、软错误、来源及具名 seam；不支持的新布局需适配工具并验证，不能靠删预期目标绕过。它不证明每条模型路径实际执行或 native ABI 正确。
 - vLLM 原 `upgrade_preflight.py` 扫描 `vllm_hcu/patch/TARGET_MODULE`，不适配 SGLang，本次不复制。完整 AST 默认值/函数体对照当前仍需人工或专门工具，不能写成已自动覆盖。
 
 ## 测试影响映射

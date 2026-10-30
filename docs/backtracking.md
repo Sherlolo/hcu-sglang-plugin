@@ -1,6 +1,6 @@
 # 内嵌源码生成与核验指南
 
-> **本文用途**：说明如何将固定官方 SGLang 与外部 DCU plugin 组合成独立源码树，以及输入保护、清单核验与运行验证边界。它是源码内嵌 Hook 回溯，**不是历史 DAS fork 的逐文件或逐 commit 复刻**。Skill 入口见 [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md)。
+> **本文用途**：说明如何将固定官方 SGLang 与HCU plugin 组合成独立源码树，以及输入保护、清单核验与运行验证边界。它是源码内嵌 Hook 回溯，**不是历史 DAS fork 的逐文件或逐 commit 复刻**。Skill 入口见 [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md)。
 
 ## 使用 Skill 生成与核验内嵌源码
 
@@ -47,7 +47,7 @@ flowchart LR
     O --> H[独立核验清单]
 ```
 
-生成器来自 `plugin_work/reconstruct_sglang_das.py`。它把受 Git 跟踪的 DCU plugin 放进新树，在 SGLang bootstrap 提前安装 AITER 兼容，在 loader 增加对应包的内嵌注册，并补齐 JIT package data、依赖与第三方许可。
+生成器来自 `plugin_work/reconstruct_sglang_das.py`。它把受 Git 跟踪的 HCU plugin 放进新树，在 SGLang bootstrap 提前安装 AITER 兼容，在 loader 增加对应包的内嵌注册，并补齐 JIT package data、依赖与第三方许可。
 
 生成器版本 3 起不再向 bootstrap/loader 插入注释或 BEGIN/END 标记；通过导入符号和历史标记检测拒绝重复集成。复制的来源注释和许可声明保持原样，来源信息仍写入 `.sglang-dcu-embedded.json` 与 `DCU_EMBEDDED.md`。统一要求见[生成代码约定](contributing.md#生成代码约定)。
 
@@ -64,7 +64,7 @@ python3 tools/reconstruct_sglang_das.py \
   --upstream "$OFFICIAL" \
   --plugin "$PLUGIN" \
   --output "$OUTPUT" \
-  --revision "$OFFICIAL_SHA" --branch embedded-dcu
+  --revision "$OFFICIAL_SHA" --branch embedded-hcu
 python3 tools/verify_reconstruction.py \
   --output "$OUTPUT"
 ```
@@ -95,8 +95,8 @@ python3 tools/verify_reconstruction.py \
 ## 5. 生成后的运行验证
 
 1. 审阅新增文件和注入点，检查依赖/许可、package-data 与源码语法。
-2. 证明 `sglang` 和 `sglang_dcu_plugin` 均从输出的 `python` 导入；隔离同名外部 dcu entry point。
-3. 内嵌 dcu 不依赖外部 `SGLANG_PLUGINS` allowlist；loader 的 `setdefault` 不会覆盖已发现的同名外部入口，因此不能混用后只凭“注册成功”判断来自内嵌版本。
+2. 当前包须证明 `sglang` 和 `hcu_sglang` 均从输出的 `python` 导入，并隔离同名外部 `hcu` entry point；旧包输入对应检查 `sglang_dcu_plugin` 与 `dcu`。
+3. 内嵌 `hcu`（旧包为 `dcu`）不依赖外部 `SGLANG_PLUGINS` allowlist；loader 的 `setdefault` 不会覆盖已发现的同名外部入口，因此不能混用后只凭“注册成功”判断来自内嵌版本。
 4. 若部署还使用 adapter，另记录 adapter SHA、有效目标和加载链；**生成器不会自动内嵌 adapter**，也不会证明两仓组合已兼容。
 5. 按 [验证手册](validation.md) 完成适用 prefill/decode、状态、Graph、精度与性能。生成/哈希成功和模型通过分开记录。
 
@@ -106,7 +106,7 @@ python3 tools/verify_reconstruction.py \
 
 生成器 v2 的 package-data 包含 `jit_overlay/**/*`，覆盖 `.cu/.cpp/.hpp` 等真实资源。不能只确认源码树存在文件，还要检查打包规则与 wheel 内容；这次问题与回归见 [V3 实践](v3-runtime-validation.md)。
 
-核验哈希后，用 [严格验证工具](../tools/validate_plugin_runtime.py) 的 `--disable-entry-points` 屏蔽外部发现，强制两模块从输出 python 导入。外部测试源码配合 `--import-mode=importlib`，避免测试路径把外部实现插回 sys.path。
+核验哈希后，用 [严格验证工具](../tools/validate_plugin_runtime.py) 的 `--disable-entry-points` 屏蔽外部发现，显式指定 `--plugin-package hcu_sglang` 并先初始化 AITER 兼容，强制官方与插件均从输出 python 导入；入口和合同参数见 [安装验证](installation.md#3-安装入口与加载验证)。外部测试源码配合 `--import-mode=importlib`，避免测试路径把外部实现插回 sys.path。
 
 ## 7. 历史证据的边界
 

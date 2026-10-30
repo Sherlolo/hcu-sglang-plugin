@@ -149,6 +149,6 @@ python3 -m unittest discover -s tests -v
 
 ## 7. 运行时交付与历史证据
 
-外部运行时最近记录为 v0.3.2.dev5（`afc6205`），固定官方基线为 `baa9befa`。范围、产物和未验证项见 [最终交付记录](docs/v3-20261026-development.md#8-最终交付与需求验收)，安装条件见 [安装指南](docs/installation.md)。本次方法库导航更新不重新声明 GPU、模型精度或性能结果，也不提供公共 PyPI 发布承诺。
+当前运行时为 `hcu-sglang-plugin` v0.3.2.dev34，Python 包为 `hcu_sglang`，唯一 general plugin 入口为 `hcu`；固定官方基线为 `baa9befa`。当前迁入、wheel 与分版本模型结果见 [开发迁移记录](docs/hcu-sglang-development.md)，安装命令见 [安装指南](docs/installation.md)。旧 `sglang_dcu_plugin` v0.3.2.dev5 等产物见 [历史交付记录](docs/v3-20261026-development.md#8-最终交付与需求验收)，不作为当前安装示例。本次命名与文档修订不重新声明 GPU、模型精度或性能结果，也不提供公共 PyPI 发布承诺。
 
 来源与许可见 [来源地图](docs/extraction-map.md) 和 [来源许可证](licenses)。方法查询先使用 [开发经验索引](docs/development-methodology.md)；复核某次交付时再按日期读取实施记录和原始证据。

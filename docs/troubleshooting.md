@@ -49,6 +49,8 @@
 python3 - <<'PYCODE'
 import logging
 logging.basicConfig(level=logging.INFO)
+from hcu_sglang.compat.aiter import bootstrap_aiter_compat
+bootstrap_aiter_compat()
 from sglang.srt.plugins import load_plugins
 load_plugins()
 PYCODE
