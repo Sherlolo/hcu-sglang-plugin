@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 import logging
 from typing import TYPE_CHECKING, NamedTuple, Optional, Tuple
 
@@ -18,7 +21,7 @@ from sglang.srt.runtime_context import (
     get_platform,
 )
 from sglang.srt.utils import get_bool_env_var, is_gfx95_supported, is_hip
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils.common import is_gfx1250_supported
 
 logger = logging.getLogger(__name__)

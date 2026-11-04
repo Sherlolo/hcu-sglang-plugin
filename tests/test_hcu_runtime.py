@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import ast
@@ -15,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class HcuRuntimeTests(unittest.TestCase):
     def test_cold_import_keeps_startup_lightweight_and_uses_current_namespace(self):
-        code = "import hcu_sglang,sys,json; print(json.dumps({'file':hcu_sglang.__file__,'loaded':[n for n in sys.modules if n.split('.')[0] in ['torch','aiter','sglang_dcu_plugin']]}))"
+        code = "import hcu_sglang,sys,json; print(json.dumps({'file':hcu_sglang.__file__,'loaded':[n for n in sys.modules if n.split('.')[0] in ['torch','aiter','sglang_hcu_plugin']]}))"
         report = json.loads(subprocess.check_output([sys.executable, '-c', code], cwd=ROOT, text=True))
         self.assertTrue(Path(report['file']).is_relative_to(ROOT / 'hcu_sglang'))
         self.assertEqual(report['loaded'], [])
@@ -98,9 +101,9 @@ assert not any(name.endswith('slimquant_w4a8_marlin') for name in sys.modules)
             tree = ast.parse(path.read_bytes())
             for node in ast.walk(tree):
                 if isinstance(node, ast.ImportFrom):
-                    self.assertFalse((node.module or '').startswith('sglang_dcu_plugin'), str(path))
+                    self.assertFalse((node.module or '').startswith('sglang_hcu_plugin'), str(path))
                 if isinstance(node, ast.Import):
-                    self.assertFalse(any(alias.name.startswith('sglang_dcu_plugin') for alias in node.names), str(path))
+                    self.assertFalse(any(alias.name.startswith('sglang_hcu_plugin') for alias in node.names), str(path))
 
     def test_scoped_launcher_replaces_global_usercustomize(self):
         self.assertFalse((ROOT / 'usercustomize.py').exists())

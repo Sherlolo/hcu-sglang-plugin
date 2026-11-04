@@ -6,11 +6,11 @@ from typing import Any, Callable, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def single_is_bf16_attention_kv_cache(pool: Any) -> bool:
-    return is_dcu() and pool.dtype == torch.bfloat16
+    return is_hcu() and pool.dtype == torch.bfloat16
 
 
 def single_logical_kv_dim(pool: Any) -> int:
@@ -18,10 +18,10 @@ def single_logical_kv_dim(pool: Any) -> int:
 
 
 def token_is_bf16_attention_kv_cache(pool: Any) -> bool:
-    return pool._unified_kv or (
+    return is_hcu() and (pool._unified_kv or (
         pool.swa_kv_pool is not None
         and single_is_bf16_attention_kv_cache(pool.swa_kv_pool)
-    )
+    ))
 
 
 def around_get_bytes_per_token(original: Callable[..., int], pool: Any) -> int:
@@ -226,36 +226,8 @@ def _install_compat_members() -> None:
 
 
 def register_hooks() -> None:
-    if is_dcu():
-        from hcu_sglang.mem_cache.hcu_v4_integration import register_hooks as register_current
-        register_current()
+    if not is_hcu():
         return
-    from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+    from hcu_sglang.mem_cache.hcu_v4_integration import register_hooks as register_current
 
-    _install_compat_members()
-    single = "sglang.srt.mem_cache.deepseek_v4_memory_pool.DeepSeekV4SingleKVPool"
-    HookRegistry.register(
-        f"{single}.get_bytes_per_token", around_get_bytes_per_token, HookType.AROUND
-    )
-    HookRegistry.register(
-        f"{single}.create_buffer", around_create_buffer, HookType.AROUND
-    )
-    HookRegistry.register(
-        f"{single}.set_key_buffer", around_set_key_buffer, HookType.AROUND
-    )
-    HookRegistry.register(
-        f"{single}.set_key_buffer_fused",
-        around_set_key_buffer_fused,
-        HookType.AROUND,
-    )
-    token = "sglang.srt.mem_cache.deepseek_v4_memory_pool.DeepSeekV4TokenToKVPool"
-    HookRegistry.register(
-        f"{token}.set_swa_key_buffer_radix_fused_norm_rope",
-        around_swa_fused_norm_rope,
-        HookType.AROUND,
-    )
-    HookRegistry.register(
-        f"{token}.set_extra_key_buffer_fused",
-        around_set_extra_key_buffer_fused,
-        HookType.AROUND,
-    )
+    register_current()

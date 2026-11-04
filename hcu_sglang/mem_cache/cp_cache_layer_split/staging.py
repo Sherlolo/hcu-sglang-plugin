@@ -7,7 +7,7 @@ from typing import Callable, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 _is_hcu = is_hcu()
 

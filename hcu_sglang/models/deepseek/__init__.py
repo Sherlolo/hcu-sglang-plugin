@@ -1,4 +1,4 @@
-"""DCU DeepSeek model adaptations."""
+"""HCU DeepSeek model adaptations."""
 
 import logging
 

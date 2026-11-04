@@ -4,19 +4,19 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _use_aiter_runner(quant_method) -> bool:
     runner = getattr(quant_method, "runner", None)
     backend = getattr(runner, "runner_backend", None)
-    return is_dcu() and backend is not None and backend.is_aiter()
+    return is_hcu() and backend is not None and backend.is_aiter()
 
 
 def around_create_moe_runner(
     original: Callable[..., Any], quant_method, layer, moe_runner_config
 ):
-    if not is_dcu():
+    if not is_hcu():
         return original(quant_method, layer, moe_runner_config)
 
     from sglang.srt.layers.moe import MoeRunner, MoeRunnerBackend, get_moe_runner_backend
@@ -78,7 +78,7 @@ def around_get_compressed_moe_scheme(
     try:
         return original(compressed_config, layer, layer_name)
     except NotImplementedError as exc:
-        if not is_dcu() or "W8A8Int8 Fused MoE" not in str(exc):
+        if not is_hcu() or "W8A8Int8 Fused MoE" not in str(exc):
             raise
         original_error = exc
 

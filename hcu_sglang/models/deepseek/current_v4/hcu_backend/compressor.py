@@ -24,7 +24,7 @@ from sglang.srt.model_executor.forward_context import get_attn_backend
 from sglang.srt.models.deepseek_v2 import _use_aiter
 from sglang.srt.runtime_context import get_exec
 from sglang.srt.utils import add_prefix, get_bool_env_var, is_hip, is_npu, set_weight_attrs
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hcu = is_hcu()
 _is_hip = is_hip()
 _is_npu = is_npu()

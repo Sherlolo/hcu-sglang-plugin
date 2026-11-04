@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Build an embedded SGLang DAS source tree from upstream SGLang and the DCU plugin."""
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+"""Build an embedded SGLang DAS source tree from upstream SGLang and the HCU plugin."""
 
 from __future__ import annotations
 
@@ -21,40 +24,40 @@ else:
 from typing import Iterable, Sequence
 
 
-MANIFEST_NAME = ".sglang-dcu-embedded.json"
-MANIFEST_KIND = "sglang-dcu-embedded-source"
-GENERATOR_VERSION = 4
+MANIFEST_NAME = ".sglang-hcu-embedded.json"
+MANIFEST_KIND = "sglang-hcu-embedded-source"
+GENERATOR_VERSION = 5
 
-PLUGIN_PACKAGE = Path("sglang_dcu_plugin")
+PLUGIN_PACKAGE = Path("sglang_hcu_plugin")
 UPSTREAM_PLUGIN_LOADER = Path("python/sglang/srt/plugins/__init__.py")
 UPSTREAM_PACKAGE_INIT = Path("python/sglang/__init__.py")
 UPSTREAM_PYPROJECT = Path("python/pyproject.toml")
 
-LOADER_BEGIN = "    # BEGIN SGLANG DCU EMBEDDED PLUGIN"
-LOADER_END = "    # END SGLANG DCU EMBEDDED PLUGIN"
+LOADER_BEGIN = "    # BEGIN SGLANG HCU EMBEDDED PLUGIN"
+LOADER_END = "    # END SGLANG HCU EMBEDDED PLUGIN"
 LOADER_ANCHOR = "    for name, (func, dist_name) in plugins.items():\n"
-LOADER_BLOCK = """    from sglang_dcu_plugin import register as register_embedded_dcu
+LOADER_BLOCK = """    from sglang_hcu_plugin import register as register_embedded_hcu
 
     plugins.setdefault(
-        "dcu", (register_embedded_dcu, "sglang-dcu-embedded")
+        "hcu", (register_embedded_hcu, "sglang-hcu-embedded")
     )
 
 """
 
-BOOTSTRAP_BEGIN = "# BEGIN SGLANG DCU EMBEDDED BOOTSTRAP"
-BOOTSTRAP_END = "# END SGLANG DCU EMBEDDED BOOTSTRAP"
+BOOTSTRAP_BEGIN = "# BEGIN SGLANG HCU EMBEDDED BOOTSTRAP"
+BOOTSTRAP_END = "# END SGLANG HCU EMBEDDED BOOTSTRAP"
 BOOTSTRAP_ANCHOR = "_redirect_third_party_caches()\n"
 BOOTSTRAP_BLOCK = """
 
-from sglang_dcu_plugin.compat.aiter import (
-    bootstrap_aiter_compat as _bootstrap_dcu_aiter_compat,
+from sglang_hcu_plugin.compat.aiter import (
+    bootstrap_aiter_compat as _bootstrap_hcu_aiter_compat,
 )
 
-_bootstrap_dcu_aiter_compat()
+_bootstrap_hcu_aiter_compat()
 """
 
 PACKAGE_DATA_TABLE = '[tool.setuptools.package-data]\n'
-PACKAGE_DATA_LINE = '"sglang_dcu_plugin" = ["jit_overlay/**/*"]\n'
+PACKAGE_DATA_LINE = '"sglang_hcu_plugin" = ["jit_overlay/**/*"]\n'
 
 
 class ReconstructionError(RuntimeError):
@@ -126,7 +129,7 @@ def _require_file(root: Path, relative: Path, label: str) -> Path:
     return path
 
 
-def _tracked_plugin_files(plugin: Path, package: str = "sglang_dcu_plugin") -> list[Path]:
+def _tracked_plugin_files(plugin: Path, package: str = "sglang_hcu_plugin") -> list[Path]:
     output = _git(plugin, "ls-files", "-z", "--", str(Path(package)))
     relative_paths = [Path(value) for value in output.split("\0") if value]
     if not relative_paths:
@@ -192,13 +195,22 @@ def _inject_once(
     path.write_text(updated, encoding="utf-8")
 
 
-def _add_package_data(path: Path, package: str = "sglang_dcu_plugin") -> None:
+def _add_package_data(path: Path, package: str = "sglang_hcu_plugin") -> None:
     source = path.read_text(encoding="utf-8")
-    data_line = PACKAGE_DATA_LINE.replace("sglang_dcu_plugin", package)
+    data_line = PACKAGE_DATA_LINE.replace("sglang_hcu_plugin", package)
     if package == "hcu_sglang":
-        data_line = '\"hcu_sglang\" = [\"jit_overlay/**/*\", \"models/deepseek/current_v4/hcu_backend/csrc/*\"]\n'
+        patterns = [
+            "mem_cache/cpp_utils/*.cpp",
+            "mem_cache/rust_tree_core/crate/**/*",
+            "mem_cache/rust_tree_core/crate/.gitignore",
+            "jit_overlay/**/*",
+            "models/deepseek/current_v4/hcu_backend/csrc/*",
+            "models/deepseek/current_v4/execution/aiter_intree_configs/**/*",
+            "layers/attention/linear/csrc/*",
+        ]
+        data_line = '"hcu_sglang" = ' + json.dumps(patterns) + "\n"
     if data_line.strip() in source:
-        raise ReconstructionError(f"DCU package-data entry already exists: {path}")
+        raise ReconstructionError(f"HCU package-data entry already exists: {path}")
     if source.count(PACKAGE_DATA_TABLE) != 1:
         raise ReconstructionError(
             f"expected exactly one {PACKAGE_DATA_TABLE.strip()} table in {path}"
@@ -228,33 +240,33 @@ def _write_provenance(
     plugin_commit: str,
     branch: str,
     vendored_files: list[Path],
-    package: str = "sglang_dcu_plugin",
+    package: str = "sglang_hcu_plugin",
 ) -> Path:
     license_source = _require_file(plugin, Path("LICENSE"), "plugin license")
-    license_target = output / "THIRD_PARTY_LICENSES/sglang-dcu-plugin.LICENSE"
+    license_target = output / "THIRD_PARTY_LICENSES/sglang-hcu-plugin.LICENSE"
     license_target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(license_source, license_target)
 
-    requirements_source = plugin / "requirements-dcu.txt"
+    requirements_source = plugin / "requirements-hcu.txt"
     if requirements_source.is_file():
-        shutil.copy2(requirements_source, output / "python/requirements-dcu.txt")
+        shutil.copy2(requirements_source, output / "python/requirements-hcu.txt")
 
-    readme = output / "DCU_EMBEDDED.md"
+    readme = output / "HCU_EMBEDDED.md"
     readme.write_text(
-        """# Embedded SGLang DCU Adaptation
+        """# Embedded SGLang HCU Adaptation
 
 This repository was reconstructed from upstream SGLang and
 `sglang-plugin-das`. The plugin runtime is vendored under
-`python/sglang_dcu_plugin` and registered by SGLang's own plugin loader.
+`python/sglang_hcu_plugin` and registered by SGLang's own plugin loader.
 
-No separately installed `sglang-dcu-plugin` distribution and no
-`SGLANG_PLUGINS=dcu` setting are required. Compatible vendor dependencies remain required. When copied,
-`python/requirements-dcu.txt` records the legacy dependency list; otherwise
+No separately installed `sglang-hcu-plugin` distribution and no
+`SGLANG_PLUGINS=hcu` setting are required. Compatible vendor dependencies remain required. When copied,
+`python/requirements-hcu.txt` records the legacy dependency list; otherwise
 use the plugin source documentation for the pinned execution environment.
 
 The exact source revisions and vendored file hashes are recorded in
-`.sglang-dcu-embedded.json`.
-""".replace("sglang_dcu_plugin", package).replace("sglang-plugin-das", "hcu-sglang-plugin" if package == "hcu_sglang" else "sglang-plugin-das").replace("SGLANG_PLUGINS=dcu", "SGLANG_PLUGINS=hcu" if package == "hcu_sglang" else "SGLANG_PLUGINS=dcu"),
+`.sglang-hcu-embedded.json`.
+""".replace("sglang_hcu_plugin", package).replace("sglang-plugin-das", "hcu-sglang-plugin" if package == "hcu_sglang" else "sglang-plugin-das").replace("SGLANG_PLUGINS=hcu", "SGLANG_PLUGINS=hcu" if package == "hcu_sglang" else "SGLANG_PLUGINS=hcu"),
         encoding="utf-8",
     )
 
@@ -269,7 +281,7 @@ The exact source revisions and vendored file hashes are recorded in
         ]
     )
     if requirements_source.is_file():
-        tracked_outputs.append(output / "python/requirements-dcu.txt")
+        tracked_outputs.append(output / "python/requirements-hcu.txt")
 
     hashes = {
         str(path.relative_to(output)): _sha256(path)
@@ -308,11 +320,11 @@ def reconstruct_sglang_das(
     output: str | os.PathLike[str],
     *,
     revision: str = "HEAD",
-    branch: str = "embedded-dcu",
+    branch: str = "embedded-hcu",
     force: bool = False,
     plugin_package: str | None = None,
 ) -> ReconstructionResult:
-    """Create a standalone SGLang source repository with the DCU plugin embedded.
+    """Create a standalone SGLang source repository with the HCU plugin embedded.
 
     Both source worktrees must be clean. The destination is built in a sibling
     temporary directory and renamed only after validation succeeds. ``force``
@@ -336,10 +348,10 @@ def reconstruct_sglang_das(
     except ValueError as exc:
         raise ReconstructionError(str(exc)) from exc
     vendored_files = _tracked_plugin_files(plugin_path, package)
-    loader_block = LOADER_BLOCK.replace("sglang_dcu_plugin", package)
+    loader_block = LOADER_BLOCK.replace("sglang_hcu_plugin", package)
     if package == "hcu_sglang":
-        loader_block = loader_block.replace('"dcu"', '"hcu"').replace("sglang-dcu-embedded", "sglang-hcu-embedded")
-    bootstrap_block = BOOTSTRAP_BLOCK.replace("sglang_dcu_plugin", package)
+        loader_block = loader_block.replace('"hcu"', '"hcu"').replace("sglang-hcu-embedded", "sglang-hcu-embedded")
+    bootstrap_block = BOOTSTRAP_BLOCK.replace("sglang_hcu_plugin", package)
 
     try:
         resolved_revision = _git(upstream_path, "rev-parse", f"{revision}^{{commit}}")
@@ -382,7 +394,7 @@ def reconstruct_sglang_das(
             loader_block,
             LOADER_BEGIN,
             LOADER_END,
-            symbol="register_embedded_dcu",
+            symbol="register_embedded_hcu",
         )
         _inject_once(
             temp_path / UPSTREAM_PACKAGE_INIT,
@@ -390,7 +402,7 @@ def reconstruct_sglang_das(
             bootstrap_block,
             BOOTSTRAP_BEGIN,
             BOOTSTRAP_END,
-            symbol="_bootstrap_dcu_aiter_compat",
+            symbol="_bootstrap_hcu_aiter_compat",
             after=True,
         )
         _add_package_data(temp_path / UPSTREAM_PYPROJECT, package)
@@ -439,10 +451,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--upstream", required=True, help="clean upstream SGLang repo")
     parser.add_argument("--plugin", required=True, help="clean sglang-plugin-das repo")
-    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_hcu_plugin"))
     parser.add_argument("--output", required=True, help="new reconstructed repository")
     parser.add_argument("--revision", default="HEAD", help="upstream commit-ish")
-    parser.add_argument("--branch", default="embedded-dcu", help="branch in output repo")
+    parser.add_argument("--branch", default="embedded-hcu", help="branch in output repo")
     parser.add_argument(
         "--force",
         action="store_true",

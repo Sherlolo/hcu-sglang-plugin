@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 LIGHTOP_BACKEND_NAME = "lightop"
 
@@ -14,7 +14,7 @@ def _backend_is_lightop(backend: Any) -> bool:
 
 
 def _requested_lightop() -> bool:
-    if not is_dcu():
+    if not is_hcu():
         return False
     from sglang.srt.layers.moe import get_moe_runner_backend
 
@@ -23,7 +23,7 @@ def _requested_lightop() -> bool:
 
 def _uses_lightop_runner(quant_method: Any) -> bool:
     runner = getattr(quant_method, "runner", None)
-    return is_dcu() and _backend_is_lightop(getattr(runner, "runner_backend", None))
+    return is_hcu() and _backend_is_lightop(getattr(runner, "runner_backend", None))
 
 
 def around_create_moe_runner(
@@ -146,7 +146,7 @@ def around_compressed_apply(original, quant_method, layer, dispatch_output):
                 try_run_dspark_triton_fallback,
             )
 
-            if not is_dcu() or not is_missing_aiter_backend_error(error):
+            if not is_hcu() or not is_missing_aiter_backend_error(error):
                 raise
             fallback_output = try_run_dspark_triton_fallback(
                 quant_method,

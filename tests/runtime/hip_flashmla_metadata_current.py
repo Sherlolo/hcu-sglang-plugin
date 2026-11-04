@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 import unittest
 from unittest.mock import patch
 from hcu_sglang.compat.aiter import bootstrap_aiter_compat
@@ -10,7 +13,7 @@ class HipFlashMLAMetadataTests(unittest.TestCase):
     def test_real_hcu_factory_returns_fresh_consumer_metadata(self):
         from flash_mla.flash_mla_interface import FlashMLASchedMeta
         from hcu_sglang.utils import detection
-        with patch.object(detection,'is_dcu',return_value=True):
+        with patch.object(detection,'is_hcu',return_value=True):
             a=around_hip_create_flashmla_metadata(lambda:None)
             b=around_hip_create_flashmla_metadata(lambda:None)
         self.assertIsInstance(a,FlashMLASchedMeta);self.assertIsInstance(b,FlashMLASchedMeta)
@@ -19,7 +22,7 @@ class HipFlashMLAMetadataTests(unittest.TestCase):
     def test_non_hcu_preserves_native_factory(self):
         from hcu_sglang.utils import detection
         marker=object()
-        with patch.object(detection,'is_dcu',return_value=False):
+        with patch.object(detection,'is_hcu',return_value=False):
             self.assertIs(around_hip_create_flashmla_metadata(lambda:marker),marker)
 
 if __name__=='__main__':unittest.main()

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -45,7 +47,6 @@ from sglang.srt.layers.attention.dsa_backend import (
     dsa_use_prefill_cp,
     envs,
     flash_attn_varlen_func,
-    fp8_dtype,
     gather_cast_kv_fp8_pad_paged,
     gather_dequant_requant_fp8_paged,
     get_buffer,
@@ -57,7 +58,6 @@ from sglang.srt.layers.attention.dsa_backend import (
     get_platform,
     get_schedule,
     get_spec,
-    get_valid_kv_indices,
     grow_multi_ctas_kv_counter_buffer_if_needed,
     is_cp_active,
     is_cuda,
@@ -81,9 +81,11 @@ from sglang.srt.layers.attention.dsa_backend import (
     transform_index_page_table_decode,
     transform_index_page_table_prefill,
 )
+from sglang.kernels.ops.attention.dsa.triton_kernel import get_valid_kv_indices
+from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype
 from hcu_sglang.layers.attention.current_dsa.dsa_topk_backend import DSATopKBackend, TopkTransformMethod
-from hcu_sglang.utils.detection import is_dcu
-_is_hcu = is_dcu()
+from hcu_sglang.utils.detection import is_hcu
+_is_hcu = is_hcu()
 from hcu_sglang.layers.attention.current_dsa.flashmla_backend import DSAFlashMLAMetadata, can_fuse_flashmla_metadata, get_flashmla_op, refresh_flashmla_metadata, wrap_flashmla_metadata_result
 from hcu_sglang.layers.attention.current_dsa.forward_batch_utils import effective_forward_mode, get_flashmla_kv_valid_rows
 from hcu_sglang.layers.attention.current_dsa.dsa_backend_mtp_precompute import DeepseekSparseAttnBackendMTPPrecomputeMixin, PrecomputedMetadata, fill_decode_page_table_gpu

@@ -5,10 +5,21 @@ from __future__ import annotations
 from typing import Any
 
 from sglang.srt.environ import EnvBool, EnvBoolWithAlias, EnvFloat, EnvInt, EnvStr, Envs, _default_hip
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 _ENV_SPECS: dict[str, tuple[type, Any]] = {
+    'SGLANG_DP_USE_MAX_LEN': (EnvBool, False),
+    'SGLANG_EXPERIMENTAL_DSV4_DECODE_RADIX_CACHE': (EnvBool, False),
+    'SGLANG_MOONCAKE_FINAL_POLL_TIMEOUT_MS': (EnvFloat, 0.0),
+    'SGLANG_PD_HIDDEN_RECV_POOL_TOKENS': (EnvInt, -1),
+    "SGLANG_ENABLE_HICACHE_SWA_TAIL_ONLY_BACKUP": (EnvBool, False),
+    "SGLANG_ENABLE_CP_V2": (EnvBool, False),
+    "SGLANG_LIGHTOP_KVALLOC_KERNEL": (EnvBool, False),
+    "SGLANG_USE_FUSED_SILU_MUL_CLAMP_QUANT": (EnvBool, False),
+    'SGLANG_EXPERIMENTAL_LPLB_STATIC_PROBS': (EnvStr, None),
+    'SGLANG_SIMULATED_EXPERT_BALANCE': (EnvBool, False),
+    'SGLANG_MOE_ROUTER_USE_CONFIG_DTYPE': (EnvBool, False),
 
     'SGLANG_OPT_USE_FUSED_CLAMP_ACT_MUL': (EnvBool, True),
     'SGLANG_USE_FUSED_SILU_MUL_FP8_QUANT': (EnvBool, False),
@@ -16,6 +27,8 @@ _ENV_SPECS: dict[str, tuple[type, Any]] = {
     'SGLANG_AITER_INTREE_MHC_TILE_M16': (EnvBool, True),
     'SGLANG_DSV4_DECODER_TAIL_GRAPH_MAX_ROWS': (EnvInt, 2048),
     'SGLANG_DSV4_DENSE_MXSCALE': (EnvBool, False),
+    'SGLANG_USE_LIGHTOP_CHANNEL_FP8': (EnvBool, False),
+    'SGLANG_DSV4_DENSE_MXSCALE_SHAPES': (EnvStr, ''),
     'SGLANG_DSV4_FUSE_MHC_REPEAT_CP_SPLIT': (EnvBool, False),
     "SGLANG_W4A8_TPMOE_BACKEND": (EnvStr, "auto"),
     "SGLANG_FORCE_AITER_MOE_C": (EnvBool, False),
@@ -100,6 +113,7 @@ _ENV_SPECS: dict[str, tuple[type, Any]] = {
     "SGLANG_USE_FUSED_RMS_QUANT": (EnvBool, False),
     "SGLANG_USE_FUSED_RMS_ROTARY": (EnvBool, False),
     "SGLANG_USE_FUSED_SILU_MUL_QUANT": (EnvBool, False),
+    "SGLANG_USE_LEGACY_FUSED_RMS_QUANT": (EnvBool, False),
     "SGLANG_USE_FUSED_TOPK_SOFTMAX": (EnvBool, False),
     "SGLANG_USE_LIGHTOP": (EnvBool, False),
     "SGLANG_USE_LIGHTOP_GROUP_FP8_QUANT": (EnvBool, False),
@@ -129,6 +143,7 @@ def register_envs() -> None:
     for name, alias in {
         "SGLANG_DSA_HCU_LIGHTOP_MASK_TOPK": "SGLANG_USE_LIGHTOP_MASK_TOPK",
         "SGLANG_DSA_HCU_REUSE_SORTED_TOPK": "SGLANG_NSA_HCU_REUSE_SORTED_TOPK",
+        "SGLANG_DSA_HCU_INT8_INDEX_K_CACHE": "SGLANG_NSA_HCU_INT8_INDEX_K_CACHE",
     }.items():
         if not hasattr(Envs, name):
             field = EnvBoolWithAlias(False, deprecated_name=alias)
@@ -138,6 +153,6 @@ def register_envs() -> None:
     for name, (field_type, default) in _ENV_SPECS.items():
         _install_field(name, field_type, default, replace=False)
 
-    if is_dcu():
+    if is_hcu():
         for name, (field_type, default) in _HCU_DEFAULT_OVERRIDES.items():
             _install_field(name, field_type, default, replace=True)

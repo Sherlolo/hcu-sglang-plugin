@@ -22,7 +22,7 @@ import logging
 from typing import Optional, Tuple
 import torch
 from sglang.srt.environ import envs
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 logger = logging.getLogger(__name__)
 _is_hcu = is_hcu()
 SUPPORTED_CANDIDATE_BLOCK_SIZES = (8,)

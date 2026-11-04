@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Literal, Optional, TypeAlias, Union, cast
 import torch
 from sglang.kernels.jit.utils import is_hip_runtime
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from hcu_sglang.models.deepseek.current_v4.hcu_backend.compress import CompressorDecodePlan, CompressorPrefillPlan, compress_forward, compress_norm_rope_store
 from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 from sglang.srt.environ import envs

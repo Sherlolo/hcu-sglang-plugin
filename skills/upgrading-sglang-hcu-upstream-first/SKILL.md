@@ -1,6 +1,6 @@
 ---
 name: upgrading-sglang-hcu-upstream-first
-description: 将 SGLang HCU 外部插件升级到指定官方 tag、分支或 commit，并准备 wheel、镜像或 embedded 发版验收。用于上游接管旧补丁、接口漂移、测试选取和发布证据闭合；仅做三方差异盘点时使用 sglang-dcu-plugin-migration。
+description: 将 SGLang HCU 外部插件升级到指定官方 tag、分支或 commit，并准备 wheel、镜像或 embedded 发版验收。用于上游接管旧补丁、接口漂移、测试选取和发布证据闭合；仅做三方差异盘点时使用 sglang-hcu-plugin-migration。
 ---
 
 # SGLang HCU 上游优先升级与发版
@@ -17,7 +17,7 @@ description: 将 SGLang HCU 外部插件升级到指定官方 tag、分支或 co
 ## 执行主线
 
 1. 固定实际已验证基线、plugin 起点、fork 官方基点与用户目标 ref/SHA，记录 dirty、环境及功能范围。目标缺失时先整理基线，再澄清；不把本地 HEAD 或历史案例作为默认目标。复制 [升级记录模板](../../templates/upgrade-release-record.md) 建立两张表。
-2. 读取 [升级与接管](references/upgrade-workflow.md)，用 [三方迁移 Skill](../sglang-dcu-plugin-migration/SKILL.md) 盘点全部维护面；枚举 Hook 之外的具名 seam、registry、alias、native 与构建/配置差异。先判定官方能否接管，再决定保留、窄化或删除；自动台账仍是 pending。
+2. 读取 [升级与接管](references/upgrade-workflow.md)，用 [三方迁移 Skill](../sglang-hcu-plugin-migration/SKILL.md) 盘点全部维护面；枚举 Hook 之外的具名 seam、registry、alias、native 与构建/配置差异。先判定官方能否接管，再决定保留、窄化或删除；自动台账仍是 pending。
 3. 按 [契约与影响分析](references/contracts-and-impact.md) 审查新 owner、签名及完整数据流，建立改动到测试的映射，按 [历史经验](../../docs/development-methodology.md) 保留真实公共分发、readout、FFN 出口及实际 TP>1 的反例，不以旧单卡 mock 的成功继承语义正确性。优先固定目标已有的 seam/注册入口；不能把 vLLM Platform、CustomOp 或 MRV2 机制假定为 SGLang 接口。
 4. 按 [兼容与产物](references/compatibility-and-artifacts.md) 选择可复用产物或最小必要构建，隔离验证父子进程来源。源码固定 SHA 用于复现；运行时兼容条件由实际能力/ABI 和项目策略决定，不默认绑定一个完整 wheel 字符串。
 5. 执行快速反馈后，完成本次必测矩阵。涉及 native、KV、FLA、Graph、collective 时读 [原生与状态契约](references/native-contracts.md)；服务、准确率、性能与交付按 [发版验收](references/release-validation.md)。保留用户指定 backend、Graph、精度、prefix、投机及拓扑；诊断降级单独记录。

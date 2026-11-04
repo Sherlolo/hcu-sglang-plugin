@@ -1,4 +1,4 @@
-"""DCU hardware detection (plugin-internal)."""
+"""HCU hardware detection (plugin-internal)."""
 
 from __future__ import annotations
 
@@ -15,28 +15,24 @@ _FP8_ARCHS = ("gfx938",)
 
 
 @lru_cache(maxsize=1)
-def is_dcu() -> bool:
-    if not getattr(torch.version, "hip", None):
+def is_hcu() -> bool:
+    if getattr(torch.version, "hip", None) is None:
         return False
     try:
         props = torch.cuda.get_device_properties(0)
         gcn_arch = getattr(props, "gcnArchName", "")
         return any(gfx in gcn_arch for gfx in _SUPPORTED_ARCHS)
     except Exception as e:
-        logger.warning("DCU detection failed: %s", e)
+        logger.warning("HCU detection failed: %s", e)
         return False
 
 
 @lru_cache(maxsize=1)
-def is_dcu_native_fp8_supported() -> bool:
-    if not is_dcu():
+def is_hcu_native_fp8_supported() -> bool:
+    if not is_hcu() or not torch.version.hip:
         return False
-    try:
-        gcn_arch = getattr(torch.cuda.get_device_properties(0), "gcnArchName", "")
-        return any(gfx in gcn_arch for gfx in _FP8_ARCHS)
-    except Exception as e:
-        logger.warning("DCU native FP8 detection failed: %s", e)
-        return False
+    gcn_arch = torch.cuda.get_device_properties(0).gcnArchName
+    return any(gfx in gcn_arch for gfx in _FP8_ARCHS)
 
 
 def get_gcn_arch(device_id: int = 0) -> str:

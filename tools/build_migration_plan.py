@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Collect pinned Git trees and render a standalone DAS-to-plugin migration plan."""
 from __future__ import annotations
 
@@ -110,7 +113,7 @@ def extract_provenance(fork: Repository, plugin: Repository) -> tuple[dict, list
     source_names = set(fork.files)
     source_heads = {'fork_commit', 'fork_head'}
     for path in sorted(plugin.files):
-        if not path.startswith('sglang_dcu_plugin/') or 'provenance' not in path or not path.endswith('.json'):
+        if not path.startswith('sglang_hcu_plugin/') or 'provenance' not in path or not path.endswith('.json'):
             continue
         try:
             document = json.loads(content(plugin, path) or b'null')
@@ -204,7 +207,7 @@ def validate_plan(plan: dict) -> None:
 def inventory(official: Repository, fork: Repository, plugin: Repository, plan: dict) -> dict:
     validate_plan(plan)
     if CONTRACT not in plugin.files:
-        raise ValueError('Pinned DCU target contract is missing: ' + CONTRACT)
+        raise ValueError('Pinned HCU target contract is missing: ' + CONTRACT)
     contract = json.loads(content(plugin, CONTRACT) or b'[]')
     if not isinstance(contract, list) or not contract or any(not isinstance(value, str) for value in contract):
         raise ValueError('Expected a string-list target contract')
@@ -212,7 +215,7 @@ def inventory(official: Repository, fork: Repository, plugin: Repository, plan: 
     target_set = set(targets)
     literal_sites = defaultdict(list)
     for path in sorted(plugin.files):
-        if not path.startswith('sglang_dcu_plugin/') or not path.endswith('.py'):
+        if not path.startswith('sglang_hcu_plugin/') or not path.endswith('.py'):
             continue
         body = content(plugin, path)
         if body is None:
@@ -243,7 +246,7 @@ def inventory(official: Repository, fork: Repository, plugin: Repository, plan: 
     provenance, provenance_diagnostics = extract_provenance(fork, plugin)
     native_by_oid = defaultdict(list)
     for path, item in plugin.files.items():
-        if path.startswith('sglang_dcu_plugin/') and Path(path).suffix in NATIVE and item['size'] >= 64:
+        if path.startswith('sglang_hcu_plugin/') and Path(path).suffix in NATIVE and item['size'] >= 64:
             native_by_oid[item['oid']].append(path)
     rows = []
     semantics = {}

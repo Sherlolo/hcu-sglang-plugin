@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import copy
@@ -36,7 +39,7 @@ class MigrationPlanTests(unittest.TestCase):
         self.write('official', 'python/sglang/srt/only_official.py', 'VALUE = 1\n')
         target = 'sglang.srt.layers.quantization.get_quantization_config'
         self.write('plugin', CONTRACT, json.dumps([target]))
-        self.write('plugin', 'sglang_dcu_plugin/hooks.py', 'TARGET = ' + repr(target) + '\n')
+        self.write('plugin', 'sglang_hcu_plugin/hooks.py', 'TARGET = ' + repr(target) + '\n')
         for path in self.repos.values():
             self.commit(path)
         self.plan = {'title': 'test plan', 'reviewed_on': '2026-10-28',
@@ -72,7 +75,7 @@ class MigrationPlanTests(unittest.TestCase):
         self.assertEqual(rows['python/sglang/srt/only_fork.py']['symbols'], [['added', 1, 'async function']])
         package = rows['python/sglang/srt/layers/quantization/__init__.py']
         self.assertEqual(len(package['targets']), 1)
-        self.assertEqual(package['targets'][0]['literal_sites'][0][0], 'sglang_dcu_plugin/hooks.py')
+        self.assertEqual(package['targets'][0]['literal_sites'][0][0], 'sglang_hcu_plugin/hooks.py')
         self.assertEqual(report['summary']['unmatched_targets'], 0)
         self.assertEqual(report['groups'][0]['tasks'][0]['status'], 'proposed')
         self.assertIsNone(report['groups'][0]['tasks'][0]['assignee'])
@@ -93,12 +96,12 @@ class MigrationPlanTests(unittest.TestCase):
     def test_provenance_mismatch_and_identical_native_bytes_remain_static_clues(self):
         native = 'int native_kernel() { return 1; }\n' * 4
         self.write('fork', 'python/sglang/kernels/example.cu', native)
-        self.write('plugin', 'sglang_dcu_plugin/kernels/example.cu', native)
-        self.write('plugin', 'sglang_dcu_plugin/source-provenance.json', json.dumps({'source': 'python/sglang/srt/example.py', 'source_sha256': '0' * 64}))
+        self.write('plugin', 'sglang_hcu_plugin/kernels/example.cu', native)
+        self.write('plugin', 'sglang_hcu_plugin/source-provenance.json', json.dumps({'source': 'python/sglang/srt/example.py', 'source_sha256': '0' * 64}))
         self.commit(self.repos['fork']); self.commit(self.repos['plugin'])
         report = self.snapshot();rows = {row['path']: row for row in report['files']}
         self.assertEqual(rows['python/sglang/srt/example.py']['provenance'][0]['status'], 'source_hash_mismatch')
-        self.assertEqual(rows['python/sglang/kernels/example.cu']['identical_native'], ['sglang_dcu_plugin/kernels/example.cu'])
+        self.assertEqual(rows['python/sglang/kernels/example.cu']['identical_native'], ['sglang_hcu_plugin/kernels/example.cu'])
         self.assertEqual(report['groups'][0]['tasks'][0]['status'], 'proposed')
 
     def test_gitlinks_and_symlinks_do_not_read_external_source(self):

@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, Union
 import torch
 from sglang.kernels.jit.utils import cache_once, is_arch_support_pdl, load_jit, make_cpp_args
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils import is_hip, is_xpu
 from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 from sglang.kernels.ops.attention.dsv4.utils import make_name

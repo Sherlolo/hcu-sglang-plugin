@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def before_load_weights(model, weights):
-    if not is_dcu():
+    if not is_hcu():
         return None
     parameter_names = {name for name, _ in model.named_parameters()}
     model._dspark_scale_suffix = (
@@ -19,7 +19,7 @@ def before_load_weights(model, weights):
 
 def after_remap(mapped, model, name):
     del name
-    if not is_dcu() or mapped is None:
+    if not is_hcu() or mapped is None:
         return mapped
     suffix = getattr(model, "_dspark_scale_suffix", "weight_scale_inv")
     if suffix != "weight_scale_inv":

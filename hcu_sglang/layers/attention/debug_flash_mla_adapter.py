@@ -208,9 +208,9 @@ def flash_mla_with_kvcache_entrypoint(backend: str, **kwargs):
 
 
 def around_flash_mla_with_kvcache_entrypoint(original, backend: str, **kwargs):
-    from hcu_sglang.utils.detection import is_dcu
+    from hcu_sglang.utils.detection import is_hcu
 
-    if not is_dcu():
+    if not is_hcu():
         return original(backend=backend, **kwargs)
     from sglang.srt.environ import envs
 
@@ -220,9 +220,9 @@ def around_flash_mla_with_kvcache_entrypoint(original, backend: str, **kwargs):
 
 
 def around_hip_create_flashmla_metadata(original):
-    from hcu_sglang.utils.detection import is_dcu
+    from hcu_sglang.utils.detection import is_hcu
 
-    if not is_dcu():
+    if not is_hcu():
         return original()
     from hcu_sglang.layers.attention.current_dsa.flashmla_backend import get_flashmla_op
 

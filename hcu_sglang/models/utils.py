@@ -1,4 +1,4 @@
-"""DCU model utility adaptations."""
+"""HCU model utility adaptations."""
 
 from __future__ import annotations
 

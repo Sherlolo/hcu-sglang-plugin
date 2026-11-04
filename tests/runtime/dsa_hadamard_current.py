@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from unittest.mock import patch
 import unittest
 import torch
@@ -7,7 +10,7 @@ from sglang.srt.layers.attention.dsa import dsa_indexer as S
 from sglang.srt.plugins.hook_registry import HookRegistry,HookType
 from hcu_sglang.layers.attention.current_dsa import rotation as R
 
-class HadamardCurrentTests(unittest.TestCase):
+class HadamarhCurrentTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.original=staticmethod(S.rotate_activation);HookRegistry.reset()

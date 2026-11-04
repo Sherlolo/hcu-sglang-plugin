@@ -9,7 +9,7 @@ from typing import Any, Callable
 import torch
 
 from hcu_sglang.compat.aiter import install_aiter_compat
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 install_aiter_compat()
 
@@ -185,7 +185,7 @@ def around_build_with_mha_pool(
     *args,
     **kwargs,
 ) -> Any:
-    if not is_dcu() or not _layout_enabled():
+    if not is_hcu() or not _layout_enabled():
         return original(configurator, *args, **kwargs)
     if getattr(configurator, "kv_cache_dtype_str", None) == "mxfp8":
         return original(configurator, *args, **kwargs)

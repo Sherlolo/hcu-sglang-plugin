@@ -9,7 +9,7 @@ from hcu_sglang.models.deepseek.current_v4.hcu_backend.mqa_logits_utils import m
 from sglang.srt.model_executor.runner_backend_utils.breakable_cuda_graph.context import is_in_breakable_cuda_graph
 from sglang.srt.model_executor.runner_backend_utils.tc_piecewise_cuda_graph import is_in_tc_piecewise_cuda_graph
 from sglang.srt.model_executor.runner_utils.capture_mode import get_is_capture_mode
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils import is_hip, is_sm120_supported, is_xpu
 logger = logging.getLogger(__name__)
 _is_hcu = is_hcu()

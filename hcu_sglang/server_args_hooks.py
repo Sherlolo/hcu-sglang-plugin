@@ -7,10 +7,12 @@ import os
 from sglang.srt.arg_groups.arg_utils import is_record
 from copy import deepcopy
 from hcu_sglang.config import (configure_minimax_opt, minimax_opt_enabled,
-    configure_cp_cache_layer_split, cp_cache_layer_split_enabled)
+    configure_cp_cache_layer_split, cp_cache_layer_split_enabled,
+    configure_custom_all_reduce_backend, CUSTOM_ALL_REDUCE_BACKENDS)
 from typing import Any, Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
+from hcu_sglang.config import hy3_sp_enabled, configure_hy3_sp
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ def _restore_env_fields(envs: Any, snapshot: dict[str, str | None]) -> None:
 def handle_model_specific_adjustments(
     original: Callable[..., Any], server_args: Any
 ) -> Any:
-    if not is_dcu() or _model_arch(server_args) != "DeepseekV4ForCausalLM":
+    if not is_hcu() or _model_arch(server_args) != "DeepseekV4ForCausalLM":
         return original(server_args)
 
     from sglang.srt.environ import envs
@@ -64,7 +66,7 @@ def handle_model_specific_adjustments(
 def after_deepseek_family_overrides(
     result: dict[str, Any], server_args: Any, hf_config: Any
 ) -> dict[str, Any]:
-    if not is_dcu():
+    if not is_hcu():
         return result
     from sglang.srt.configs.model_config import is_deepseek_dsa
 
@@ -74,7 +76,7 @@ def after_deepseek_family_overrides(
 
 
 def after_dsa_split_backend_resolution(result: dict[str, Any], view: Any):
-    if not is_dcu() or view.enable_hisparse:
+    if not is_hcu() or view.enable_hisparse:
         return result
     if view.dsa_prefill_backend is not None or view.dsa_decode_backend is not None:
         return result
@@ -126,7 +128,7 @@ def _resolving_view(server_args):
 
 
 def handle_a2a_moe(result: Any, server_args: Any) -> Any:
-    if not is_dcu():
+    if not is_hcu():
         return result
 
     from sglang.srt.environ import envs
@@ -189,6 +191,22 @@ def after_add_cli_args(result: Any, parser: Any) -> Any:
         parser.add_argument("--cuda-graph-max-bs", dest=canonical.dest,
                             type=canonical.type, default=argparse.SUPPRESS,
                             help="Compatibility alias for --cuda-graph-max-bs-decode.")
+    for alias, canonical in (("--nsa-prefill-backend", "--dsa-prefill-backend"), ("--nsa-decode-backend", "--dsa-decode-backend")):
+        if alias not in existing and canonical in existing:
+            import argparse
+            from sglang.srt.arg_groups.argparse_actions import DeprecatedAliasStoreAction
+            parser.add_argument(
+                alias, dest=existing[canonical].dest, action=DeprecatedAliasStoreAction,
+                new_flag=canonical, default=argparse.SUPPRESS, type=str,
+                choices=["flashmla_sparse", "flashmla_sparse_q8", "flashmla_kv", "flashmla_auto", "flashinfer_sparse_mla", "fa3", "tilelang", "aiter", "trtllm"],
+                help=f"[Deprecated] Use {canonical} instead.",
+            )
+    if "--custom-all-reduce-backend" not in existing:
+        parser.add_argument(
+            "--custom-all-reduce-backend", choices=CUSTOM_ALL_REDUCE_BACKENDS,
+            default="auto",
+            help="Custom all-reduce backend: auto, native, aiter or off; disable-custom-all-reduce takes precedence.",
+        )
     if "--minimax-opt" not in existing:
         parser.add_argument(
             "--minimax-opt",
@@ -196,6 +214,9 @@ def after_add_cli_args(result: Any, parser: Any) -> Any:
             default=None,
             help="Enable MiniMax M2 sequence-parallel prefill optimization.",
         )
+    if "--hy3-sp" not in existing:
+        parser.add_argument("--hy3-sp", action="store_true", default=None,
+                            help="Enable Hunyuan V3 sequence parallelism over TP ranks.")
     if "--enable-cp-cache-layer-split" not in existing:
         group=parser.add_mutually_exclusive_group()
         group.add_argument("--enable-cp-cache-layer-split", "--hcu-cp-cache-layer-split",
@@ -215,15 +236,20 @@ def before_add_cli_args(*args, **kwargs):
 
 
 def before_from_cli_args(cls, args):
+    configure_custom_all_reduce_backend(getattr(args, "custom_all_reduce_backend", None))
     configure_minimax_opt(getattr(args, "minimax_opt", None))
+    configure_hy3_sp(getattr(args, "hy3_sp", None))
     configure_cp_cache_layer_split(getattr(args, "hcu_plugin_cp_cache_layer_split", None))
 
 
 def after_from_cli_args(result: Any, cls: Any, args: Any) -> Any:
+    configure_custom_all_reduce_backend(getattr(args, "custom_all_reduce_backend", None))
     configure_minimax_opt(getattr(args, "minimax_opt", None))
+    configure_hy3_sp(getattr(args, "hy3_sp", None))
     configure_cp_cache_layer_split(getattr(args, "hcu_plugin_cp_cache_layer_split", None))
     if not is_record(result):
         result.minimax_opt = minimax_opt_enabled()
+        result.hy3_sp = hy3_sp_enabled()
     return result
 
 
@@ -238,7 +264,7 @@ def _hcu_post_process(view):
     from sglang.srt.arg_groups.model_override_base import model_config_of
     from sglang.srt.configs.model_config import is_deepseek_dsa
     changes = {}
-    if not is_dcu():
+    if not is_hcu():
         if cp_cache_layer_split_enabled():
             raise ValueError("--enable-cp-cache-layer-split requires the HCU plugin platform")
         return changes

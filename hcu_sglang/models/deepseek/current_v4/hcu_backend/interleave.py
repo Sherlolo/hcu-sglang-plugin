@@ -21,7 +21,7 @@ from sglang.srt.layers.cp.base import BaseContextParallelMetadata, ContextParall
 from sglang.srt.layers.cp.padding import pad_local_rows
 from sglang.srt.layers.dp_attention import attn_cp_all_gather_into_tensor, is_allocation_symmetric
 from sglang.srt.runtime_context import get_parallel
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hcu = is_hcu()
 _HCU_GATHER_CHUNK_THRESHOLD_BYTES = 512 * 1024 * 1024
 _HCU_GATHER_CHUNK_BYTES = 64 * 1024 * 1024

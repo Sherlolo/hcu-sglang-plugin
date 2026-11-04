@@ -4,7 +4,7 @@
 def validate_cp_cache_layer_split(args, hf_config):
     from sglang.srt.environ import envs
     from sglang.srt.utils import is_cuda
-    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from hcu_sglang.utils.detection import is_hcu as is_hcu
 
     def require(condition, message):
         if not condition:

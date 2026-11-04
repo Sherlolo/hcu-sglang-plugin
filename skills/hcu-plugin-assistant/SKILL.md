@@ -28,7 +28,7 @@ description: SGLang HCU 插件方法库的统一任务入口。根据用户的�
 | 安装源码/wheel、pip/metadata/入口/设备访问问题 | [hcu-plugin-install](../hcu-plugin-install/SKILL.md) | [安装与启用](../../docs/installation.md) |
 | 给已有插件增加融合、后端、内核或其他能力 | [hcu-plugin-dev](../hcu-plugin-dev/SKILL.md) | [能力开发](../../docs/plugins.md) |
 | 已加载后报错、错误答案、Graph、TP 卡住、性能回归 | [hcu-plugin-triage](../hcu-plugin-triage/SKILL.md) | [故障诊断](../../docs/troubleshooting.md) |
-| 对照 official/fork/plugin，建立差异与处置台账 | [sglang-dcu-plugin-migration](../sglang-dcu-plugin-migration/SKILL.md) | [三方迁移](../../docs/migration.md) |
+| 对照 official/fork/plugin，建立差异与处置台账 | [sglang-hcu-plugin-migration](../sglang-hcu-plugin-migration/SKILL.md) | [三方迁移](../../docs/migration.md) |
 | 指定官方目标版本升级、补丁接管与发版验收 | [upgrading-sglang-hcu-upstream-first](../upgrading-sglang-hcu-upstream-first/SKILL.md) | [版本升级](../../docs/upgrading.md) |
 | 从 official + plugin 生成 embedded 源码并核验 | [hcu-plugin-backtrack](../hcu-plugin-backtrack/SKILL.md) | [源码回溯](../../docs/backtracking.md) |
 

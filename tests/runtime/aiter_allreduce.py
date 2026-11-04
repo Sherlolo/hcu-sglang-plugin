@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from contextlib import ExitStack, contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
@@ -57,7 +60,7 @@ class AiterAlignmentTests(unittest.TestCase):
             stack.enter_context(patch.dict(os.environ, values))
             os.environ.pop('AITER_AR_MAX_SIZE_MB', None)
             stack.enter_context(patch.dict(sys.modules, {fake.__name__:fake}))
-            stack.enter_context(patch.object(hooks, 'is_dcu', return_value=True))
+            stack.enter_context(patch.object(hooks, 'is_hcu', return_value=True))
             stack.enter_context(patch.object(S, '_is_cuda', False))
             stack.enter_context(patch.object(S, '_is_hip', True))
             stack.enter_context(patch.object(S, '_is_musa', False))
@@ -72,7 +75,7 @@ class AiterAlignmentTests(unittest.TestCase):
                 if exc.name != 'hcu_sglang.distributed_aiter':
                     raise
             else:
-                stack.enter_context(patch.object(runtime, 'is_dcu', return_value=True))
+                stack.enter_context(patch.object(runtime, 'is_hcu', return_value=True))
             yield
 
     def factory(self):
@@ -142,7 +145,7 @@ class AiterAlignmentTests(unittest.TestCase):
     def test_non_hcu_preserves_effective_original(self):
         calls = []
         group, device, sentinel = object(), object(), object()
-        with patch.object(hooks, 'is_dcu', return_value=False):
+        with patch.object(hooks, 'is_hcu', return_value=False):
             result = hooks.around_dispatch_custom_allreduce(lambda *a: calls.append(a) or sentinel, group, device)
         self.assertIs(result, sentinel)
         self.assertEqual(calls, [(group, device)])

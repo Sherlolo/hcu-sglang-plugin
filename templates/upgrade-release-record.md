@@ -18,7 +18,7 @@
 
 ## 2. 补丁迁移表
 
-逐条覆盖旧注册/Hook/具名 seam、registry、alias、复制实现、native、build/config。稳定行为 ID 与 [迁移契约](../skills/sglang-dcu-plugin-migration/references/migration-contract.md) 台账条目关联，清单重排保存 ID 映射。处置与状态沿用该契约。
+逐条覆盖旧注册/Hook/具名 seam、registry、alias、复制实现、native、build/config。稳定行为 ID 与 [迁移契约](../skills/sglang-hcu-plugin-migration/references/migration-contract.md) 台账条目关联，清单重排保存 ID 映射。处置与状态沿用该契约。
 
 | 行为 ID / 来源位置与前提 | 官方目标 owner / 消费者与变化 | 接管证据 / HCU 剩余差异 | 处置 / 唯一实现 owner / 候选位置 | seam、加载顺序与 fallback | 临时 patch 退出条件 | 验收行 ID / 证据 / 状态 |
 |---|---|---|---|---|---|---|

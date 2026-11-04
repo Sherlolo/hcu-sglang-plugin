@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Statically validate lazy plugin REPLACE hooks against an SGLang checkout."""
 
 from __future__ import annotations
@@ -78,7 +81,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--official-python", type=Path, required=True)
     parser.add_argument("--plugin-root", type=Path, required=True)
-    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_hcu_plugin"))
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 

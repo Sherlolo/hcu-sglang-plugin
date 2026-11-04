@@ -1,4 +1,4 @@
-"""FlashAttention hooks for DCU fused RMSNorm + RoPE KV-store paths."""
+"""FlashAttention hooks for HCU fused RMSNorm + RoPE KV-store paths."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import types
 
 from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 from hcu_sglang.models.fused_rotary import has_fused_kv_store
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ def register() -> None:
 
 
 def around_init(original_fn, backend, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original_fn(backend, *args, **kwargs)
 
     from hcu_sglang.layers.attention.flashattention_interface import (
@@ -81,7 +81,7 @@ def around_init(original_fn, backend, *args, **kwargs):
 
 
 def _should_skip_kv_store(args, kwargs) -> bool:
-    if not is_dcu():
+    if not is_hcu():
         return False
 
     # Method args:
@@ -129,7 +129,15 @@ def around_forward_decode(original_fn, *args, **kwargs):
 def around_get_paged_mha_kv_cache(original_fn, backend, layer, *, head_group_num=1):
     from hcu_sglang.mem_cache.hcu_mha_pool import HCUMHATokenToKVPool
     pool = backend.token_to_kv_pool
-    if not is_dcu() or not isinstance(pool, HCUMHATokenToKVPool):
+    hcu_pool = None
+    if is_hcu():
+        if isinstance(pool, HCUMHATokenToKVPool):
+            hcu_pool = pool
+        else:
+            inner = getattr(pool, "full_kv_pool", None)
+            if isinstance(inner, HCUMHATokenToKVPool):
+                hcu_pool = inner
+    if hcu_pool is None:
         return original_fn(backend, layer, head_group_num=head_group_num)
     key, value = pool.get_kv_buffer(layer.layer_id)
     page = backend.page_size

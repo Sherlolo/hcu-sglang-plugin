@@ -7,14 +7,24 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def after_get_default_target_flags(flags: list[str], arch: Any = None) -> list[str]:
-    if not is_dcu():
+    if "-DUSE_ROCM" not in flags:
         return flags
+    fp8_flag = "-DHIP_FP8_TYPE_E4M3=1"
+    try:
+        device = torch.cuda.current_device()
+        gcn_arch = torch.cuda.get_device_properties(device).gcnArchName
+        if any(gfx in gcn_arch for gfx in (
+            "gfx90a", "gfx936", "gfx938", "gfx940", "gfx941", "gfx942"
+        )):
+            fp8_flag = "-DHIP_FP8_TYPE_FNUZ=1"
+    except Exception:
+        pass
     return [
-        "-DHIP_FP8_TYPE_FNUZ=1" if flag == "-DHIP_FP8_TYPE_E4M3=1" else flag
+        fp8_flag if flag in ("-DHIP_FP8_TYPE_E4M3=1", "-DHIP_FP8_TYPE_FNUZ=1") else flag
         for flag in flags
     ]
 
@@ -29,7 +39,7 @@ def around_assign_extend_cache_locs_func(
     draft_token_num: int,
     device: Any,
 ) -> torch.Tensor:
-    if not is_dcu():
+    if not is_hcu():
         return original(
             req_pool_indices,
             req_to_token,
@@ -38,6 +48,19 @@ def around_assign_extend_cache_locs_func(
             batch_size,
             draft_token_num,
             device,
+        )
+
+    native = importlib.import_module("sglang.kernels.ops.speculative.cache_locs")
+    platform_fn = native._get_oot_speculative_cache_locs_fn()
+    if platform_fn is not None:
+        return platform_fn(
+            req_pool_indices=req_pool_indices,
+            req_to_token=req_to_token,
+            start_offset=start_offset,
+            end_offset=end_offset,
+            batch_size=batch_size,
+            draft_token_num=draft_token_num,
+            device=device,
         )
 
     from sglang.srt.utils import get_bool_env_var
@@ -70,35 +93,8 @@ def around_assign_extend_cache_locs_func(
     return out_cache_loc
 
 
-def around_scaled_fp8_quant(
-    original: Callable[..., tuple[torch.Tensor, torch.Tensor]],
-    input: torch.Tensor,
-    scale: torch.Tensor | None = None,
-    num_token_padding: int | None = None,
-    use_per_token_if_dynamic: bool = False,
-) -> tuple[torch.Tensor, torch.Tensor]:
-    if not (is_dcu() and scale is None and use_per_token_if_dynamic):
-        return original(input, scale, num_token_padding, use_per_token_if_dynamic)
-
-    from lightop.quant import per_token_quant_fp8
-    from sglang.kernels.ops.quantization.fp8_kernel import fp8_dtype
-
-    if not input.is_contiguous():
-        input = input.contiguous()
-    output = torch.empty_like(input, dtype=fp8_dtype)
-    output_scale = torch.empty(
-        (input.shape[0], 1), device=input.device, dtype=torch.float32
-    )
-    return per_token_quant_fp8(
-        input,
-        dtype=output.dtype,
-        out_q=output,
-        out_scale=output_scale,
-    )
-
-
 def _dispatch_mhc(name: str, original: Callable[..., Any], *args: Any, **kwargs: Any):
-    if not is_dcu():
+    if not is_hcu():
         return original(*args, **kwargs)
     from hcu_sglang.kernels import mhc
 
@@ -130,7 +126,7 @@ def around_mhc_fused_post_pre(
 def around_vision_flash3_init(
     original: Callable[..., Any], instance: Any, *args: Any, **kwargs: Any
 ):
-    if not is_dcu():
+    if not is_hcu():
         return original(instance, *args, **kwargs)
     vision = importlib.import_module("sglang.srt.layers.attention.vision")
     from hcu_sglang.layers.attention.flashattention_interface import (
@@ -158,11 +154,6 @@ def register_hooks() -> None:
         "sglang.kernels.ops.speculative.cache_locs."
         "assign_extend_cache_locs_func",
         around_assign_extend_cache_locs_func,
-        HookType.AROUND,
-    )
-    HookRegistry.register(
-        "sglang.kernels.ops.quantization.fp8_kernel.scaled_fp8_quant",
-        around_scaled_fp8_quant,
         HookType.AROUND,
     )
     mhc_target = "sglang.kernels.ops.layernorm.mhc"

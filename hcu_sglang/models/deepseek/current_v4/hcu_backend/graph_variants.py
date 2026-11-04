@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar, Optional, Protocol
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hcu = is_hcu()
 if TYPE_CHECKING:
     from sglang.srt.model_executor.forward_batch_info import ForwardBatch
@@ -34,9 +34,13 @@ class DsaGraphVariants:
 
 def create_attention_graph_variants(hf_config) -> Optional[AttentionGraphVariants]:
     from sglang.srt.configs.model_config import get_dsa_index_kpool, get_dsa_index_topk, is_deepseek_dsa
-    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from hcu_sglang.utils.detection import is_hcu as is_hcu
     from sglang.srt.utils import is_hip
     _is_hcu = is_hcu()
+    if _is_hcu:
+        from hcu_sglang.models.deepseek.deepseek_common.model_types import is_glm5_next_hcu
+        if is_glm5_next_hcu(hf_config):
+            return None
     if is_hip() and is_deepseek_dsa(hf_config):
         if get_dsa_index_kpool(hf_config) > 1:
             return None
@@ -77,7 +81,7 @@ def _candidate_indexer_capturable(model_runner) -> bool:
     """
     import torch
     from sglang.srt.utils import is_gfx95_supported, is_hip
-    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from hcu_sglang.utils.detection import is_hcu as is_hcu
     if not is_hip():
         return torch.cuda.get_device_capability(model_runner.gpu_id)[0] >= 10
     if not is_hcu():

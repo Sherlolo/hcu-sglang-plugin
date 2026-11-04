@@ -3,7 +3,7 @@ from typing import Union, List, Optional
 import torch
 from sglang.srt.runtime_context import get_parallel
 from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp,is_dsa_prefill_cp_interleave
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 
 def is_capturing() -> bool:

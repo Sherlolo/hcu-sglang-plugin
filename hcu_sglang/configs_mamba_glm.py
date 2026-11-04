@@ -1,0 +1,427 @@
+from __future__ import annotations
+
+from typing import List, Optional, Union
+from transformers import CONFIG_MAPPING
+from transformers.models.glm4v.configuration_glm4v import Glm4vVisionConfig
+from transformers.models.glm_ocr.configuration_glm_ocr import GlmOcrVisionConfig
+from sglang.srt.configs import glm5_next as N
+from sglang.srt.configs.mamba_utils import KimiLinearCacheParams, KimiLinearStateShape, mamba2_state_dtype
+from sglang.srt.runtime_context import get_parallel
+from hcu_sglang.utils.detection import is_hcu
+
+_is_hcu = is_hcu()
+_GLM5_NEXT_TOP_LEVEL_CONFIG_KEYS = ('mla_nope', 'linear_allow_neg_eigval', 'hc_post_mult_value', 'index_dsa_use_layernorm', 'disable_nsa', 'initializer_range', 'architectures', 'vocab_size', 'hidden_size', 'head_dim', 'intermediate_size', 'moe_intermediate_size', 'num_hidden_layers', 'num_attention_heads', 'num_key_value_heads', 'hidden_act', 'max_position_embeddings', 'rms_norm_eps', 'use_cache', 'pad_token_id', 'bos_token_id', 'eos_token_id', 'rope_theta', 'rope_scaling', 'rope_parameters', 'partial_rotary_factor', 'tie_word_embeddings', 'attention_bias', 'attention_dropout', 'n_routed_experts', 'num_experts_per_tok', 'n_shared_experts', 'n_group', 'topk_group', 'norm_topk_prob', 'routed_scaling_factor', 'scoring_func', 'topk_method', 'first_k_dense_replace', 'moe_layer_freq', 'q_lora_rank', 'kv_lora_rank', 'qk_nope_head_dim', 'qk_rope_head_dim', 'v_head_dim', 'swiglu_limit', 'mhc', 'hc_mult', 'hc_sinkhorn_iters', 'hc_eps', 'num_nextn_predict_layers', 'linear_attn_config', 'linear_head_dim', 'linear_num_heads', 'linear_conv_kernel_dim', 'linear_lower_bound', 'gate_lower_bound', 'index_head_dim', 'index_topk', 'index_kpool', 'index_kpool_always_select_tail', 'index_kpool_compress', 'index_n_heads', 'index_topk_freq', 'index_topk_pattern', 'index_skip_topk_offset', 'index_share_for_mtp_iteration', 'indexer_rope_interleave', 'layer_types', 'mlp_layer_types', 'quantization_config')
+_ORIGINAL_TEXT_CACHE_PARAMS = N.Glm5NextTextConfig.mamba2_cache_params
+
+class Glm5NextTextConfigMethods:
+    def __init__(
+        self,
+        vocab_size: int = 154880,
+        hidden_size: int = 4096,
+        head_dim: Optional[int] = None,
+        intermediate_size: int = 12288,
+        moe_intermediate_size: int = 2048,
+        num_hidden_layers: int = 45,
+        num_attention_heads: int = 64,
+        num_key_value_heads: Optional[int] = None,
+        hidden_act: str = "silu",
+        max_position_embeddings: int = 1013760,
+        rms_norm_eps: float = 1e-5,
+        use_cache: bool = True,
+        pad_token_id: Optional[int] = None,
+        bos_token_id: Optional[int] = None,
+        eos_token_id: Optional[Union[int, List[int]]] = None,
+        rope_theta: float = 800000.0,
+        rope_scaling: Optional[dict] = None,
+        rope_parameters: Optional[dict] = None,
+        partial_rotary_factor: float = 1.0,
+        tie_word_embeddings: bool = False,
+        attention_bias: bool = False,
+        attention_dropout: float = 0.0,
+        n_routed_experts: Optional[int] = 288,
+        num_experts_per_tok: int = 8,
+        n_shared_experts: int = 1,
+        n_group: int = 1,
+        topk_group: int = 1,
+        norm_topk_prob: bool = True,
+        routed_scaling_factor: float = 2.5,
+        scoring_func: str = "sigmoid",
+        topk_method: str = "noaux_tc",
+        first_k_dense_replace: int = 3,
+        moe_layer_freq: int = 1,
+        q_lora_rank: Optional[int] = 1536,
+        kv_lora_rank: int = 512,
+        qk_nope_head_dim: int = 256,
+        qk_rope_head_dim: int = 0,
+        v_head_dim: int = 256,
+        swiglu_limit: Optional[float] = None,
+        mhc: bool = False,
+        hc_mult: int = 4,
+        hc_sinkhorn_iters: int = 20,
+        hc_eps: float = 1e-6,
+        num_nextn_predict_layers: int = 1,
+        linear_attn_config: Optional[dict] = None,
+        linear_head_dim: int = 128,
+        linear_num_heads: int = 64,
+        linear_conv_kernel_dim: int = 4,
+        linear_lower_bound: Optional[float] = None,
+        gate_lower_bound: Optional[float] = None,
+        index_head_dim: int | None = None,
+        index_topk: int | None = None,
+        index_n_heads: int | None = None,
+        index_topk_freq: int = 1,
+        index_topk_pattern: Optional[str] = None,
+        index_skip_topk_offset: Optional[int] = None,
+        **kwargs,
+    ):
+        if rope_scaling is None and rope_parameters is not None:
+            rope_scaling = rope_parameters
+        if rope_parameters is not None:
+            rope_theta = rope_parameters.get("rope_theta", rope_theta)
+            partial_rotary_factor = rope_parameters.get(
+                "partial_rotary_factor", partial_rotary_factor
+            )
+
+        # Preserve extra checkpoint fields used by the HCU implementation.
+        if _is_hcu:
+            for key, default in {
+                "mla_nope": False,
+                "linear_allow_neg_eigval": False,
+                "hc_post_mult_value": 2.0,
+                "index_dsa_use_layernorm": True,
+                "disable_nsa": False,
+                "initializer_range": 0.02,
+            }.items():
+                kwargs.setdefault(key, default)
+        self.vocab_size = vocab_size
+        self.hidden_size = hidden_size
+        self.head_dim = head_dim
+        self.intermediate_size = intermediate_size
+        self.moe_intermediate_size = moe_intermediate_size
+        self.num_hidden_layers = num_hidden_layers
+        self.num_attention_heads = num_attention_heads
+        self.num_key_value_heads = num_key_value_heads
+        self.hidden_act = hidden_act
+        self.max_position_embeddings = max_position_embeddings
+        self.rms_norm_eps = rms_norm_eps
+        self.use_cache = use_cache
+        self.rope_theta = rope_theta
+        self.rope_scaling = rope_scaling
+        self.partial_rotary_factor = partial_rotary_factor
+        self.attention_bias = attention_bias
+        self.attention_dropout = attention_dropout
+        self.n_routed_experts = n_routed_experts
+        self.num_experts_per_tok = num_experts_per_tok
+        self.n_shared_experts = n_shared_experts
+        self.n_group = n_group
+        self.topk_group = topk_group
+        self.norm_topk_prob = norm_topk_prob
+        self.routed_scaling_factor = routed_scaling_factor
+        self.scoring_func = scoring_func
+        self.topk_method = topk_method
+        self.first_k_dense_replace = first_k_dense_replace
+        self.moe_layer_freq = moe_layer_freq
+
+        self.q_lora_rank = q_lora_rank
+        self.kv_lora_rank = kv_lora_rank
+        self.qk_nope_head_dim = qk_nope_head_dim
+        self.qk_rope_head_dim = qk_rope_head_dim
+        self.v_head_dim = v_head_dim
+        self.swiglu_limit = swiglu_limit
+        self.mhc = mhc
+        self.hc_mult = hc_mult
+        self.hc_sinkhorn_iters = hc_sinkhorn_iters
+        self.hc_eps = hc_eps
+
+        self.num_nextn_predict_layers = num_nextn_predict_layers
+        self.linear_head_dim = linear_head_dim
+        self.linear_num_heads = linear_num_heads
+        self.linear_conv_kernel_dim = linear_conv_kernel_dim
+        self.linear_lower_bound = linear_lower_bound
+        self.gate_lower_bound = (
+            gate_lower_bound if gate_lower_bound is not None else linear_lower_bound
+        )
+        if linear_attn_config is None:
+            layer_types = kwargs.get("layer_types")
+            if layer_types is None:
+                kda_layers = [
+                    layer_idx
+                    for layer_idx in range(num_hidden_layers)
+                    if layer_idx % 4 != 3
+                ]
+            else:
+                kda_layers = [
+                    layer_idx
+                    for layer_idx, layer_type in enumerate(layer_types)
+                    if layer_type == "linear_attention"
+                ]
+            kda_layer_set = set(kda_layers)
+            linear_attn_config = {
+                "full_attn_layers": [
+                    layer_idx
+                    for layer_idx in range(num_hidden_layers)
+                    if layer_idx not in kda_layer_set
+                ],
+                "head_dim": linear_head_dim,
+                "kda_layers": kda_layers,
+                "num_heads": linear_num_heads,
+                "short_conv_kernel_size": linear_conv_kernel_dim,
+                "gate_lower_bound": self.gate_lower_bound,
+            }
+        self.linear_attn_config = dict(linear_attn_config)
+        kda_layers = list(self.linear_attn_config.get("kda_layers", []))
+        full_layers = self.linear_attn_config.setdefault(
+            "full_attn_layers",
+            [i for i in range(num_hidden_layers) if i not in kda_layers],
+        )
+        if (
+            len(set(kda_layers)) != len(kda_layers)
+            or len(set(full_layers)) != len(full_layers)
+            or set(kda_layers) & set(full_layers)
+            or set(kda_layers) | set(full_layers) != set(range(num_hidden_layers))
+        ):
+            raise ValueError(
+                "KDA and full-attention layers must cover the model exactly without duplicates or overlap."
+            )
+        self.index_head_dim = index_head_dim
+        self.index_topk = index_topk
+        self.index_n_heads = index_n_heads
+        self.index_topk_freq = index_topk_freq
+        self.index_topk_pattern = index_topk_pattern
+        self.index_skip_topk_offset = index_skip_topk_offset
+
+        super(N.Glm5NextTextConfig, self).__init__(
+            pad_token_id=pad_token_id,
+            bos_token_id=bos_token_id,
+            eos_token_id=eos_token_id,
+            tie_word_embeddings=tie_word_embeddings,
+            **kwargs,
+        )
+        if rope_parameters is not None or rope_scaling is not None:
+            self.rope_parameters = rope_parameters or rope_scaling
+
+    @property
+    def is_mla(self):
+        return True
+
+    @property
+    def is_moe(self):
+        return self.n_routed_experts is not None
+
+    @property
+    def is_linear_attn(self):
+        return bool(self.linear_layer_ids)
+
+    @property
+    def mamba2_cache_params(self) -> KimiLinearCacheParams:
+        from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
+        from sglang.srt.runtime_context import linear_attn_tp_size
+
+        head_shard_size = (
+            (
+                get_parallel().attn_cp_size
+                if is_dsa_enable_prefill_cp()
+                else get_parallel().attn_tp_size
+            )
+            if _is_hcu
+            else linear_attn_tp_size()
+        )
+
+        shape = KimiLinearStateShape.create(
+            tp_world_size=head_shard_size,
+            num_heads=self.linear_attn_config["num_heads"],
+            head_dim=self.linear_attn_config["head_dim"],
+            num_k_heads=self.linear_attn_config.get(
+                "num_k_heads", self.linear_attn_config["num_heads"]
+            ),
+            head_k_dim=self.linear_attn_config.get(
+                "head_k_dim", self.linear_attn_config["head_dim"]
+            ),
+            conv_kernel_size=self.linear_attn_config.get("short_conv_kernel_size", 4),
+        )
+        return KimiLinearCacheParams(
+            shape=shape,
+            layers=self.linear_layer_ids,
+            dtype=mamba2_state_dtype(self),
+        )
+
+class Glm5NextConfigMethods:
+    def __init__(
+        self,
+        text_config=None,
+        vision_config=None,
+        image_token_id: int = 59280,
+        video_token_id: int = 59281,
+        image_start_token_id: int = 59256,
+        image_end_token_id: int = 59257,
+        video_start_token_id: int = 59258,
+        video_end_token_id: int = 59259,
+        **kwargs,
+    ):
+        if kwargs.get("architectures") is not None:
+            aliases = {
+                "Glm5vNextForCausalLM": "Glm5NextForCausalLM",
+                "Glm5vNextForConditionalGeneration": "Glm5NextForConditionalGeneration",
+            }
+            kwargs["architectures"] = [
+                aliases.get(arch, arch) for arch in kwargs["architectures"]
+            ]
+        top_level_text_config = {
+            key: kwargs[key]
+            for key in _GLM5_NEXT_TOP_LEVEL_CONFIG_KEYS
+            if key in kwargs
+        }
+
+        if isinstance(text_config, dict):
+            text_config = {**top_level_text_config, **text_config}
+            self.text_config = self.sub_configs["text_config"](**text_config)
+        elif text_config is None:
+            self.text_config = self.sub_configs["text_config"](**top_level_text_config)
+        else:
+            self.text_config = text_config
+
+        if vision_config is None:
+            self.vision_config = None
+        else:
+            if isinstance(vision_config, dict):
+                vision_config = dict(vision_config)
+            else:
+                vision_config = vision_config.to_dict()
+            self.vision_config = self.sub_configs["vision_config"](**vision_config)
+
+        self.image_token_id = image_token_id
+        self.video_token_id = video_token_id
+        self.image_start_token_id = image_start_token_id
+        self.image_end_token_id = image_end_token_id
+        self.video_start_token_id = video_start_token_id
+        self.video_end_token_id = video_end_token_id
+
+        if getattr(self.text_config, "quantization_config", None) is not None:
+            self.quantization_config = self.text_config.quantization_config
+
+        super(N.Glm5NextConfig, self).__init__(**kwargs)
+        for key in _GLM5_NEXT_TOP_LEVEL_CONFIG_KEYS:
+            if hasattr(self.text_config, key):
+                setattr(self, key, getattr(self.text_config, key))
+
+    @property
+    def is_mla(self):
+        return self.text_config.is_mla
+
+    @property
+    def is_moe(self):
+        return self.text_config.is_moe
+
+    @property
+    def is_linear_attn(self):
+        return self.text_config.is_linear_attn
+
+    def is_kda_layer(self, layer_idx):
+        return self.text_config.is_kda_layer(layer_idx)
+
+    @property
+    def linear_layer_ids(self):
+        return self.text_config.linear_layer_ids
+
+    @property
+    def full_attention_layer_ids(self):
+        return self.text_config.full_attention_layer_ids
+
+    @property
+    def mamba2_cache_params(self):
+        return self.text_config.mamba2_cache_params
+
+class Glm5NextVisionConfig(Glm4vVisionConfig if _is_hcu else GlmOcrVisionConfig):
+    def __init__(
+        self,
+        swiglu_limit: Optional[float] = None,
+        **kwargs,
+    ):
+        super().__init__(**kwargs)
+        self.swiglu_limit = swiglu_limit
+
+Glm5NextTextConfig = N.Glm5NextTextConfig
+Glm5NextConfig = N.Glm5NextConfig
+
+class Glm5NextLegacyTextConfig(Glm5NextTextConfig):
+    model_type = "glm5next_text"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class Glm5VNextVisionConfig(Glm5NextVisionConfig):
+    model_type = "glm5v_next_vision"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+class Glm5VNextConfig(Glm5NextConfig):
+    model_type = "glm5v_next"
+    sub_configs = {
+        "vision_config": Glm5VNextVisionConfig,
+        "text_config": Glm5NextTextConfig,
+    }
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+def around_text_init(original, self, *args, **kwargs):
+    if not is_hcu():
+        return original(self, *args, **kwargs)
+    return Glm5NextTextConfigMethods.__init__(self, *args, **kwargs)
+
+
+def around_composite_init(original, self, *args, **kwargs):
+    if not is_hcu():
+        return original(self, *args, **kwargs)
+    return Glm5NextConfigMethods.__init__(self, *args, **kwargs)
+
+
+def text_cache_params(self):
+    if not is_hcu():
+        return _ORIGINAL_TEXT_CACHE_PARAMS.__get__(self, type(self))
+    return Glm5NextTextConfigMethods.mamba2_cache_params.__get__(self, type(self))
+
+
+def register_hooks():
+    if not is_hcu():
+        return
+    from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+    from sglang.srt.configs.linear_attn_model_registry import LinearAttnModelSpec, register_linear_attn_model, _LINEAR_ATTN_MODEL_REGISTRY
+    N._GLM5_NEXT_TOP_LEVEL_CONFIG_KEYS = _GLM5_NEXT_TOP_LEVEL_CONFIG_KEYS
+    for name in ("is_mla", "is_moe", "is_linear_attn"):
+        setattr(N.Glm5NextTextConfig, name, Glm5NextTextConfigMethods.__dict__[name])
+    N.Glm5NextTextConfig.mamba2_cache_params = property(text_cache_params)
+    for name in ("is_mla", "is_moe", "is_linear_attn", "is_kda_layer", "linear_layer_ids", "full_attention_layer_ids", "mamba2_cache_params"):
+        setattr(N.Glm5NextConfig, name, Glm5NextConfigMethods.__dict__[name])
+    N.Glm5NextConfig.sub_configs = {"vision_config": Glm5NextVisionConfig, "text_config": N.Glm5NextTextConfig}
+    for name, hook in (("Glm5NextTextConfig", around_text_init), ("Glm5NextConfig", around_composite_init)):
+        HookRegistry.register(f"sglang.srt.configs.glm5_next.{name}.__init__", hook, HookType.AROUND)
+    HookRegistry.register("sglang.srt.configs.glm5_next.Glm5NextVisionConfig", Glm5NextVisionConfig, HookType.REPLACE)
+    aliases = {
+        "Glm5NextLegacyTextConfig": Glm5NextLegacyTextConfig,
+        "Glm5NextTextUnderscoreConfig": N.Glm5NextTextConfig,
+        "Glm5VNextVisionConfig": Glm5VNextVisionConfig,
+        "Glm5VNextConfig": Glm5VNextConfig,
+    }
+    for name, value in aliases.items():
+        setattr(N, name, value)
+    registrations = (
+        ("glm5_next", N.Glm5NextConfig),
+        ("glm5next_text", Glm5NextLegacyTextConfig),
+        ("glm5_next_text", N.Glm5NextTextConfig),
+        ("glm5next_vision", Glm5NextVisionConfig),
+        ("glm5v_next", Glm5VNextConfig),
+        ("glm5v_next_vision", Glm5VNextVisionConfig),
+    )
+    for name, config in registrations:
+        CONFIG_MAPPING._extra_content[name] = config
+    if not any(spec.config_class is N.Glm5NextConfig for spec in _LINEAR_ATTN_MODEL_REGISTRY):
+        register_linear_attn_model(LinearAttnModelSpec(
+            config_class=N.Glm5NextConfig,
+            backend_class_name="sglang.srt.layers.attention.linear.kda_backend.KDAAttnBackend",
+            arch_names=["Glm5NextForCausalLM", "Glm5NextForConditionalGeneration"],
+            uses_mamba_radix_cache=True,
+            support_mamba_cache=True,
+            support_mamba_cache_extra_buffer=True,
+        ))

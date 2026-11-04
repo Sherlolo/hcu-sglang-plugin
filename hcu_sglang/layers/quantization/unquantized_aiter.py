@@ -6,14 +6,14 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _enabled() -> bool:
     from sglang.srt.utils import get_bool_env_var
 
     return (
-        is_dcu()
+        is_hcu()
         and get_bool_env_var("SGLANG_ROCM_USE_AITER_MOE")
         and not get_bool_env_var("SGLANG_USE_MARLIN_W16A16_MOE")
     )
@@ -122,7 +122,7 @@ def around_forward_cuda(
         activation="silu" if config.activation == "silu" else "gelu",
         block_shape=None,
         global_num_experts=num_experts,
-        routed_scaling_factor=config.routed_scaling_factor or 1.0,
+        routed_scaling_factor=(config.routed_scaling_factor if config.routed_scaling_factor is not None else 1.0),
     )
     return StandardCombineInput(hidden_states=output)
 

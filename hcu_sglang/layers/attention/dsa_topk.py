@@ -6,7 +6,7 @@ from typing import Any, Callable, List, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _uses_v2_transform(
@@ -58,7 +58,7 @@ def around_topk_transform(
     from sglang.srt.environ import envs
 
     if (
-        not is_dcu()
+        not is_hcu()
         or not backend.is_sgl_kernel()
         or not envs.SGLANG_DSA_FUSE_TOPK.get()
         or force_unfused_topk

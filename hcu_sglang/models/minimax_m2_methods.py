@@ -11,9 +11,9 @@ from sglang.srt.models import minimax_m2 as _upstream
 
 globals().update({k: v for k, v in vars(_upstream).items() if not k.startswith("__")})
 from sglang.srt.runtime_context import get_server_args
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 _use_fused_rms_quant = _is_hcu and os.environ.get("SGLANG_USE_FUSED_RMS_QUANT", "0").lower() in {"1", "true", "yes", "on"}
 
 

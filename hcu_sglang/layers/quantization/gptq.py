@@ -6,15 +6,15 @@ import os
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _uses_triton(scheme) -> bool:
-    return is_dcu() and getattr(scheme, "use_triton_gemm", False)
+    return is_hcu() and getattr(scheme, "use_triton_gemm", False)
 
 
 def after_init(result, scheme, *args, **kwargs):
-    if is_dcu():
+    if is_hcu():
         scheme.use_triton_gemm = (
             os.getenv("SGLANG_GPTQ_MARLIN_USE_TRITON", "0") == "1"
         )

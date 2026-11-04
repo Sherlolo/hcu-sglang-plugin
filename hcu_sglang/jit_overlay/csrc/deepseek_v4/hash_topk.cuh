@@ -145,6 +145,7 @@ struct HashTopKKernel {
     RuntimeCheck(topk <= topk_fused, "HashTopKKernel requires topk <= topk_fused");
     RuntimeCheck(topk_fused <= device::kWarpThreads, "HashTopKKernel requires topk_fused <= warp size");
 
+    if (num_tokens == 0) return;
     const auto params = MoEHashTopKParams{
         .router_logits = static_cast<const float*>(router_logits.data_ptr()),
         .input_id = static_cast<const int64_t*>(input_id.data_ptr()),
@@ -208,6 +209,7 @@ struct MaskKernel {
     }
 
     const auto num_tokens = static_cast<uint32_t>(N.unwrap());
+    if (num_tokens == 0) return;
     const auto params = TopKParams{
         .topk_ids = static_cast<int32_t*>(topk_ids.data_ptr()),
         .ntn_ptr = ntn_ptr,

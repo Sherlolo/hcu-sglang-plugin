@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from types import SimpleNamespace
 from unittest.mock import patch
 import unittest
@@ -17,7 +20,7 @@ class Dsv4RegistryTests(unittest.TestCase):
 
     def test_real_registry_dictionary_selects_base_factory_for_hcu(self):
         runner=object();marker=object()
-        with patch.object(R,'is_dcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4AttnBackend',return_value=marker) as ctor:
+        with patch.object(R,'is_hcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4AttnBackend',return_value=marker) as ctor:
             self.assertIs(A.ATTENTION_BACKENDS['dsv4'](runner),marker)
         ctor.assert_called_once_with(runner)
 
@@ -26,19 +29,19 @@ class Dsv4RegistryTests(unittest.TestCase):
 
     def test_real_draft_decode_uses_base_multistep_and_preserves_sizes(self):
         f=self.factory();marker=object()
-        with patch.object(R,'is_dcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4MultiStepBackend',return_value=marker) as ctor:
+        with patch.object(R,'is_hcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4MultiStepBackend',return_value=marker) as ctor:
             name,backend=f._create_dsv4_decode_backend()
         self.assertEqual(name,'dsv4');self.assertIs(backend,marker);ctor.assert_called_once_with(f.draft_model_runner,topk=1,speculative_num_steps=3)
 
     def test_real_draft_prefill_preserves_skip_prefill_false(self):
         f=self.factory();marker=object()
-        with patch.object(R,'is_dcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4AttnBackend',return_value=marker) as ctor:
+        with patch.object(R,'is_hcu',return_value=True),patch.object(F,'is_dsv4_trtllm_attn_enabled',return_value=False),patch.object(F,'DeepseekV4AttnBackend',return_value=marker) as ctor:
             name,backend=f._create_dsv4_prefill_backend()
         self.assertEqual(name,'dsv4');self.assertIs(backend,marker);ctor.assert_called_once_with(f.draft_model_runner,skip_prefill=False)
 
     def test_non_hcu_delegates_all_original_factories(self):
         marker=object();arg=object()
-        with patch.object(R,'is_dcu',return_value=False):
+        with patch.object(R,'is_hcu',return_value=False):
             for fn in [R.around_create_dsv4_backend,R.around_create_dsv4_decode_backend,R.around_create_dsv4_prefill_backend]:self.assertIs(fn(lambda owner:marker,arg),marker)
 
     def test_owned_hcu_metadata_matches_real_flashmla_consumer(self):

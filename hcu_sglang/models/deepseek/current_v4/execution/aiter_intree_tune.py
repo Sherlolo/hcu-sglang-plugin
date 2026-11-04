@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """In-tree copies of DeepSeek-V4 tuning changes that are not yet in the aiter pin.
 
 Three open aiter PRs only change *which* existing kernel aiter picks for a shape:

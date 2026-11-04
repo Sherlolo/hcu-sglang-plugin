@@ -4,7 +4,7 @@
 
 ## 1. 当前阶段
 
-V1 已建立方法、Skill、审计/回溯工具和 CPU 测试；V2 重整架构、文档组织、使用与协作规范。2026-10-28 起本仓同时维护 `hcu_sglang/`，迁入、提交与实际验证见 [开发迁移记录](hcu-sglang-development.md)；外部运行时 V3 的实现与指定 MiniMax TP4 验证已完成，见 [最终交付](v3-20261026-development.md#8-最终交付与需求验收)。托管 CI、其他模型及 adapter 组合验收仍按独立任务推进。
+V1 已建立方法、Skill、审计/回溯工具和 CPU 测试；V2 重整架构、文档组织、使用与协作规范。2026-10-28 起本仓同时维护 `hcu_sglang/`，迁入、提交与实际验证见 [开发迁移记录](hcu-sglang-development.md)；外部运行时 V3 的实现与指定 MiniMax TP4 验证已完成，见 [最终交付](hcu-sglang-development.md#2026-10-26-8-最终交付与需求验收)。托管 CI、其他模型及 adapter 组合验收仍按独立任务推进。
 
 ## 2. 建设路线
 

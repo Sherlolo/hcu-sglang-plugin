@@ -16,7 +16,7 @@ from sglang.kernels.ops.layernorm.rmsnorm_fp32 import rmsnorm_fp32
 from sglang.srt.layers.linear import ReplicatedLinear
 from sglang.srt.layers.quantization.base_config import QuantizationConfig
 from sglang.srt.utils import add_prefix, is_gfx95_supported
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hcu = is_hcu()
 
 def _fused_dsv41_kernels(x: torch.Tensor) -> bool:

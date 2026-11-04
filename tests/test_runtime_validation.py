@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """A loader's exit status alone must not make a partial/empty plugin pass."""
 import logging
 import sys
@@ -10,7 +13,7 @@ from unittest.mock import patch
 from tools.validate_plugin_runtime import validate
 
 
-def fake_runtime(targets, patched, official, plugin, soft_error=False, package="sglang_dcu_plugin"):
+def fake_runtime(targets, patched, official, plugin, soft_error=False, package="sglang_hcu_plugin"):
     modules = {}
     for name in ["sglang", "sglang.srt", "sglang.srt.plugins",
                  "sglang.srt.plugins.hook_registry", "sglang.srt.arg_groups",
@@ -38,7 +41,7 @@ def fake_runtime(targets, patched, official, plugin, soft_error=False, package="
         Registry._hooks = dict.fromkeys(targets, [])
         Registry._patched = set(patched)
         if soft_error:
-            logging.getLogger("sglang.srt.plugins").error("Failed to execute general plugin: dcu")
+            logging.getLogger("sglang.srt.plugins").error("Failed to execute general plugin: hcu")
 
     def wrapper(*args):
         pass

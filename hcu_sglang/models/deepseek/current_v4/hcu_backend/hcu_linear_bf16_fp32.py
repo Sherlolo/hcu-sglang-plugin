@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import torch
 from sglang.kernels.jit.utils import cache_once, load_jit
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.kernels.ops.attention.dsv4.utils import make_name
 if TYPE_CHECKING:
     from tvm_ffi.module import Module

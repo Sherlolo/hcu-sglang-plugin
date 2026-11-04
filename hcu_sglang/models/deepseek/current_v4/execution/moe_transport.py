@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """MoE operand transport and completion, preserving source residual rows."""
 
 from contextlib import contextmanager, nullcontext

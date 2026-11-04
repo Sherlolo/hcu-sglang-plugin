@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import unittest
@@ -29,7 +32,7 @@ class StandardDispatcherTests(unittest.TestCase):
     def dispatch(self, dispatcher, ids, *, hcu=True, pad=False):
         topk = StandardTopKOutput(torch.ones_like(ids, dtype=torch.float32), ids, None)
         hidden = torch.arange(ids.shape[0] * 4).reshape(ids.shape[0], 4).float()
-        with patch.object(plugin, 'is_dcu', return_value=hcu), \
+        with patch.object(plugin, 'is_hcu', return_value=hcu), \
              patch.object(S, 'get_device', return_value='cpu'), \
              patch.object(S, 'should_use_flashinfer_cutlass_moe_fp4_allgather', return_value=False), \
              patch.object(S, '_MASK_DP_PAD_MOE', pad), \

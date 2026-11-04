@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 from typing import List
@@ -88,8 +90,8 @@ from sglang.srt.layers.attention.dsa.dsa_indexer import (
 from sglang.srt.utils import get_bool_env_var
 from sglang.srt.layers.attention.dsa.utils import aiter_can_use_preshuffle_paged_mqa
 from hcu_sglang.layers.attention.current_dsa.paged_mqa_logits_backend import DSAPagedMQALogitsBackend
-from hcu_sglang.utils.detection import is_dcu
-_is_hcu = is_dcu()
+from hcu_sglang.utils.detection import is_hcu
+_is_hcu = is_hcu()
 _use_aiter = get_bool_env_var("SGLANG_USE_AITER") and _is_hip and not _is_hcu
 _use_aiter_preshuffle = not _is_hcu and aiter_can_use_preshuffle_paged_mqa()
 from hcu_sglang.layers.attention.current_dsa.rotation import rotate_activation, hadamard_transform_optimized

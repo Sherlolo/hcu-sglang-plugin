@@ -7,13 +7,13 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_rocm_arch_available(original: Callable[[], bool]) -> bool:
     if original():
         return True
-    if not is_dcu():
+    if not is_hcu():
         return False
     try:
         arch = getattr(torch.cuda.get_device_properties(0), "gcnArchName", "")
@@ -25,7 +25,7 @@ def around_rocm_arch_available(original: Callable[[], bool]) -> bool:
 def around_init_quick_all_reduce(
     original: Callable[..., Any], quick_reduce: Any
 ) -> Any:
-    if not is_dcu() or "ROCM_QUICK_REDUCE_QUANTIZATION" in os.environ:
+    if not is_hcu() or "ROCM_QUICK_REDUCE_QUANTIZATION" in os.environ:
         return original(quick_reduce)
     os.environ["ROCM_QUICK_REDUCE_QUANTIZATION"] = "INT8"
     try:
@@ -37,7 +37,7 @@ def around_init_quick_all_reduce(
 def around_should_quick_allreduce(
     original: Callable[..., bool], quick_reduce: Any, tensor: torch.Tensor
 ) -> bool:
-    if not is_dcu():
+    if not is_hcu():
         return original(quick_reduce, tensor)
     if quick_reduce.disabled or tensor.dtype not in quick_reduce._SUPPORTED_DTYPES:
         return False

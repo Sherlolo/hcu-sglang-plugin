@@ -18,7 +18,7 @@ globals().update(
     }
 )
 
-_is_hcu = C._is_dcu
+_is_hcu = C._is_hcu
 _use_aiter_tilelang_mhc = C._use_aiter_tilelang_mhc
 
 

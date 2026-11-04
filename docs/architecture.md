@@ -139,7 +139,7 @@ hcu-sglang-plugin/                 未来在当前方法库基础上逐步增加
 | feature 实现 | 新能力逻辑、声明的底层依赖 | 从 DAS 工作树动态 import |
 | integration | 两仓组合的版本/符号契约 | 把 adapter 全部实现再复制一份 |
 
-历史 `sglang_dcu_plugin/models/<family>/hooks + methods` 是已有工具支持的外部布局。新包名或目录变化时要改工具适配与测试，不假定历史工具自动支持新结构。
+历史 `sglang_hcu_plugin/models/<family>/hooks + methods` 是已有工具支持的外部布局。新包名或目录变化时要改工具适配与测试，不假定历史工具自动支持新结构。
 
 ## 5. 开发与协作闭环
 

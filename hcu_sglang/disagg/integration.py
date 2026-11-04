@@ -1,12 +1,17 @@
 """Formal HCU PD registration; optional wire fields preserve legacy positions."""
 from __future__ import annotations
 import types
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def register_hooks():
-    if not is_dcu():
+    if not is_hcu():
         return
+    from hcu_sglang.mem_cache import common as cache_common
+    cache_common.register_hooks()
+    from hcu_sglang.disagg import utils as pd_utils, prefill as pd_prefill
+    pd_utils.register_hooks()
+    pd_prefill.register_hooks()
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
     from sglang.srt.disaggregation.base.conn import KVArgs
     from sglang.srt.disaggregation.mooncake import conn as upstream_mooncake
@@ -41,11 +46,14 @@ def register_hooks():
     upstream_mooncake.MooncakeKVManager._should_skip_cp_replicated_state_transfer = mooncake.should_skip_cp_replicated_state_transfer
     HookRegistry.register("sglang.srt.disaggregation.mooncake.conn.MooncakeKVReceiver._register_kv_args",
         mooncake.register_kv_args, HookType.REPLACE)
+    from . import transport_common, transport_mooncake
+    transport_common.register_hooks()
+    transport_mooncake.register_hooks()
     original = upstream_mooncake.MooncakeKVManager.transfer_worker
     prototype = worker.transfer_worker
     if prototype.__code__.co_freevars:
         raise RuntimeError("Worker adaptation unexpectedly requires a class closure")
-    adapted = types.FunctionType(prototype.__code__, original.__globals__, prototype.__name__, prototype.__defaults__)
+    adapted = types.FunctionType(prototype.__code__, vars(transport_mooncake), prototype.__name__, prototype.__defaults__)
     adapted.__kwdefaults__ = prototype.__kwdefaults__
     adapted.__annotations__ = prototype.__annotations__
     adapted.__module__ = worker.__name__
@@ -55,3 +63,6 @@ def register_hooks():
 
     HookRegistry.register(manager+"_validate_peer_state_layout",
         validation.around_validate_peer_state_layout, HookType.AROUND)
+
+    from hcu_sglang.disagg import decode as pd_decode
+    pd_decode.register_hooks()

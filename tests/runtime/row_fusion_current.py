@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -11,7 +14,7 @@ from hcu_sglang.layers import row_fusion as R
 
 class RowFusionTests(unittest.TestCase):
     def test_das_capability_gates_require_backend_and_consumer(self):
-        with patch.object(R,'is_dcu',return_value=True):R.register_hooks()
+        with patch.object(R,'is_hcu',return_value=True):R.register_hooks()
         layer=object.__new__(R.N.RowParallelLinear);torch.nn.Module.__init__(layer)
         layer.quant_method=SimpleNamespace(supports_prequantized_input=True);layer.scheme=SimpleNamespace(supports_fp8_prequantized_input=True)
         with patch.object(R,'_use_fused_silu_mul_quant',True),patch.object(R,'_use_fused_silu_mul_fp8_quant',True),patch.object(R,'_lightop_fuse_silu_mul_clamp_quant',object()),patch.object(R,'_lightop_fuse_silu_mul_fp8_quant',object()):
@@ -34,7 +37,7 @@ class RowFusionTests(unittest.TestCase):
     def test_default_and_non_hcu_delegate_existing_forward(self):
         marker=object();layer=object();x=object()
         def original(owner,value,**kwargs):self.assertIs(owner,layer);self.assertIs(value,x);return marker
-        with patch.object(R,'is_dcu',return_value=True):self.assertIs(R.around_row_forward(original,layer,x),marker)
-        with patch.object(R,'is_dcu',return_value=False):self.assertIs(R.around_row_forward(original,layer,x,use_fused_silu_mul_fp8_quant=True),marker)
+        with patch.object(R,'is_hcu',return_value=True):self.assertIs(R.around_row_forward(original,layer,x),marker)
+        with patch.object(R,'is_hcu',return_value=False):self.assertIs(R.around_row_forward(original,layer,x,use_fused_silu_mul_fp8_quant=True),marker)
 
 if __name__=='__main__':unittest.main()

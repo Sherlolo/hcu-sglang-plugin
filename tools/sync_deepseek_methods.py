@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Re-extract precise DeepSeek method bodies from the current SGLang fork."""
 
 from __future__ import annotations
@@ -18,8 +21,8 @@ else:
 
 
 V2_CONSTANT_MAP = {
-    "_is_hcu": "C._is_dcu",
-    "_is_dcu": "C._is_dcu",
+    "_is_hcu": "C._is_hcu",
+    "_is_hcu": "C._is_hcu",
     **{
         name: f"C.{name}"
         for name in (
@@ -48,8 +51,8 @@ V2_CONSTANT_MAP = {
 }
 
 V4_CONSTANT_MAP = {
-    "_is_hcu": "C._is_dcu",
-    "_is_dcu": "C._is_dcu",
+    "_is_hcu": "C._is_hcu",
+    "_is_hcu": "C._is_hcu",
     **{
         name: f"C.{name}"
         for name in (
@@ -64,31 +67,31 @@ V4_CONSTANT_MAP = {
 V2_HEADER = '''\
 from __future__ import annotations
 
-from sglang_dcu_plugin.models.deepseek.deepseek_v2 import constants as C
-from sglang_dcu_plugin.models.deepseek.deepseek_v2.methods._runtime import *
+from sglang_hcu_plugin.models.deepseek.deepseek_v2 import constants as C
+from sglang_hcu_plugin.models.deepseek.deepseek_v2.methods._runtime import *
 
 '''
 
 V4_HEADER = '''\
 from __future__ import annotations
 
-from sglang_dcu_plugin.models.deepseek.deepseek_v4 import constants as C
-from sglang_dcu_plugin.models.deepseek.deepseek_v4.methods._runtime import *
+from sglang_hcu_plugin.models.deepseek.deepseek_v4 import constants as C
+from sglang_hcu_plugin.models.deepseek.deepseek_v4.methods._runtime import *
 
 '''
 
 COMMON_HEADER = '''\
 from __future__ import annotations
 
-from sglang_dcu_plugin.models.deepseek.deepseek_common import constants as C
-from sglang_dcu_plugin.models.deepseek.deepseek_common.methods._runtime import *
+from sglang_hcu_plugin.models.deepseek.deepseek_common import constants as C
+from sglang_hcu_plugin.models.deepseek.deepseek_common.methods._runtime import *
 
 '''
 
 NEXTN_HEADER = '''\
 from __future__ import annotations
 
-from sglang_dcu_plugin.models.deepseek.deepseek_nextn.methods._runtime import *
+from sglang_hcu_plugin.models.deepseek.deepseek_nextn.methods._runtime import *
 
 '''
 
@@ -159,6 +162,23 @@ def transform(source: str, replacements: dict[str, str],
     if conflicts:
         raise ExtractionError("Constant names are locally bound: " + ", ".join(sorted(conflicts)))
 
+    loaded = {n.id for n in ast.walk(method)
+              if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    expressions = [value for key, value in replacements.items() if key in loaded]
+    needs_owner = "__class__" in loaded or any(
+        isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+        and n.func.id == "super" and not n.args and not n.keywords
+        for n in ast.walk(method)
+    )
+    if owner_class is not None and needs_owner:
+        expressions.append(owner_class)
+    introduced = {n.id for expression in expressions
+                  for n in ast.walk(ast.parse(expression, mode="eval"))
+                  if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+    shadowed = local_names & introduced
+    if shadowed:
+        raise ExtractionError("Replacement names are locally bound: " + ", ".join(sorted(shadowed)))
+
     class References(ast.NodeVisitor):
         def visit_ClassDef(self, node):
             # A nested class has its own __class__/super closure.
@@ -228,7 +248,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--fork-python", type=Path, required=True)
     parser.add_argument("--plugin-root", type=Path, required=True)
-    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_hcu_plugin"))
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
 
@@ -350,7 +370,7 @@ def main() -> int:
                 )
                 for name in ("do_load_weights", "post_load_weights")
             ],
-            {"_is_hcu": "C._is_dcu", "_is_dcu": "C._is_dcu"},
+            {"_is_hcu": "C._is_hcu", "_is_hcu": "C._is_hcu"},
         ),
         (
             plugin_models / "deepseek/deepseek_nextn/methods/model.py",
@@ -364,7 +384,7 @@ def main() -> int:
     ]
 
     try:
-        jobs = [(dest, header.replace("sglang_dcu_plugin", package), specs, mapping)
+        jobs = [(dest, header.replace("sglang_hcu_plugin", package), specs, mapping)
                 for dest, header, specs, mapping in jobs]
         updates = plan_updates(jobs)
     except (ExtractionError, OSError, SyntaxError) as error:

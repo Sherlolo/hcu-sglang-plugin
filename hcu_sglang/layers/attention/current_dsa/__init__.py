@@ -1,8 +1,11 @@
-from hcu_sglang.utils.detection import is_dcu
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
+from hcu_sglang.utils.detection import is_hcu
 
 
 def register_hooks():
-    if not is_dcu():
+    if not is_hcu():
         return
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
     from hcu_sglang.layers.attention.current_dsa import backend, rotation, indexer

@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 _OVERLAY_ROOT = Path(__file__).with_name("jit_overlay")
@@ -23,7 +23,7 @@ def _overlay_sources(files: Optional[Iterable[str]]) -> Optional[list[str]]:
 
 
 def around_load_jit(original: Callable[..., Any], *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(*args, **kwargs)
 
     kwargs["cpp_files"] = _overlay_sources(kwargs.get("cpp_files"))
@@ -43,7 +43,7 @@ def prefer_overlay_headers() -> None:
     default list at plugin registration keeps the real compiler order and build
     cache fingerprint consistent, without changing input files or toolchains.
     """
-    if not is_dcu():
+    if not is_hcu():
         return
     from sglang.kernels.jit.utils.compile.paths import DEFAULT_INCLUDE
     overlay_include = str(_OVERLAY_ROOT / "include")

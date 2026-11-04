@@ -1,4 +1,4 @@
-"""Qwen3-MoE model hooks for DCU fused RMSNorm + RoPE KV-store."""
+"""Qwen3-MoE model hooks for HCU fused RMSNorm + RoPE KV-store."""
 
 import logging
 

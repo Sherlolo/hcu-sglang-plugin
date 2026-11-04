@@ -51,7 +51,7 @@ struct BlockAmaxParams {
 /// grid = (rows, ceil(max_keys / kKeysPerCTA)); a CTA owns kKeysPerCTA consecutive
 /// keys of one row, a thread kNumItems keys kBlockSize apart (coalesced loads).
 template <bool kUsePDL, typename InT, typename OutT>
-__global__ __launch_bounds__(BlockAmaxConfig<InT, OutT>::kBlockSize, BlockAmaxConfig<InT, OutT>::kOccupancy)  //
+__global__ __launch_bounds__((BlockAmaxConfig<InT, OutT>::kBlockSize), (BlockAmaxConfig<InT, OutT>::kOccupancy))  //
     void amax8_varlen_kernel(const __grid_constant__ BlockAmaxParams<InT, OutT> params) {
   using namespace device;
   using C = BlockAmaxConfig<InT, OutT>;

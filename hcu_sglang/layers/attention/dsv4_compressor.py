@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _use_fused_compress() -> bool:
@@ -20,7 +20,7 @@ def around_fused_softmax_pool(
     kv_score: torch.Tensor,
     head_dim: int,
 ) -> torch.Tensor:
-    if not is_dcu() or _use_fused_compress():
+    if not is_hcu() or _use_fused_compress():
         return original(kv_score, head_dim)
 
     kv = kv_score[..., :head_dim]
@@ -36,7 +36,7 @@ def around_fused_norm_rope_inplace(
     freqs_cis: torch.Tensor,
     positions: Optional[torch.Tensor] = None,
 ) -> None:
-    if not is_dcu() or _use_fused_compress():
+    if not is_hcu() or _use_fused_compress():
         return original(kv, weight, eps, freqs_cis, positions)
 
     from sglang.kernels.ops.attention.deepseek_v4_rope import (

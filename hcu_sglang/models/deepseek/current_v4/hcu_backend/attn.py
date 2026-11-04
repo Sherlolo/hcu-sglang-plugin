@@ -4,7 +4,7 @@ import triton
 import triton.language as tl
 from sglang.kernels.jit.utils import cache_once, is_arch_support_pdl, is_hip_runtime, load_jit, make_cpp_args
 from sglang.srt.utils import is_gfx95_supported
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 from sglang.kernels.ops.attention.dsv4.utils import make_name
 _is_hcu = is_hcu()

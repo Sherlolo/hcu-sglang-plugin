@@ -18,7 +18,7 @@ from typing import Optional, Tuple
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 import triton
 
 from sglang.srt.environ import envs

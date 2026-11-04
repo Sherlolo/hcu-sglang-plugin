@@ -1,4 +1,4 @@
-"""DCU model adaptations and hook registration."""
+"""HCU model adaptations and hook registration."""
 
 import logging
 

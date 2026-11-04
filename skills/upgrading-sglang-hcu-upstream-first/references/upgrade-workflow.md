@@ -12,7 +12,7 @@
 
 从 entry point/顶层 register 开始，补齐条件 Hook、resolution seam、模型/量化/后端 registry、导入别名、模块复制、启动兼容层、native bindings/JIT overlay、打包/配置和 fork 回移。未触发或已移除的项也有处置行；不能只盘点报错文件。
 
-沿用 [迁移契约](../../sglang-dcu-plugin-migration/references/migration-contract.md) 的九类处置和状态，另在证据中补：稳定行为 ID、旧用途/前提、目标 owner/消费者、上游接管证据、当前唯一实现 owner、关联测试 ID、临时 patch 退出条件。清单重排时保留旧新 ID 映射；不机械保持旧 Hook 数量。
+沿用 [迁移契约](../../sglang-hcu-plugin-migration/references/migration-contract.md) 的九类处置和状态，另在证据中补：稳定行为 ID、旧用途/前提、目标 owner/消费者、上游接管证据、当前唯一实现 owner、关联测试 ID、临时 patch 退出条件。清单重排时保留旧新 ID 映射；不机械保持旧 Hook 数量。
 
 ## 上游接管判定
 

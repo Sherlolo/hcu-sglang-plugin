@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_dispatch_custom_allreduce(original, group, device, backend="auto"):
-    if not is_dcu():
+    if not is_hcu():
         return original(group, device)
 
     from hcu_sglang.distributed_aiter import dispatch_custom_allreduce
@@ -16,7 +16,7 @@ def around_dispatch_custom_allreduce(original, group, device, backend="auto"):
 
 def around_custom_all_reduce(original, communicator, input):
     """HCU graph variants stage through the communicator-owned IPC buffer."""
-    if not is_dcu():
+    if not is_hcu():
         return original(communicator, input)
     import torch
     if communicator.disabled or not communicator.should_custom_ar(input):
@@ -42,3 +42,9 @@ def register_hooks() -> None:
         HookType.AROUND,
     )
 
+
+    from hcu_sglang.layers import norm_collectives
+    norm_collectives.register_hooks()
+
+    from hcu_sglang import distributed_backend
+    distributed_backend.register_hooks()

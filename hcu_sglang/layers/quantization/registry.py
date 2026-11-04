@@ -14,6 +14,7 @@ _HCU_QUANTIZATION_NAMES = {
     QUANTIZATION_NAME,
     SLIMQUANT_NAME,
     SLIMQUANT_MARLIN_NAME,
+    "slimquant_marlin",
 }
 
 
@@ -70,6 +71,29 @@ class LazySlimQuantW4A8Int8Config(metaclass=_LazyBaseConfigMeta):
         return None
 
 
+
+@cache
+def _load_compressed_config_class():
+    from hcu_sglang.layers.quantization.compressed_marlin import SlimQuantCompressedTensorsMarlinConfig
+    return SlimQuantCompressedTensorsMarlinConfig
+
+
+class _LazyCompressedConfigMeta(type):
+    def __call__(cls, *args, **kwargs):
+        return _load_compressed_config_class()(*args, **kwargs)
+
+    def __getattr__(cls, name):
+        return getattr(_load_compressed_config_class(), name)
+
+
+class LazySlimQuantCompressedTensorsMarlinConfig(metaclass=_LazyCompressedConfigMeta):
+    @classmethod
+    def override_quantization_method(cls, hf_quant_cfg, user_quant):
+        if hf_quant_cfg.get("quant_method") == "compressed-tensors" and user_quant == "slimquant_marlin":
+            return "slimquant_marlin"
+        return None
+
+
 def install_quantization_method() -> bool:
     quantization = sys.modules.get("sglang.srt.layers.quantization")
     if quantization is None:
@@ -79,6 +103,7 @@ def install_quantization_method() -> bool:
         QUANTIZATION_NAME: LazySlimQuantW4A8Int8MarlinConfig,
         SLIMQUANT_NAME: LazySlimQuantW4A8Int8Config,
         SLIMQUANT_MARLIN_NAME: LazySlimQuantW4A8Int8MarlinConfig,
+        "slimquant_marlin": LazySlimQuantCompressedTensorsMarlinConfig,
     }
     for name, config in methods.items():
         quantization.BASE_QUANTIZATION_METHODS.setdefault(name, config)

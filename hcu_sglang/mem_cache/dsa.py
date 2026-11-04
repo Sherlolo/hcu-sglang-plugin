@@ -8,19 +8,19 @@ from typing import Any, Callable, Optional
 import torch
 
 from hcu_sglang.utils.detection import (
-    is_dcu,
-    is_dcu_native_fp8_supported,
+    is_hcu,
+    is_hcu_native_fp8_supported,
 )
 
 
 def _uses_bf16_index_cache(pool: Any) -> bool:
-    return is_dcu() and not getattr(pool, "use_fp8_index_k_cache", True)
+    return is_hcu() and not getattr(pool, "use_fp8_index_k_cache", True)
 
 
 def _should_use_bf16_index_cache(dtype: torch.dtype) -> bool:
-    return is_dcu() and (
+    return is_hcu() and (
         dtype not in (torch.float8_e4m3fn, torch.float8_e5m2)
-        or not is_dcu_native_fp8_supported()
+        or not is_hcu_native_fp8_supported()
     )
 
 
@@ -54,7 +54,7 @@ def _create_bf16_index_k_buffer(pool: Any) -> None:
 
 
 def around_init(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -62,7 +62,7 @@ def around_init(original, pool, *args, **kwargs):
 
 
 def around_create_index_key_cache(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -75,7 +75,7 @@ def get_index_k_with_scale_buffer_property(pool: Any):
 
 
 def around_clear_buffers(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -83,7 +83,7 @@ def around_clear_buffers(original, pool, *args, **kwargs):
 
 
 def around_move_kv_cache(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -98,7 +98,7 @@ def get_index_k_buffer(pool: Any, layer_id: int) -> torch.Tensor:
 
 
 def around_get_index_k_with_scale_buffer(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -106,7 +106,7 @@ def around_get_index_k_with_scale_buffer(original, pool, *args, **kwargs):
 
 
 def around_get_index_k_continuous(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -156,7 +156,7 @@ def _copy_bf16_index_cache_to_cpu(pool: Any, indices: torch.Tensor):
 
 
 def around_get_cpu_copy(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -181,7 +181,7 @@ def _load_bf16_index_cache_from_cpu(
 
 
 def around_load_cpu_copy(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -189,7 +189,7 @@ def around_load_cpu_copy(original, pool, *args, **kwargs):
 
 
 def around_get_state_buf_infos(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -197,7 +197,7 @@ def around_get_state_buf_infos(original, pool, *args, **kwargs):
 
 
 def around_get_kv_size_bytes(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -325,6 +325,10 @@ def _install_compat_members() -> None:
 
 
 def register_hooks() -> None:
+    if not is_hcu():
+        return
+    from hcu_sglang.mem_cache import dsa_cache_layer_split
+    dsa_cache_layer_split.register_hooks()
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 
     _install_compat_members()
@@ -360,7 +364,7 @@ def register_hooks() -> None:
 
 
 def around_get_index_k_scale_continuous(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -368,7 +372,7 @@ def around_get_index_k_scale_continuous(original, pool, *args, **kwargs):
 
 
 def around_get_index_k_scale_buffer(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -376,7 +380,7 @@ def around_get_index_k_scale_buffer(original, pool, *args, **kwargs):
 
 
 def around_set_index_k_scale_buffer(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 
@@ -384,7 +388,7 @@ def around_set_index_k_scale_buffer(original, pool, *args, **kwargs):
 
 
 def around_host_pool_decls(original, pool, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, *args, **kwargs)
     from hcu_sglang.mem_cache import dsa_pool_methods as P
 

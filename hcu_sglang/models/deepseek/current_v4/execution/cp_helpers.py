@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from hcu_sglang.layers.attention.current_dsa.forward_batch_utils import effective_forward_mode
 from sglang.srt.layers.attention.dsa.utils import is_dsa_enable_prefill_cp
 from hcu_sglang.models.deepseek.current_v4.hcu_backend.compat import is_dsa_prefill_cp_round_robin_split

@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, List, NamedTuple, Optional, Tuple, Union
 
 from lightop.quant import per_token_quant_fp8, per_token_quant_int8
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 from sglang.srt.environ import envs
 from sglang.srt.eplb.expert_distribution import get_global_expert_distribution_recorder
 from sglang.srt.layers import deep_gemm_wrapper
@@ -61,9 +61,9 @@ from sglang.srt.utils import (
     load_json_config,
 )
 
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 _is_npu = is_npu()
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 _use_zbal = _is_npu and envs.SGLANG_ZBAL_LOCAL_MEM_SIZE.get() > 0
 
 if TYPE_CHECKING:

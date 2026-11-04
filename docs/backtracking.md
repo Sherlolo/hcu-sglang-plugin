@@ -13,7 +13,7 @@
 ```text
 读取 <方法库绝对路径>/skills/hcu-plugin-backtrack/SKILL.md，按该 Skill 执行。
 官方输入：<路径及 revision/SHA>。
-插件输入：<路径及 SHA，包含 hcu_sglang 或旧 sglang_dcu_plugin>。
+插件输入：<路径及 SHA，包含 hcu_sglang 或旧 sglang_hcu_plugin>。
 新输出目录：<与两输入不重叠的路径>；证据目录：<本次任务目录>。
 运行验收范围：<仅生成与核验，或指定模型/配置>。
 检查输入干净和目录边界，生成内嵌源码树并核验清单。
@@ -33,7 +33,7 @@
 | revision | 明确的官方 commit-ish，交付时记录解析后的 SHA |
 | 新输出路径 | 不与任一来源相同或父子重叠；默认不存在 |
 
-生成器 v4 自动识别唯一的 `hcu_sglang` 或旧 `sglang_dcu_plugin` 包；两者并存时必须用 `--plugin-package` 显式选择，缺失包会拒绝生成。当前 HCU 包使用内嵌 `hcu` 注册，并打包 JIT overlay 和 DeepSeek V4 backend csrc；旧输入保留 `dcu`。来源清单增加实际包名，清单文件名为兼容已有核验工具保持不变。源码生成与真实运行分别验收。
+生成器 v5 沿用唯一运行时包识别，自动识别唯一的 `hcu_sglang` 或旧 `sglang_hcu_plugin` 包；两者并存时必须用 `--plugin-package` 显式选择，缺失包会拒绝生成。当前 HCU 包使用内嵌 `hcu` 注册，并打包 JIT overlay 和 DeepSeek V4 backend csrc；旧输入保留 `hcu`。来源清单增加实际包名，清单文件名为兼容已有核验工具保持不变。源码生成与真实运行分别验收。
 
 ## 2. 工具执行流程
 
@@ -49,7 +49,7 @@ flowchart LR
 
 生成器来自 `plugin_work/reconstruct_sglang_das.py`。它把受 Git 跟踪的 HCU plugin 放进新树，在 SGLang bootstrap 提前安装 AITER 兼容，在 loader 增加对应包的内嵌注册，并补齐 JIT package data、依赖与第三方许可。
 
-生成器版本 3 起不再向 bootstrap/loader 插入注释或 BEGIN/END 标记；通过导入符号和历史标记检测拒绝重复集成。复制的来源注释和许可声明保持原样，来源信息仍写入 `.sglang-dcu-embedded.json` 与 `DCU_EMBEDDED.md`。统一要求见[生成代码约定](contributing.md#生成代码约定)。
+生成器版本 3 起不再向 bootstrap/loader 插入注释或 BEGIN/END 标记；通过导入符号和历史标记检测拒绝重复集成。复制的来源注释和许可声明保持原样，来源信息仍写入 `.sglang-hcu-embedded.json` 与 `HCU_EMBEDDED.md`。统一要求见[生成代码约定](contributing.md#生成代码约定)。
 
 ## 3. 源码生成与清单核验
 
@@ -72,7 +72,7 @@ python3 tools/verify_reconstruction.py \
 | 产物 | 内容 | 应检查 |
 |---|---|---|
 | 新 Git 仓库 | 保留官方历史，内嵌和注入内容待提交 | `git status`、diff 与实际 import 来源 |
-| `.sglang-dcu-embedded.json` | 输入路径/SHA、模式、分支、版本、关键文件 SHA256 | 与指定输入/输出相符 |
+| `.sglang-hcu-embedded.json` | 输入路径/SHA、模式、分支、版本、关键文件 SHA256 | 与指定输入/输出相符 |
 | verifier JSON | 检查文件数、错误和 status | `passed` 且 errors 为空；失败退出码非零 |
 
 清单证明列出文件的完整性；不证明未列出文件、来源签名、模型正确性或性能。不要在发现损坏后重写清单来掩盖差异。
@@ -95,8 +95,8 @@ python3 tools/verify_reconstruction.py \
 ## 5. 生成后的运行验证
 
 1. 审阅新增文件和注入点，检查依赖/许可、package-data 与源码语法。
-2. 当前包须证明 `sglang` 和 `hcu_sglang` 均从输出的 `python` 导入，并隔离同名外部 `hcu` entry point；旧包输入对应检查 `sglang_dcu_plugin` 与 `dcu`。
-3. 内嵌 `hcu`（旧包为 `dcu`）不依赖外部 `SGLANG_PLUGINS` allowlist；loader 的 `setdefault` 不会覆盖已发现的同名外部入口，因此不能混用后只凭“注册成功”判断来自内嵌版本。
+2. 当前包须证明 `sglang` 和 `hcu_sglang` 均从输出的 `python` 导入，并隔离同名外部 `hcu` entry point；旧包输入对应检查 `sglang_hcu_plugin` 与 `hcu`。
+3. 内嵌 `hcu`（旧包为 `hcu`）不依赖外部 `SGLANG_PLUGINS` allowlist；loader 的 `setdefault` 不会覆盖已发现的同名外部入口，因此不能混用后只凭“注册成功”判断来自内嵌版本。
 4. 若部署还使用 adapter，另记录 adapter SHA、有效目标和加载链；**生成器不会自动内嵌 adapter**，也不会证明两仓组合已兼容。
 5. 按 [验证手册](validation.md) 完成适用 prefill/decode、状态、Graph、精度与性能。生成/哈希成功和模型通过分开记录。
 
@@ -124,7 +124,7 @@ python3 tools/verify_reconstruction.py \
 | 来源保真 | 当前 HCU 的对应符号、native/package-data 与实际输出 | 发现迁移遗漏或错误来源，不能只核对输出自写 manifest |
 | 行为一致性 | 构造/装饰器/receiver、全局别名、状态、collective owner、公开调用与实际生成 | 对适配差异给出证据；无法证明的范围明确保留未验证 |
 
-整个 fork 与官方基础结构可不同。按 caller/consumer 比较行为，保留有证据的接口适配差异；不能为文本相等引入重复 norm、KV store 或归约。源码哈希、selected AST 等价和 loader apply 不足以证明整个 fork 逻辑等价。本轮实例及未覆盖项见 [2026-10-26 实施记录](v3-20261026-development.md#4-源码内嵌与-hcu-逻辑对照)。
+整个 fork 与官方基础结构可不同。按 caller/consumer 比较行为，保留有证据的接口适配差异；不能为文本相等引入重复 norm、KV store 或归约。源码哈希、selected AST 等价和 loader apply 不足以证明整个 fork 逻辑等价。本轮实例及未覆盖项见 [2026-10-26 实施记录](hcu-sglang-development.md#2026-10-26-4-源码内嵌与-hcu-逻辑对照)。
 
 
 ## 9. 来源索引保护
@@ -132,3 +132,5 @@ python3 tools/verify_reconstruction.py \
 生成器对子进程设置 `GIT_OPTIONAL_LOCKS=0`，避免 `git status` 在来源校验时刷新输入仓库的 stat cache。它仍允许输出 checkout 的必要 Git 写操作，不是只读文件系统保护。
 
 需要保留输入索引的任务，生成前后分别记录 HEAD、工作区/暂存状态与索引文件 SHA256；人工检查来源时也可使用 `GIT_OPTIONAL_LOCKS=0 git -C <来源> status --porcelain=v1`。发现索引哈希变化时先核实 staged 内容与缓存差异，保留证据，不通过 reset 或复制重建索引掩盖变化。案例与实际边界见 [索引缓存案例](development-methodology.md#17-只读-git-检查与索引缓存)。
+
+生成器 v5 补齐当前 HCU 的 KV C++、Rust crate（含 .gitignore）、KDA HIP csrc 与 AITER 配置的 package-data。生成清单哈希与打包规则分别核验，不因文件已复制就认定 wheel 会保留资源。

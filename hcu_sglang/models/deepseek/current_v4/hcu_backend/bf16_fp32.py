@@ -6,7 +6,7 @@ import torch
 from sglang.kernels.jit.utils import cache_once
 from sglang.srt.environ import envs
 from sglang.srt.utils import get_bool_env_var, is_hip
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hip = is_hip()
 _is_hcu = is_hcu()
 _use_aiter = get_bool_env_var('SGLANG_USE_AITER') and _is_hip

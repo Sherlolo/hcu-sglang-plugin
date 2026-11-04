@@ -4,16 +4,16 @@
 
 ## 1. V1 抽取基线与来源
 
-日期：2026-10-20。所有来源为历史验证节点的本地快照，未拉取网络版本。各树读取时均干净。机器可读基线与文件来源见 [source-manifest](source-manifest.json)，DAS 的 25 个 skill 全量索引、原始描述、SHA256、取舍与目的地见 [source-inventory](source-inventory.json)。
+日期：2026-10-20。所有来源为历史验证节点的本地快照，未拉取网络版本。各树读取时均干净。机器可读基线与文件来源见 [source-manifest](hcu-sglang-development.md#历史-json-快照)（`source-manifest.json`），DAS 的 25 个 skill 全量索引、原始描述、SHA256、取舍与目的地见 [source-inventory](hcu-sglang-development.md#历史-json-快照)（`source-inventory.json`）。
 
 | 来源 | 抽取对象 | 新仓落点 |
 |---|---|---|
 | hcu-sglang-adapter | README/docs/skills/references/tools/tests/ci 组织；双仓判别与分层证据 | README、architecture、governance、reading-guide、ci |
-| sglang-plugin-das | entry point → register → apply 生命周期；Hook 与 fallback；迁移 skill 的五个脚本 | plugins、migration、sglang-dcu-plugin-migration、tools |
+| sglang-plugin-das | entry point → register → apply 生命周期；Hook 与 fallback；迁移 skill 的五个脚本 | plugins、migration、sglang-hcu-plugin-migration、tools |
 | agent_work/plugin_work | reconstruct 与 5 个原测试、三方 repo_audit、历史回溯总结 | tools/reconstruct、tests、backtracking |
 | sglang-das/.claude/skills | 12 项方法按 plugin 场景改写；13 项仅索引说明边界 | dev / triage references、ci、source-inventory |
 
-`plugin_work/skills/sglang-dcu-plugin-migration` 与实现仓 skill 逐文件比较一致；旧 `repo_audit.py` 与 skill 的 `audit_repositories.py` 功能接近但并非相同：前者提取 register/plugin_hook 的字面目标，后者索引所有包含 sglang 的字符串。新工具合并保留 `literal_hook_targets` 与 `sglang_target_strings` 两类信息，避免重复维护入口。历史 history/manifest/巨大审计结果仅用于理解方法；新仓提供空 overrides 与证据模板，不把历史“verified”当作新能力验证。源码内嵌的结果仓库、插件业务代码、容器启动脚本与模型结果文件不搬入。
+`plugin_work/skills/sglang-hcu-plugin-migration` 与实现仓 skill 逐文件比较一致；旧 `repo_audit.py` 与 skill 的 `audit_repositories.py` 功能接近但并非相同：前者提取 register/plugin_hook 的字面目标，后者索引所有包含 sglang 的字符串。新工具合并保留 `literal_hook_targets` 与 `sglang_target_strings` 两类信息，避免重复维护入口。历史 history/manifest/巨大审计结果仅用于理解方法；新仓提供空 overrides 与证据模板，不把历史“verified”当作新能力验证。源码内嵌的结果仓库、插件业务代码、容器启动脚本与模型结果文件不搬入。
 
 ## 2. V1 取舍与工具修正
 
@@ -36,7 +36,7 @@ V2 再次核对参考 adapter `dac7de12eae473d9ba4dbd3658e67a517639a024` 的治�
 |---|---|---|
 | 组件关系改为独立仓共同接入 | V1 的二分流程容易把代码归属误读为部署互斥 | architecture / governance / README / skill |
 | 明确 fallback 到当前有效基线 | 原函数可能已由 adapter 或前序 Hook 包装 | plugins / validation / dev 与 migration 参考 |
-| 区分当前、参考与未来 | 防止把外部 dcu 入口或未来包名当当前实现 | architecture / bootstrap / ci |
+| 区分当前、参考与未来 | 防止把外部 hcu 入口或未来包名当当前实现 | architecture / bootstrap / ci |
 | 增加文档中心、用途和维护触发点 | 让设计、操作、规则与证据可查可维护 | docs/README / reading-guide |
 | 增加配置与协作专篇 | 统一跨仓依赖、版本组合、默认值和评审流程 | configuration / contributing |
 | 提供图文导览 | 便于浏览仓库关系与未来结构 | 根 architecture.html |
@@ -65,7 +65,7 @@ hcu-sglang-plugin 方法与工具抽取，2026-10-20。
 
 迁移审计脚本、迁移证据契约来自 sglang-plugin-das；回溯生成器与原始测试来自 agent_work/plugin_work。
 文档组织与部分方法参考 hcu-sglang-adapter，插件测试/排障方法参考 sglang-das/.claude/skills。
-来源基线、原始文件哈希及改写说明见 [source-manifest.json](source-manifest.json)、[source-inventory.json](source-inventory.json) 和本文。
+来源基线、原始文件哈希及改写说明见 [source-manifest.json](hcu-sglang-development.md#历史-json-快照)（`source-manifest.json`）、[source-inventory.json](hcu-sglang-development.md#历史-json-快照)（`source-inventory.json`） 和本文。
 保留源文件已有声明；三个参考仓库的许可原文分别位于 [licenses/](../licenses)。
 本次未复制插件运行时、vendor 二进制或模型权重。
 

@@ -1,4 +1,4 @@
-"""DCU MoE adaptations."""
+"""HCU MoE adaptations."""
 
 import logging
 

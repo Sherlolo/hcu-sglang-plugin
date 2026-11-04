@@ -1,4 +1,4 @@
-"""SGLang DCU general plugin - model and layer adaptations."""
+"""SGLang HCU general plugin - model and layer adaptations."""
 
 import logging
 
@@ -74,6 +74,8 @@ def register() -> None:
 
     jit_overlay_loader.register_hooks()
     configs.register_hooks()
+    from hcu_sglang import configs_mamba
+    configs_mamba.register_hooks()
     server_args.register()
     server_args_hooks.register()
     speculative_compat.register_hooks()
@@ -93,19 +95,79 @@ def register() -> None:
     dsv4_compressor.register_hooks()
     triton_hcu.register_hooks()
     gdn_backend.register()
+    from hcu_sglang.layers.attention.linear import kda_backend
+    kda_backend.register_hooks()
     linear_attention.register()
     layernorm_gated.register()
-    topk.register()
+    from hcu_sglang.layers.moe import routing
+    routing.register_hooks()
+    from hcu_sglang.eplb import integration as load_aware_integration
+    load_aware_integration.register_hooks()
+    from hcu_sglang.eplb import placement
+    placement.register_hooks()
+    from hcu_sglang.eplb import recording
+    recording.register_hooks()
+    from hcu_sglang import deepep_graph
+    deepep_graph.register_hooks()
+    from hcu_sglang import graph_batch
+    graph_batch.register_hooks()
+    from hcu_sglang import graph_setup
+    graph_setup.register_hooks()
+    from hcu_sglang import cp_runtime, forward_batch
+    cp_runtime.register_hooks()
+    from hcu_sglang import dsa_utils
+    dsa_utils.register_hooks()
+    forward_batch.register_hooks()
+    from hcu_sglang import prefill_output, prefill_graph_runner
+    prefill_output.register_hooks()
+    prefill_graph_runner.register_hooks()
+    from hcu_sglang import prefill_graph_vote
+    prefill_graph_vote.register_hooks()
+    from hcu_sglang import prefill_graph_sync
+    prefill_graph_sync.register_hooks()
+    from hcu_sglang import encoder_swa_replay, encoder_swa_worker
+    encoder_swa_replay.register_hooks()
+    encoder_swa_worker.register_hooks()
+    from hcu_sglang import prefill_admission, prefill_memory_budget, prefill_request
+    prefill_admission.register_hooks()
+    prefill_memory_budget.register_hooks()
+    prefill_request.register_hooks()
+    from hcu_sglang import replay_validation, model_replay_budget
+    replay_validation.register_hooks()
+    model_replay_budget.register_hooks()
+    from hcu_sglang import v4_defaults
+    v4_defaults.register_hooks()
+    from hcu_sglang.mem_cache import window_tree, window_rust
+    window_tree.register_hooks()
+    window_rust.register_hooks()
+    from hcu_sglang.mem_cache.rust_tree_core import provider as rust_tree_provider
+    rust_tree_provider.register_hooks()
+    from hcu_sglang.mem_cache.cpp_utils import native_hash
+    native_hash.register_hooks()
+    from hcu_sglang.mem_cache import window_pool_name, window_pipeline, window_cache_init
+    window_pool_name.register_hooks()
+    window_pipeline.register_hooks()
+    window_cache_init.register_hooks()
+    from hcu_sglang.mem_cache import file_evictor, file_backend
+    file_evictor.register_hooks()
+    file_backend.register_hooks()
+    from hcu_sglang.mem_cache import kv_events, kv_event_admission
+    kv_events.register_hooks()
+    kv_event_admission.register_hooks()
     standard_dispatcher.register_hooks()
     alignment.register_hooks()
-    from hcu_sglang.utils.detection import is_dcu
-    if is_dcu():
+    from hcu_sglang.utils.detection import is_hcu
+    if is_hcu():
         from hcu_sglang.layers.moe import deepep_current, deepep_fp8
         deepep_current.register_hooks()
         deepep_fp8.register_hooks()
     aiter_w4a8.register_hooks()
     lightop_runner.register_hooks()
     mega_moe.register_hooks()
+    from hcu_sglang.layers.moe import dsv4_ops
+    dsv4_ops.register_hooks()
+    from hcu_sglang.layers.moe import deepseek_gate
+    deepseek_gate.register_hooks()
     quantization.register_hooks()
     norm_activation.register_hooks()
     linear_fusion.register_hooks()
@@ -137,4 +199,6 @@ def register() -> None:
     qwen3.register()
     qwen3_moe.register()
     qwen3_5.register()
+    from hcu_sglang import speculative_dspark
+    speculative_dspark.register_hooks()
     logger.info("[hcu_sglang] optimization hooks registered")

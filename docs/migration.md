@@ -1,17 +1,17 @@
 # 三方差异审计与迁移指南
 
-> **本文用途**：将 official、DAS fork 和外部 plugin 的差异整理成可追溯清单与处置台账，并给出方法同步和签名检查入口。用于 fork 同步、官方升级和覆盖审计；Skill 入口见 [三方迁移](../skills/sglang-dcu-plugin-migration/SKILL.md)。
+> **本文用途**：将 official、DAS fork 和外部 plugin 的差异整理成可追溯清单与处置台账，并给出方法同步和签名检查入口。用于 fork 同步、官方升级和覆盖审计；Skill 入口见 [三方迁移](../skills/sglang-hcu-plugin-migration/SKILL.md)。
 
 ## 使用 Skill 执行三方迁移
 
-对应 Skill：[`sglang-dcu-plugin-migration`](../skills/sglang-dcu-plugin-migration/SKILL.md)。该 Skill 按本指南执行审计、清单与台账流程。指定官方目标的升级与发版由 [升级指南](upgrading.md) 组织。
+对应 Skill：[`sglang-hcu-plugin-migration`](../skills/sglang-hcu-plugin-migration/SKILL.md)。该 Skill 按本指南执行审计、清单与台账流程。指定官方目标的升级与发版由 [升级指南](upgrading.md) 组织。
 
 **输入要求**：official/fork/plugin 绝对路径和 ref/SHA、迁移范围、可选 adapter 版本、执行环境及产物目录。
 
 **调用示例**：将占位符替换为实际绝对路径与任务信息，提交给 Agent。
 
 ```text
-读取 <方法库绝对路径>/skills/sglang-dcu-plugin-migration/SKILL.md，按该 Skill 执行。
+读取 <方法库绝对路径>/skills/sglang-hcu-plugin-migration/SKILL.md，按该 Skill 执行。
 官方仓库：<路径及 ref/SHA>；HCU fork：<路径及 ref/SHA>。
 外部插件仓库：<路径及 ref/SHA>；adapter：<不使用或版本>。
 迁移范围：<模型/能力/目录或完整审计范围>。
@@ -131,7 +131,7 @@ PYTHONPATH="$OFFICIAL/python:$PLUGIN" python3 tools/validate_hook_signatures.py 
 | 没有硬件关键词 | 仍需检查调度、cache、量化或模型的通用行为变化 |
 | 仅签名子集全绿或零行 | 不能推出整个 plugin 兼容，更不能推出 adapter/plugin 组合可用 |
 
-九类处置与证据要求见 [migration-contract](../skills/sglang-dcu-plugin-migration/references/migration-contract.md)。跨仓任务分别引用依赖和兼容 SHA；同一台账可以包含两个仓的工作，但每份实现仍有明确所有者。
+九类处置与证据要求见 [migration-contract](../skills/sglang-hcu-plugin-migration/references/migration-contract.md)。跨仓任务分别引用依赖和兼容 SHA；同一台账可以包含两个仓的工作，但每份实现仍有明确所有者。
 
 交付时报告条目总数及各状态/处置分布、AST/注册/apply 数量、未解析目标、静态与运行时结果、native/package 缺口。用 [验证模板](../templates/validation-record.md) 记录适用组合，按 [协作流程](contributing.md) 评审与交接。
 
@@ -152,3 +152,19 @@ python3 tools/build_migration_execution.py --check
 ```
 
 新增实现须记录目标文件、理由、测试和验证范围；validated 必须有证据。来源变化后重新采集盘点并复审决定，不能仅重建旧台账继承完成结论。具体实施与阶段退出条件见 [当前开发记录](hcu-sglang-development.md)。
+
+
+### 原样 Python 代码的复用证据
+
+使用 [audit_python_equivalence.py](../tools/audit_python_equivalence.py) 核对固定盘点中两边都有的 changed Python 文件。工具读取Git tree/blob，不导入或执行来源代码；要求HEAD与盘点一致，核对对象ID、regular-file mode和shebang，完整AST保留imports、guards、decorators、docstrings、常量及type comments。差异、解析失败、调用入口/权限漂移保持待审；记录输入HEAD/index前后哈希。
+
+```bash
+python3 tools/audit_python_equivalence.py \
+  --official-repo "$OFFICIAL" --fork-repo "$FORK" \
+  --plan plans/sglang-das-migration.json \
+  --report "$ARTIFACTS/python-equivalence.json"
+```
+
+复核匹配路径和报告后，可在同一命令增加 `--apply-decisions plans/sglang-das-decisions.json`，只为尚无人工记录的匹配文件添加代码级 `upstream`。不会覆盖任何已有决定；dirty来源允许commit-only报告但拒绝自动回填，输出不能覆盖盘点/决定或写入来源树。随后重建执行台账。
+
+当前可提交报告为 [Python代码等价审阅](../plans/sglang-das-python-equivalence.json)。该状态只关闭本文件的Python代码差异：相对导入、编译资源、配置数据、依赖实现和运行结果仍由各自路径/行为台账复核，不据此宣称完整模块或全DAS行为等价。不能把代码级upstream继承为逐行为的Already upstream/verified。

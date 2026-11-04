@@ -1,4 +1,4 @@
-"""DCU-specific module-level flags for DeepSeek V2 (mirrors fork globals)."""
+"""HCU-specific module-level flags for DeepSeek V2 (mirrors fork globals)."""
 
 from __future__ import annotations
 
@@ -17,11 +17,11 @@ from sglang.srt.utils import (
     is_hip,
     is_npu,
 )
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 
-_is_dcu = is_dcu()
+_is_hcu = is_hcu()
 _is_hip = is_hip()
 _is_cuda = is_cuda()
 _is_npu = is_npu()
@@ -77,7 +77,7 @@ dtype_mapping = {
 
 # Names patched onto sglang.srt.models.deepseek_v2 after apply_hooks().
 MODULE_PATCH_ATTRS = (
-    "_is_dcu",
+    "_is_hcu",
     "_is_hip",
     "_is_cuda",
     "_is_npu",

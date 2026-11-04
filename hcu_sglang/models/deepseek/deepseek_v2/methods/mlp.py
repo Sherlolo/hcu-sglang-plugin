@@ -1,4 +1,4 @@
-"""DCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
+"""HCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
 
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
@@ -196,7 +196,7 @@ def forward(
 
     # Fallback: fused silu+clamp kernel (still faster than unfused)
     elif self.swiglu_limit is not None:
-        if N0._is_hip and not C._is_dcu:
+        if N0._is_hip and not C._is_hcu:
             x = N0._hip_act.silu_and_mul_clamp(self, gate_up)
         elif N0._is_npu:
             x = N0.torch.ops.npu.npu_clipped_swiglu(
@@ -268,7 +268,7 @@ def __init__(
         )
     self.act_fn = N0.SiluAndMul()
     self.use_fused_clamp_act_mul = (
-        N0._is_hip and not C._is_dcu and N0.envs.SGLANG_OPT_USE_FUSED_CLAMP_ACT_MUL.get()
+        N0._is_hip and not C._is_hcu and N0.envs.SGLANG_OPT_USE_FUSED_CLAMP_ACT_MUL.get()
     )
     self._fused_clamp_fp8_checked = False
     self._fused_clamp_use_fp8 = False

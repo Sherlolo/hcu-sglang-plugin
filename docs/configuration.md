@@ -77,9 +77,24 @@ flowchart LR
 
 平台判定也有所有权：adapter 可能向 SGLang 暴露 CUDA 语义，而真实 torch/编译器仍是 HIP。plugin 的硬件能力判定应使用足够直接且被验证的设备/依赖信息，不能只凭某个 SGLang `is_cuda()` 推断物理设备与 vendor 符号。
 
-V3 的外部运行时输出实际引入 `HCU_PLUGIN_MINIMAX_OPT`，由 `--minimax-opt` 在构造配置前设置并继承给 worker；在 ServerArgs 上仅提供兼容读取，不写冻结记录。该接口最初属于外部 runtime 0.3.0，当前迁入实现见 `hcu_sglang/environ.py`；历史行为与验收边界见 [V3 手册](v3-runtime-validation.md)。
+V3 的外部运行时输出实际引入 `HCU_PLUGIN_MINIMAX_OPT`，由 `--minimax-opt` 在构造配置前设置并继承给 worker；在 ServerArgs 上仅提供兼容读取，不写冻结记录。该接口最初属于外部 runtime 0.3.0，当前迁入实现见 `hcu_sglang/config.py`；历史行为与验收边界见 [V3 手册](v3-runtime-validation.md)。
 
 官方配置记录可能是 msgspec Struct，不要仅靠 dataclasses.is_dataclass 判断；使用 pinned 版本的 `arg_utils.is_record`/record_fields。CLI 解析后还要 resolve_once 才算完成配置解析。
+
+### 当前 custom all-reduce 参数
+
+当前 HCU 插件提供 `--custom-all-reduce-backend {auto,native,aiter,off}`，默认 `auto`。官方0.5.22的原始 ServerArgs/comm记录没有该字段，插件在 CLI 构造原始记录之前消费参数，并用内部 `HCU_PLUGIN_CUSTOM_ALL_REDUCE_BACKEND` 继承到 worker；不向冻结输入或 `get_exec().comm` 补写属性。直接构造官方 `ServerArgs(custom_all_reduce_backend=...)` 不是已支持接口；程序化调用应在初始化 engine 前使用 `hcu_sglang.config.configure_custom_all_reduce_backend(value)`。
+
+| 规则 | 实际行为 |
+|---|---|
+| 优先级 | 官方解析后的 `disable_custom_all_reduce=True` 强制 `off`；否则保持显式后端；HCU上 `auto` 且 legacy `SGLANG_USE_AITER_AR=1` 按DAS提升为 `aiter` |
+| 生效阶段 | 每个 worker 的官方 distributed bootstrap 先设置原有 flags，再将插件解析结果交给组工厂；一个进程对应一个活动 engine 配置 |
+| 组覆盖 | world组始终 `off`；model-parallel组默认取解析结果；显式组级参数优先，不修改其他组成员定义 |
+| strict-Fabric | `aiter` + `AITER_AR_TRANSPORT=fabric` 时构造异常原样抛出，disabled communicator 明确拒绝；不静默回落成 RCCL |
+| QuickAllReduce | 保留DAS的独立 `SGLANG_USE_QUICK_CUSTOM_ALLREDUCE` 门控；Fabric/auto transport 不并建 IPC QuickAllReduce |
+| 原配方别名 | `--nsa-prefill-backend` / `--nsa-decode-backend` 使用原 deprecated alias action，写入当前 DSA 字段，未指定时不覆盖 canonical 默认值 |
+
+后端初始化日志记录 requested/selected transport、disabled、ranks与world size。参数解析通过不代表 communicator 初始化或模型正确；IPC、Fabric、Graph及各组拓扑分别验收，见[开发记录](hcu-sglang-development.md)。
 
 ## 5. 变更与排障记录
 

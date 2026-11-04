@@ -1,4 +1,4 @@
-"""DCU DeepSeek V4 fork methods (auto-extracted for plugin hooks)."""
+"""HCU DeepSeek V4 fork methods (auto-extracted for plugin hooks)."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def __init__(
 
         self.use_fused_qk_norm_rope = (
             _is_hip
-            and not C._is_dcu
+            and not C._is_hcu
             and envs.SGLANG_OPT_USE_FUSED_QK_NORM_ROPE.get()
         )
 

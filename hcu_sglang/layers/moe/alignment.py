@@ -22,7 +22,7 @@ import triton.language as tl
 
 from sglang.srt.environ import envs
 from sglang.srt.utils import is_cuda, is_hip, is_musa, is_xpu, round_up
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 _SGLANG_EXPERIMENTAL_LORA_OPTI = envs.SGLANG_EXPERIMENTAL_LORA_OPTI.get()
 

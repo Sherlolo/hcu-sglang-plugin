@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
 
@@ -25,7 +27,7 @@ def _handle_dspark(server_args: ServerArgs) -> None:
     # compatibility path.
     cfg = N.resolving_view(server_args)
     _is_npu = cfg.device.startswith("npu")
-    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from hcu_sglang.utils.detection import is_hcu as is_hcu
 
     _is_hcu_device = is_hcu()
     if not cfg.device.startswith(("cuda", "npu", "xpu")):
@@ -250,3 +252,8 @@ def _handle_dspark(server_args: ServerArgs) -> None:
             "scheduler, which is off under SGLANG_RAGGED_VERIFY_MODE=static; it "
             "will be a no-op."
         )
+
+
+def register_hooks():
+    from hcu_sglang import speculative_dspark_worker
+    speculative_dspark_worker.register_hooks()

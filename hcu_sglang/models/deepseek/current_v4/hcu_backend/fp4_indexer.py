@@ -10,7 +10,7 @@ from sglang.kernels.ops.attention.deep_select import get_input_stride_alignment_
 from hcu_sglang.models.deepseek.current_v4.hcu_backend.torch_quant import FP4_AMAX_FLOOR
 from sglang.srt.environ import envs
 from sglang.srt.runtime_context import get_platform
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 _is_hcu = is_hcu()
 logger = logging.getLogger(__name__)
 INDEX_HEAD_DIM = 128

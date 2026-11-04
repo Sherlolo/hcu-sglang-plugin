@@ -1,4 +1,4 @@
-"""DCU NSA attention adaptations."""
+"""HCU NSA attention adaptations."""
 
 from __future__ import annotations
 

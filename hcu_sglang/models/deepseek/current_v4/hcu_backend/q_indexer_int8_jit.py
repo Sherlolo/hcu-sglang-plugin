@@ -7,7 +7,7 @@ from __future__ import annotations
 import functools
 from pathlib import Path
 import torch
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 @functools.cache
 def _module():

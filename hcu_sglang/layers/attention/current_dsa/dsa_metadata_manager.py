@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """DSA metadata fusion selection and MTP replay reuse."""
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from hcu_sglang.layers.attention.current_dsa.flashmla_backend import (
     refresh_flashmla_metadata,
 )
 from sglang.srt.utils import is_cuda, is_hip
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 if TYPE_CHECKING:
     from hcu_sglang.layers.attention.current_dsa.dsa_backend_mtp_precompute import (

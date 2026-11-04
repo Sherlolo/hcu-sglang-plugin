@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """ROCm glue of deepseek_v4: the branches the model takes under _is_hip, bound there as
 _hip. The gfx950 dense fp8 routes live in deepseek_v4_gfx95_dense, the fused mHC
 boundary in deepseek_v4_fused_mhc."""

@@ -1,4 +1,4 @@
-"""Qwen3 model hooks for DCU fused RMSNorm + RoPE KV-store."""
+"""Qwen3 model hooks for HCU fused RMSNorm + RoPE KV-store."""
 
 import logging
 
@@ -18,45 +18,24 @@ _TARGET = "sglang.srt.models.qwen3.Qwen3Attention.forward"
 
 def register() -> None:
     logger.info("[hcu_sglang] register AROUND hook: %s", _TARGET)
+    HookRegistry.register("sglang.srt.models.qwen3.Qwen3Attention.__init__", around_init, HookType.AROUND)
     HookRegistry.register(_TARGET, replacement_forward, HookType.AROUND)
 
 
+def around_init(original, attention, *args, **kwargs):
+    from hcu_sglang.utils.detection import is_hcu
+    if not is_hcu():
+        return original(attention, *args, **kwargs)
+    import types
+    from hcu_sglang.models.qwen.qwen3_source import Qwen3Attention
+    Qwen3Attention.__init__(attention, *args, **kwargs)
+    for name in ("forward_prepare_native", "forward_prepare_npu", "forward_prepare_aiter_fused"):
+        setattr(attention, name, types.MethodType(getattr(Qwen3Attention, name), attention))
+
+
 def replacement_forward(original_fn, self, positions, hidden_states, forward_batch):
-    if not use_fused_rms_rotary():
+    from hcu_sglang.utils.detection import is_hcu
+    if not is_hcu():
         return original_fn(self, positions, hidden_states, forward_batch)
-
-    determinism = get_exec().deterministic
-    if (
-        getattr(self, "use_fused_qk_norm_mrope", False)
-        and forward_batch.forward_mode.is_decode()
-        and determinism.rl_on_policy_target is None
-    ):
-        return original_fn(self, positions, hidden_states, forward_batch)
-    if determinism.rl_on_policy_target is not None:
-        return original_fn(self, positions, hidden_states, forward_batch)
-
-    try:
-        from lightop import rms_rotary_embedding_fuse_with_kv_store
-    except ImportError as exc:
-        logger.warning(
-            "[hcu_sglang] qwen3 fused RMS rotary is unavailable, fallback: %s",
-            exc,
-        )
-        return original_fn(self, positions, hidden_states, forward_batch)
-
-    qkv, _ = self.qkv_proj(hidden_states)
-    q, k, v = qkv.split([self.q_size, self.kv_size, self.kv_size], dim=-1)
-    q, k, v = fused_rms_rotary_kv_store(
-        rms_rotary_embedding_fuse_with_kv_store,
-        self,
-        positions,
-        q,
-        k,
-        v,
-        forward_batch,
-        self.q_norm,
-        self.k_norm,
-    )
-    attn_output = self.attn(q, k, v, forward_batch, save_kv_cache=True)
-    output, _ = self.o_proj(attn_output)
-    return output
+    from hcu_sglang.models.qwen.qwen3_source import Qwen3Attention
+    return Qwen3Attention.forward(self, positions, hidden_states, forward_batch)

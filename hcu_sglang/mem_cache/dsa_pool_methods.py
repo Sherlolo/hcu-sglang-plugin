@@ -26,9 +26,9 @@ import typing
 import sglang.srt.mem_cache.memory_pool as N
 from hcu_sglang.mem_cache import dsa_index_cache_mode as K
 from hcu_sglang.mem_cache.dsa_index_key_cache import IndexKeyCache
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 
 
 def __init__(

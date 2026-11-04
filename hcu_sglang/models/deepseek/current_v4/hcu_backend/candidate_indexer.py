@@ -8,7 +8,7 @@ import triton.language as tl
 from hcu_sglang.models.deepseek.current_v4.hcu_backend import lightop_indexer
 from sglang.srt.environ import envs
 from hcu_sglang.models.deepseek.current_v4.hcu_backend.metadata import PagedIndexerMetadata
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 if TYPE_CHECKING:
     from hcu_sglang.models.deepseek.current_v4.hcu_backend.candidate_indexer_lightop import LightopCandidateIndexer
 _IS_HCU = is_hcu()
@@ -72,7 +72,7 @@ def make_candidate_indexer(topk_blocks: int, block_size: int) -> Optional[Lighto
         return None
     if block_size <= 0:
         raise ValueError('candidate_block_size must be positive when candidate_topk_blocks is enabled')
-    from hcu_sglang.utils.detection import is_dcu as is_hcu
+    from hcu_sglang.utils.detection import is_hcu as is_hcu
     if is_hcu():
         from hcu_sglang.models.deepseek.current_v4.hcu_backend.lightop_indexer import lightop_paged_indexer_available
         if not lightop_paged_indexer_available():
@@ -144,7 +144,7 @@ def _topk_block_ids(keys: torch.Tensor, nblocks: torch.Tensor, topk_blocks: int)
     """Top-k over the ``[bs, nblocks_amax]`` block-amax keys -> ``[bs, K]`` int32
     raw block ids, ``-1`` past each row's ``nblocks[i]``.
 
-    HIP/DCU uses lightop's prebuilt exact-adaptive Top2048 op (no JIT); NVIDIA the
+    HIP/HCU uses lightop's prebuilt exact-adaptive Top2048 op (no JIT); NVIDIA the
     JIT v2 kernel with ``page_tables=None``. ``K`` is ``topk_blocks`` on HIP (the
     lightop op is fixed width), ``min(topk_blocks, nblocks_amax)`` on NVIDIA."""
     (bs, nblocks_amax) = keys.shape

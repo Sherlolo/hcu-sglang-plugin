@@ -15,7 +15,7 @@ import triton
 import triton.language as tl
 
 from sglang.srt.environ import envs
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 
 INDEX_K_PAGE_SIZE = 64

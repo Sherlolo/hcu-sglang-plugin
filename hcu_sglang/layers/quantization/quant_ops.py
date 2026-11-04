@@ -1,6 +1,25 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import functools
 from typing import Optional
 
 import torch
+
+from hcu_sglang.utils.detection import is_hcu as is_hcu
+
+_is_hcu = is_hcu()
 
 try:
     from lightop import gemm_ops as quant_ops
@@ -8,6 +27,34 @@ except Exception:
     print(
         "INFO: Please install lightop if you want to infer gptq or awq or w8a8 model.\n"
     )
+
+
+# lightop's `gemm_w8a8_smooth_asm` loads an arch-specific .co through
+# hipModuleLoad inside its C++ `HIP_CALL` macro, which calls `exit(0)` on
+# failure; the Python `try/except` below can never rescue that. gfx928 (K100)
+# images do not ship the w8a8 smooth asm kernels at all (lightop resolves
+# LIGHTOP_ASM_DIR to .../third_party/hsa/gfx928, which is absent), so any call
+# there kills the scheduler process during graph capture instead of raising.
+# Keep the fast path permanently disabled on those archs and always use the
+# tuned Triton path.
+_W8A8_SMOOTH_ASM_UNSUPPORTED_ARCHS = ("gfx928",)
+
+
+@functools.lru_cache(maxsize=8)
+def _w8a8_smooth_asm_supported(device: torch.device) -> bool:
+    """Whether `lightop.gemm_w8a8_smooth_asm` can run on `device`.
+
+    The asm kernels are precompiled per arch and lightop exits the process
+    instead of raising when the matching .co is missing, so a wrong answer here
+    is fatal rather than just slow. Disable the fast path on known-unsupported
+    archs and stay conservative when the arch cannot be determined.
+    """
+    try:
+        props = torch.cuda.get_device_properties(device)
+        arch = getattr(props, "gcnArchName", "").split(":")[0]
+    except Exception:
+        return False
+    return bool(arch) and arch not in _W8A8_SMOOTH_ASM_UNSUPPORTED_ARCHS
 
 
 def triton_scaled_mm(
@@ -19,6 +66,52 @@ def triton_scaled_mm(
     bias: Optional[torch.Tensor] = None,
     best_config: Optional[list] = None,
 ) -> torch.Tensor:
+    # w8a8 decode with small M is not covered by the smooth GEMM tuning table;
+    # explicit slide values avoid excessive padding in the default heuristic.
+    if (
+        _is_hcu
+        and best_config is None
+        and bias is None
+        and a.dim() == 2
+        and a.is_contiguous()
+        and a.dtype == torch.int8
+        and b.dtype == torch.int8
+        and b.dim() == 2
+        and b.stride() == (1, b.shape[0])
+        and a.shape[-1] == b.shape[0]
+        and b.shape[0] >= 128
+    ):
+        m_i = a.shape[0]
+        k_i = b.shape[0]
+        n_i = b.shape[1]
+        if n_i <= 1024 and m_i <= 256:
+            tune = 1
+        elif n_i <= 2048 and m_i <= 128:
+            tune = 1
+        elif m_i <= 64:
+            tune = 9
+        else:
+            tune = None
+        # The tuned slide values are valid for complete K=256 tiles.
+        if tune is not None and k_i % 256 == 0 and _w8a8_smooth_asm_supported(a.device):
+            try:
+                from lightop import op as _lop
+
+                return _lop.gemm_w8a8_smooth_asm(
+                    a,
+                    b,
+                    scale_a,
+                    scale_b,
+                    None,
+                    out_dtype,
+                    m_i,
+                    n_i,
+                    k_i,
+                    True,
+                    tune,
+                )
+            except Exception:
+                pass
 
     return quant_ops.triton_scaled_mm(
         a, b, scale_a, scale_b, out_dtype, bias, best_config
@@ -116,6 +209,8 @@ def blaslt_scaled_mm(
     _, out = quant_ops.hipblaslt_w8a8_gemm(
         a, b, scale_a, scale_b, m, n, k, "NT", out_dtype
     )
+    if bias is not None:
+        out.add_(bias)
     return out
 
 

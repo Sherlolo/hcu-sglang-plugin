@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 import math
 import torch
@@ -5,8 +8,8 @@ import torch.nn.functional as F
 from scipy.linalg import hadamard
 from sglang.srt.layers.attention.dsa.dsa_indexer import _is_hip, _is_xpu
 from sglang.srt.utils import get_bool_env_var
-from hcu_sglang.utils.detection import is_dcu
-_is_hcu = is_dcu()
+from hcu_sglang.utils.detection import is_hcu
+_is_hcu = is_hcu()
 _use_fast_hadamard_transform = get_bool_env_var("SGLANG_USE_FAST_HADAMARD_TRANSFORM")
 _HADAMARD_CACHE = {}
 if _is_hcu and _use_fast_hadamard_transform:

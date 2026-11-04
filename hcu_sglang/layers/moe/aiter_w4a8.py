@@ -9,8 +9,8 @@ import torch
 from torch.nn.parameter import Parameter
 
 
-_MARKER = "_sglang_dcu_w4a8_int8"
-_QUANT_MODE = "_sglang_dcu_aiter_quant_mode"
+_MARKER = "_sglang_hcu_w4a8_int8"
+_QUANT_MODE = "_sglang_hcu_aiter_quant_mode"
 _W4A8_INT8 = "w4a8_int8"
 _W8A8_INT8 = "w8a8_int8"
 _W8A8_FP8 = "w8a8_fp8"
@@ -345,7 +345,7 @@ def _run_w8a8(runner_core, runner_input, quant_info):
         if quant_info.expert_map is not None and quant_info.global_num_experts is not None
         else w13_weight.shape[0]
     )
-    routed_scaling_factor = runner_config.routed_scaling_factor or 1.0
+    routed_scaling_factor = (runner_config.routed_scaling_factor if runner_config.routed_scaling_factor is not None else 1.0)
     output = aiter_moe(
         hidden_states=runner_input.hidden_states,
         w1=w13_weight,

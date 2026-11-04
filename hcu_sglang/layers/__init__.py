@@ -1,4 +1,4 @@
-"""DCU layer adaptations and hook registration."""
+"""HCU layer adaptations and hook registration."""
 
 import logging
 

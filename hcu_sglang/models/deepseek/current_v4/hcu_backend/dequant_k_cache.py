@@ -9,7 +9,7 @@ from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 from sglang.kernels.ops.quantization.fp8_kernel import is_fp8_fnuz
 from sglang.srt.utils import is_gfx95_supported
 from sglang.srt.utils import get_bool_env_var
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 fp8_dtype = torch.float8_e4m3fnuz if is_fp8_fnuz() else torch.float8_e4m3fn
 _use_hcu_dequant_k_cache_paged = is_hcu() and get_bool_env_var('SGLANG_HCU_OPT_DEQUANT_K_CACHE_PAGED', 'true')
 _hcu_dequantize_k_cache_paged = None

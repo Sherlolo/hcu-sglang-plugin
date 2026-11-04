@@ -1,14 +1,17 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import logging
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 _original_dsv4_backend = None
 
 
 def around_create_dsv4_backend(original, runner):
-    if not is_dcu():
+    if not is_hcu():
         return original(runner)
     from sglang.srt.layers.attention.deepseek_v4_trtllm_backend import create_deepseek_v4_attn_backend
     backend = create_deepseek_v4_attn_backend(runner)
@@ -21,21 +24,21 @@ def create_hcu_dsv4_backend(runner):
 
 
 def around_create_dsv4_decode_backend(original, factory):
-    if not is_dcu():
+    if not is_hcu():
         return original(factory)
     from sglang.srt.layers.attention.deepseek_v4_trtllm_backend import create_deepseek_v4_multistep_backend
     return "dsv4", create_deepseek_v4_multistep_backend(factory.draft_model_runner, topk=factory.topk, speculative_num_steps=factory.speculative_num_steps)
 
 
 def around_create_dsv4_prefill_backend(original, factory):
-    if not is_dcu():
+    if not is_hcu():
         return original(factory)
     from sglang.srt.layers.attention.deepseek_v4_trtllm_backend import create_deepseek_v4_attn_backend
     return "dsv4", create_deepseek_v4_attn_backend(factory.draft_model_runner, skip_prefill=False)
 
 
 def register():
-    if not is_dcu():
+    if not is_hcu():
         return
     global _original_dsv4_backend
     from sglang.srt.layers.attention.attention_registry import ATTENTION_BACKENDS

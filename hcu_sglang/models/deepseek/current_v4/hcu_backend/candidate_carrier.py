@@ -1,9 +1,9 @@
 """Align Torch-produced candidate scores at the native consumer boundary."""
 import torch
 from sglang.srt.environ import envs
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
-_is_hcu=is_dcu()
+_is_hcu=is_hcu()
 
 
 def aligned_candidate_scores(scores):

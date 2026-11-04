@@ -1,1 +1,1 @@
-"""Utility helpers for the DCU plugin."""
+"""Utility helpers for the HCU plugin."""

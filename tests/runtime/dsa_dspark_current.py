@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from contextlib import ExitStack, nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -31,7 +34,7 @@ class DsaDsparkCurrentTests(unittest.TestCase):
             stack.enter_context(patch.object(N.MLATokenToKVPool,'__init__',base))
             stack.enter_context(patch.object(N.DSATokenToKVPool,'_finalize_allocation_log',lambda *args:None))
             stack.enter_context(patch.object(N,'get_parallel',return_value=SimpleNamespace(attn_dcp_size=2)))
-            stack.enter_context(patch.object(plugin,'is_dcu',return_value=True))
+            stack.enter_context(patch.object(plugin,'is_hcu',return_value=True))
             stack.enter_context(patch.object(P,'_is_hcu',True))
             stack.enter_context(patch.object(K,'is_hcu',return_value=True))
             stack.enter_context(patch.object(K,'is_hcu_gfx936',return_value=False))
@@ -53,7 +56,7 @@ class DsaDsparkCurrentTests(unittest.TestCase):
     def test_scaled_cache_maps_global_layers_and_moves_key_and_scale(self):
         pool=self.make_pool();buf=pool.index_key_cache.buffer[1];page=buf[0];key=page[:64*128].view(64,128);scale=page[64*128:].view(torch.float32)
         key[3].fill_(17);scale[3]=.125
-        with patch.object(plugin,'is_dcu',return_value=True),patch.object(N.MLATokenToKVPool,'move_kv_cache',lambda *args:None):
+        with patch.object(plugin,'is_hcu',return_value=True),patch.object(N.MLATokenToKVPool,'move_kv_cache',lambda *args:None):
             self.assertEqual(pool.get_index_k_with_scale_buffer(6).data_ptr(),buf.data_ptr())
             pool.move_kv_cache(torch.tensor([9]),torch.tensor([3]))
         self.assertTrue(torch.equal(key[9],key[3]));self.assertEqual(scale[9].item(),.125)
@@ -72,7 +75,7 @@ class DsaDsparkCurrentTests(unittest.TestCase):
 
     def test_dspark_uses_live_resolution_and_keeps_raw_inputs(self):
         raw=self.raw_dspark()
-        with patch.object(C,'is_dcu',return_value=True),patch('hcu_sglang.utils.detection.is_dcu',return_value=True),patch.object(S,'model_config_of',return_value=SimpleNamespace(hf_config=SimpleNamespace(architectures=['DeepseekV4ForCausalLM']))),patch('sglang.srt.speculative.dspark_components.dspark_config.read_draft_checkpoint_config',return_value=None),patch.dict(os.environ,{'SGLANG_RAGGED_VERIFY_MODE':'static'}):
+        with patch.object(C,'is_hcu',return_value=True),patch('hcu_sglang.utils.detection.is_hcu',return_value=True),patch.object(S,'model_config_of',return_value=SimpleNamespace(hf_config=SimpleNamespace(architectures=['DeepseekV4ForCausalLM']))),patch('sglang.srt.speculative.dspark_components.dspark_config.read_draft_checkpoint_config',return_value=None),patch.dict(os.environ,{'SGLANG_RAGGED_VERIFY_MODE':'static'}):
             S._handle_dspark(raw)
         self.assertIsNone(raw.device);self.assertIsNone(raw.speculative_num_draft_tokens)
         view=resolving_view(raw);self.assertEqual(view.device,'cuda');self.assertEqual(view.speculative_num_draft_tokens,4);self.assertEqual(view.speculative_num_steps,1);self.assertEqual(view.max_running_requests,48)
@@ -80,7 +83,7 @@ class DsaDsparkCurrentTests(unittest.TestCase):
 
     def test_non_hcu_pool_arguments_are_forwarded_without_loss(self):
         args=object();seen=[]
-        with patch.object(plugin,'is_dcu',return_value=False):
+        with patch.object(plugin,'is_hcu',return_value=False):
             plugin.around_init(lambda *a,**kw:seen.append((a,kw)),args,index_kpool=2,index_kpool_compress=True,tail_extra_slots=3,max_running_requests=7,dcp_replicated=True)
         self.assertIs(seen[0][0][0],args);self.assertEqual(seen[0][1]['tail_extra_slots'],3);self.assertTrue(seen[0][1]['dcp_replicated'])
 

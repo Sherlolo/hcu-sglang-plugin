@@ -1,10 +1,13 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from enum import Enum
 
 from sglang.srt.runtime_context import get_platform
 from sglang.srt.utils import is_hip
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 
 class DSAPagedMQALogitsBackend(Enum):

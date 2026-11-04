@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Memory budget for the fp32 MQA-logits scratch of the DeepSeek sparse
 attention indexers (DSA, DSV4, DSV4.1).
 

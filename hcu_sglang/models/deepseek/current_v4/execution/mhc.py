@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """DeepSeek-V4.1 manifold-constrained hyper-connections (mHC).
 
 The residual is ``R [T, hc_mult, hidden]`` -- hc_mult parallel streams per token --
@@ -39,7 +42,7 @@ from sglang.srt.model_executor.runner import compile_in_capture_mode
 from sglang.srt.models.deepseek_v2 import MoEOutput
 from sglang.srt.runtime_context import get_parallel, get_platform
 from sglang.srt.utils import is_gfx95_supported, get_bool_env_var, is_hip, is_npu, is_xpu
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 _is_hcu = is_hcu()
 _use_lightop = get_bool_env_var("SGLANG_USE_LIGHTOP")

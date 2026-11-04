@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Non-CUDA DeepSeek V4 decoder and draft execution.
 
 The mixins own platform mHC state, fusion, and TBO operations.

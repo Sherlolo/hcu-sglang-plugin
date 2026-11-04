@@ -1,4 +1,4 @@
-"""DCU norm and activation adaptations."""
+"""HCU norm and activation adaptations."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def after_silu_and_mul_init(result: Any, layer, *args, **kwargs) -> Any:
-    if is_dcu() and getattr(layer._forward_method, "__name__", "") == "forward_aiter":
+    if is_hcu() and getattr(layer._forward_method, "__name__", "") == "forward_aiter":
         layer._forward_method = layer.forward_cuda
     return result
 
@@ -18,7 +18,7 @@ def after_silu_and_mul_init(result: Any, layer, *args, **kwargs) -> Any:
 def around_silu_and_mul_forward_cuda(
     original: Callable[..., torch.Tensor], layer, x: torch.Tensor
 ) -> torch.Tensor:
-    if not is_dcu():
+    if not is_hcu():
         return original(layer, x)
 
     from lightop import fuse_silu_and_mul

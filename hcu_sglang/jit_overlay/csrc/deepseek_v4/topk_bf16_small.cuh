@@ -90,7 +90,7 @@ SGL_DEVICE uint32_t warp_exclusive_suffix_sum(uint32_t x, uint32_t lane_id) {
   uint32_t inc = x;
 #pragma unroll
   for (uint32_t offset = 1; offset < device::kWarpThreads; offset <<= 1) {
-    const auto t = __shfl_down_sync(device::warp::kFullMask, inc, offset);
+    const auto t = device::warp::shfl_down(device::warp::kFullMask, inc, offset);
     if (lane_id + offset < device::kWarpThreads) inc += t;
   }
   return inc - x;
@@ -115,56 +115,112 @@ SGL_DEVICE void topk_bf16_find_pivot_warp(
     const uint32_t* hist, uint32_t k, bool msb_mode, bool negative, uint32_t lane_id, TopKBF16Config::Smem& smem) {
   using C = TopKBF16Config;
   // lane L owns distorted bins [8L, 8L + 8)
-  const bool reverse = msb_mode ? lane_id < 16 : negative;
-  uint32_t raw_base = reverse ? 0xF8 - 8 * lane_id : 8 * lane_id - (msb_mode ? 0x80 : 0);
+  constexpr uint32_t kBinsPerLane = C::kNumBins / device::kWarpThreads;
+  const bool reverse = msb_mode ? lane_id < device::kWarpThreads / 2 : negative;
+  uint32_t raw_base = reverse ? C::kNumBins - kBinsPerLane - kBinsPerLane * lane_id
+                             : kBinsPerLane * lane_id - (msb_mode ? 0x80 : 0);
   if (msb_mode && reverse) raw_base += C::kNegShift;
   device::AlignedVector<uint32_t, 4> lo, hi;
   lo.load(hist + raw_base);
-  hi.load(hist + raw_base + 4);
-  uint32_t count[8];
+  if constexpr (kBinsPerLane == 8) hi.load(hist + raw_base + 4);
+  uint32_t count[kBinsPerLane];
 #pragma unroll
-  for (uint32_t i = 0; i < 8; ++i) {
-    const auto fwd = i < 4 ? lo[i] : hi[i - 4];
-    const auto rev = i < 4 ? hi[3 - i] : lo[7 - i];
-    count[i] = reverse ? rev : fwd;
+  for (uint32_t i = 0; i < kBinsPerLane; ++i) {
+    if constexpr (kBinsPerLane == 8) {
+      const auto fwd = i < 4 ? lo[i] : hi[i - 4];
+      const auto rev = i < 4 ? hi[3 - i] : lo[7 - i];
+      count[i] = reverse ? rev : fwd;
+    } else {
+      count[i] = lo[reverse ? kBinsPerLane - 1 - i : i];
+    }
   }
   uint32_t local = 0;
 #pragma unroll
-  for (uint32_t i = 0; i < 8; ++i) {
+  for (uint32_t i = 0; i < kBinsPerLane; ++i) {
     local += count[i];
   }
   // suffix[j] = number of elements in bins >= 8L + j
-  uint32_t suffix[9];
-  suffix[8] = warp_exclusive_suffix_sum(local, lane_id);
+  uint32_t suffix[kBinsPerLane + 1];
+  suffix[kBinsPerLane] = warp_exclusive_suffix_sum(local, lane_id);
 #pragma unroll
-  for (int32_t j = 7; j >= 0; --j) {
+  for (int32_t j = kBinsPerLane - 1; j >= 0; --j) {
     suffix[j] = suffix[j + 1] + count[j];
   }
-  // exactly one lane satisfies suffix[8] < k <= suffix[0]; inside it, the pivot is the largest
+  // exactly one lane satisfies suffix[kBinsPerLane] < k <= suffix[0]; inside it, the pivot is the largest
   // offset j with suffix[j] >= k
-  const bool found = suffix[8] < k && k <= suffix[0];
+  const bool found = suffix[kBinsPerLane] < k && k <= suffix[0];
   uint32_t offset = 0;
   uint32_t next = suffix[1];
 #pragma unroll
-  for (uint32_t j = 1; j < 8; ++j) {
+  for (uint32_t j = 1; j < kBinsPerLane; ++j) {
     if (suffix[j] >= k) {
       offset = j;
       next = suffix[j + 1];
     }
   }
   if (found) {
-    smem.pivot_bin = 8 * lane_id + offset;
+    smem.pivot_bin = kBinsPerLane * lane_id + offset;
     smem.pivot_remain = k - next;
   }
 }
 
 /// One hit bit per element of an 8-wide vector, from the per-pair 16-bit masks of `__hgt2_mask` and friends.
 SGL_DEVICE uint32_t topk_bf16_pack_hits(const uint32_t (&m)[4]) {
+#ifdef USE_ROCM
+  uint32_t packed = 0;
+#pragma unroll
+  for (uint32_t i = 0; i < 4; ++i) {
+    packed |= (m[i] & 0xFFFFu ? 1u : 0u) << (2 * i);
+    packed |= (m[i] >> 16 ? 1u : 0u) << (2 * i + 1);
+  }
+  return packed;
+#else
   // one flag byte per element (0xFF / 0x00), then signed dot products turn them into bits
   const auto lo = __byte_perm(m[0], m[1], 0x7531);
   const auto hi = __byte_perm(m[2], m[3], 0x7531);
   const auto nib = __dp4a(static_cast<int>(lo), static_cast<int>(0xF8FCFEFFu), 0);  // -1,-2,-4,-8
   return __dp4a(static_cast<int>(hi), static_cast<int>(0x80C0E0F0u), nib);          // -16..-128
+#endif
+}
+
+SGL_DEVICE uint32_t topk_bf16_gt2_mask(bf16x2_t a, bf16x2_t b) {
+#ifdef USE_ROCM
+  using namespace sglang::device;
+  const uint32_t av = bitcast<uint32_t>(a), bv = bitcast<uint32_t>(b);
+  uint32_t mask = 0;
+#pragma unroll
+  for (uint32_t i = 0; i < 2; ++i) {
+    const uint32_t x = (av >> (16 * i)) & 0xFFFFu;
+    const uint32_t y = (bv >> (16 * i)) & 0xFFFFu;
+    const bool nan = (x & 0x7FFFu) > 0x7F80u || (y & 0x7FFFu) > 0x7F80u;
+    const bool both_zero = (x & 0x7FFFu) == 0 && (y & 0x7FFFu) == 0;
+    const uint32_t ordered_x = x ^ (x & 0x8000u ? 0xFFFFu : 0x8000u);
+    const uint32_t ordered_y = y ^ (y & 0x8000u ? 0xFFFFu : 0x8000u);
+    mask |= (!nan && !both_zero && ordered_x > ordered_y ? 0xFFFFu : 0u) << (16 * i);
+  }
+  return mask;
+#else
+  return __hgt2_mask(a, b);
+#endif
+}
+
+SGL_DEVICE uint32_t topk_bf16_eq2_mask(bf16x2_t a, bf16x2_t b) {
+#ifdef USE_ROCM
+  using namespace sglang::device;
+  const uint32_t av = bitcast<uint32_t>(a), bv = bitcast<uint32_t>(b);
+  uint32_t mask = 0;
+#pragma unroll
+  for (uint32_t i = 0; i < 2; ++i) {
+    const uint32_t x = (av >> (16 * i)) & 0xFFFFu;
+    const uint32_t y = (bv >> (16 * i)) & 0xFFFFu;
+    const bool nan = (x & 0x7FFFu) > 0x7F80u || (y & 0x7FFFu) > 0x7F80u;
+    const bool both_zero = (x & 0x7FFFu) == 0 && (y & 0x7FFFu) == 0;
+    mask |= (!nan && (both_zero || x == y) ? 0xFFFFu : 0u) << (16 * i);
+  }
+  return mask;
+#else
+  return __heq2_mask(a, b);
+#endif
 }
 
 template <bool kUsePDL>
@@ -281,7 +337,7 @@ __global__ __launch_bounds__(TopKBF16Config::kBlockSize, TopKBF16Config::kOccupa
     for (uint32_t j = 0; j < C::kVecSize / 2; ++j) {
       const auto raw = bitcast<uint32_t>(vecs[i][j]);
       const auto hi = __byte_perm(raw, 0, 0x5341);  // {byte1, 0, byte3, 0}
-      const auto sel = __heq2_mask(bitcast<bf16x2_t>(hi), pivot_hi_x2);
+      const auto sel = topk_bf16_eq2_mask(bitcast<bf16x2_t>(hi), pivot_hi_x2);
       const auto lo = raw & 0x00FF00FFu;
       const auto bins = (sel & lo) | (~sel & kSinkBinX2);     // sel ? lo : kSinkBin
       atomicAdd(hist_lsb + __byte_perm(bins, 0, 0x4410), 1);  // bins & 0xFFFF
@@ -304,8 +360,8 @@ __global__ __launch_bounds__(TopKBF16Config::kBlockSize, TopKBF16Config::kOccupa
     uint32_t gt[4], eq[4];
 #pragma unroll
     for (uint32_t j = 0; j < C::kVecSize / 2; ++j) {
-      gt[j] = __hgt2_mask(vecs[i][j], pivot_x2);
-      eq[j] = __heq2_mask(vecs[i][j], pivot_x2);
+      gt[j] = topk_bf16_gt2_mask(vecs[i][j], pivot_x2);
+      eq[j] = topk_bf16_eq2_mask(vecs[i][j], pivot_x2);
     }
     // drop the new byte into slot i, keeping the other three
     constexpr uint32_t kInsert[4] = {0x3214, 0x3240, 0x3410, 0x4210};
@@ -321,7 +377,7 @@ __global__ __launch_bounds__(TopKBF16Config::kBlockSize, TopKBF16Config::kOccupa
   const uint32_t warp_inc = warp::inclusive_sum(local, lane_id);
   uint32_t warp_base = 0;
   if (lane_id == kWarpThreads - 1) warp_base = atomicAdd(&smem.count_gt_eq, warp_inc);
-  warp_base = __shfl_sync(warp::kFullMask, warp_base, kWarpThreads - 1);
+  warp_base = warp::broadcast(warp_base, kWarpThreads - 1);
   const uint32_t before = warp_base + warp_inc - local;
 
   // Everything above the pivot is taken, plus `remain` of the elements equal to it.

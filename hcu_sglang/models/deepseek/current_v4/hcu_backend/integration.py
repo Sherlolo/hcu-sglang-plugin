@@ -607,16 +607,8 @@ def register_hooks():
     from . import arg_groups
     HookRegistry.register('sglang.srt.arg_groups.deepseek_v4_hook.validate_deepseek_v4_cp',
         arg_groups.validate_deepseek_v4_cp,HookType.REPLACE)
-    from . import collectives,overlap
-    for name in ('all_to_all_single','_all_to_all_single'):
-        HookRegistry.register('sglang.srt.distributed.parallel_state.GroupCoordinator.'+name,
-            getattr(collectives,name),HookType.REPLACE)
-    HookRegistry.register('sglang.srt.distributed.parallel_state.initialize_model_parallel',
-        overlap.around_initialize_model_parallel,HookType.AROUND)
-    HookRegistry.register('sglang.srt.distributed.parallel_state.destroy_model_parallel',
-        overlap.around_destroy_model_parallel,HookType.AROUND)
     from hcu_sglang.models.deepseek.current_v4 import low_ratio
     for name in ('c1_decode_norm_rope_store','c2_decode_norm_rope_store','c2_prefill_norm_rope_store'):
         HookRegistry.register('sglang.kernels.ops.attention.dsv4.low_ratio_compress.'+name,
             getattr(low_ratio,name),HookType.REPLACE)
-    return len(_FORMAL)+9
+    return len(_FORMAL)+5

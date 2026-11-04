@@ -15,11 +15,12 @@ globals().update({name: value for name, value in vars(_upstream).items() if not 
 
 
 def after_init(result, backend, *args, **kwargs):
-    from hcu_sglang.utils.detection import is_dcu
+    from hcu_sglang.utils.detection import is_hcu
 
-    if not is_dcu():
+    if not is_hcu():
         return result
     backend.needs_cpu_seq_lens = True
+    backend.cuda_graph_kv_indices = None
     backend.use_aiter_triton_extend_fwd = False
     if os.getenv("SGLANG_USE_TRITON_EXTEND_FROM_AITER", "0") == "1":
         try:
@@ -59,6 +60,16 @@ def forward_extend(
     score_mod=None,
     aux_tensors=None,
 ):
+    if (
+        k is not None
+        and v is not None
+        and sinks is None
+        and score_mod is None
+        and aux_tensors is None
+        and self._can_run_dense_fp8_chunked_mha(q, k, v, layer, forward_batch)
+    ):
+        return self._forward_dense_fp8_chunked_mha(q, k, v, layer, forward_batch)
+
     # TODO: reuse the buffer across layers
     attn_out = getattr(forward_batch, "_attn_output", None)
     if attn_out is not None:
@@ -72,10 +83,11 @@ def forward_extend(
         pool = self.token_to_kv_pool
         cache_loc = forward_batch.out_cache_loc
         if isinstance(pool, SWAKVPool) and pool.layers_mapping[layer.layer_id][1]:
-            cache_loc = pool.translate_loc_from_full_to_swa(cache_loc)
-        elif self._translate_kv_loc is not None:
-            # Unified pool: buffers are indexed in the kernel-facing id space.
-            cache_loc = self._translate_kv_loc(cache_loc)
+            assert self.forward_metadata.swa_out_cache_loc is not None, (
+                "window-layer read-back before the metadata carried a "
+                "sliding-window write loc"
+            )
+            cache_loc = self.forward_metadata.swa_out_cache_loc
         k_buffer, v_buffer = pool.get_kv_buffer(layer.layer_id)
         k = k_buffer[cache_loc]
         v = v_buffer[cache_loc]
@@ -84,10 +96,9 @@ def forward_extend(
     else:
         # Save KV cache first (must do this before unified kernel)
         if save_kv_cache:
-            loc_info = KVWriteLoc(
-                forward_batch.out_cache_loc,
-                self.forward_metadata.swa_out_cache_loc,
-                full_loc=self.forward_metadata.out_cache_loc_full_physical,
+            loc_info = KVWriteLoc.for_batch(
+                forward_batch,
+                swa_loc=self.forward_metadata.swa_out_cache_loc,
             )
             if layer.k_scale is None:
                 self._set_kv_buffer(forward_batch, layer, loc_info, k, v)
@@ -121,10 +132,40 @@ def forward_extend(
         or layer.attn_type == AttentionType.ENCODER_ONLY
         or (
             layer.attn_type == AttentionType.DECODER_BIDIRECTIONAL
-            and self.allow_bidirectional_attention_in_extend
+            and (
+                self.allow_bidirectional_attention_in_extend
+                # A DLLM graph contains complete, fixed-width canvases;
+                # padding adds requests, never tokens inside a canvas.
+                or forward_batch.forward_mode.is_dllm_extend()
+            )
         )
     ):
         causal = False
+
+    # Dense one-shot MLA prefill (AttnForwardMethod.MHA_ONE_SHOT): k/v were
+    # up-projected out of the latent cache and span prefix + current chunk,
+    # so they no longer line up row-for-row with q the way
+    # extend_attention_fwd requires. Route to the single-loop dense kernel.
+    # A prefix-chunk phase (attn_attend_prefix_cache) also carries a longer
+    # k/v, but the dispatcher never hands Triton MHA_CHUNKED_KV.
+    if (
+        forward_batch.mha_one_shot
+        and not forward_batch.attn_attend_prefix_cache
+        and k is not None
+        and k.shape[0] != q.shape[0]
+    ):
+        return self._forward_extend_dense_one_shot(
+            q,
+            k,
+            v,
+            o,
+            layer,
+            forward_batch,
+            causal,
+            logits_soft_cap,
+            sinks=sinks,
+            score_mod=score_mod,
+        )
 
     if self.dcp_size > 1:
         if score_mod is not None:
@@ -151,12 +192,22 @@ def forward_extend(
 
     # Normal mode: use original 2-stage kernel
     if layer.sliding_window_size is not None and layer.sliding_window_size > -1:
+        bidirectional_extend = (
+            layer.attn_type == AttentionType.DECODER_BIDIRECTIONAL
+        )
         sliding_window_size = (
-            layer.sliding_window_size
-        )  # Needed for sliding window mask
+            -1 if bidirectional_extend else layer.sliding_window_size
+        )
         kv_indptr = self.forward_metadata.window_kv_indptr
         kv_indices = self.forward_metadata.window_kv_indices
         window_kv_offsets = self.forward_metadata.window_kv_offsets
+        # A null read rail reaches Triton as `None + offsets` and fails as
+        # an unreadable IR-build error; say what is actually missing.
+        assert kv_indices is not None, (
+            f"layer {layer.layer_id} is a sliding-window layer but this "
+            "extend forward built no window_kv_indices; every mode that "
+            "reaches forward_extend must fill the window rail."
+        )
     else:
         sliding_window_size = -1
         kv_indptr = self.forward_metadata.kv_indptr
@@ -237,14 +288,17 @@ def forward_extend(
             window_kv_offsets=window_kv_offsets,
             xai_temperature_len=layer.xai_temperature_len,
             max_bs=self.req_to_token_pool.size,
+            # Grouped verify addresses the physical paged KV layout.
+            **({"page_size": self.page_size} if self.use_verify_shared_kv else {}),
         )
     ):
         return o
 
-    self.extend_attention_fwd(
+    self._forward_extend_kernel(
+        layer,
         q.view(-1, layer.tp_q_head_num, layer.qk_head_dim),
-        k.contiguous(),
-        v.contiguous(),
+        k.contiguous() if self.dllm_attention is None else k,
+        v.contiguous() if self.dllm_attention is None else v,
         o.view(-1, layer.tp_q_head_num, layer.v_head_dim),
         self.token_to_kv_pool.get_key_buffer(layer.layer_id),
         self.token_to_kv_pool.get_value_buffer(layer.layer_id),

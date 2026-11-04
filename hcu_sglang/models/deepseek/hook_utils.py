@@ -238,12 +238,12 @@ def patch_deepseek_common_module_attrs() -> None:
 
 
 def patch_deepseek_common_attention_backend() -> None:
-    """Register DCU MLA attention backend handler."""
+    """Register HCU MLA attention backend handler."""
     from hcu_sglang.models.deepseek.deepseek_common.hooks import (
         attention_backend_handler,
     )
 
-    attention_backend_handler.register_attention_dcu_mla_backend()
+    attention_backend_handler.register_attention_hcu_mla_backend()
 
 
 def patch_deepseek_v2_module_attrs() -> None:

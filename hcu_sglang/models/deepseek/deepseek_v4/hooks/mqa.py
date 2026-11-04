@@ -1,9 +1,9 @@
 """Register complete current MQA classes and their DSpark subclass."""
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def register_hooks():
-    if not is_dcu():
+    if not is_hcu():
         from hcu_sglang.models.deepseek.hook_utils import register_method_replaces_from_path
         return register_method_replaces_from_path('sglang.srt.models.deepseek_v4','MQALayer',
             ('__init__','_compute_q_b','_forward_prepare','forward'),

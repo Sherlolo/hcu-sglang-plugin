@@ -1,1 +1,1 @@
-"""Linear-attention related DCU plugin implementations."""
+"""Linear-attention related HCU plugin implementations."""

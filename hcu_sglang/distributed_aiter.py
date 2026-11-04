@@ -10,7 +10,7 @@ from functools import partial
 from typing import Any, Optional
 
 from sglang.srt.distributed.device_communicators import custom_all_reduce as S
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _aiter_enable_register_for_capturing(
@@ -26,10 +26,10 @@ def _aiter_enable_register_for_capturing(
     # loading, so identify that checkpoint by the indexer topology instead.
     # Other models retain the legacy memory-saver opt-in.
     model_type = getattr(hf_config, "model_type", None)
-    if is_dcu() and model_type == "deepseek_v3":
+    if is_hcu() and model_type == "deepseek_v3":
         return False
     if (
-        is_dcu()
+        is_hcu()
         and model_type == "glm_moe_dsa"
         and getattr(hf_config, "index_topk_freq", None) == 4
         and getattr(hf_config, "index_skip_topk_offset", None) == 3
@@ -176,7 +176,7 @@ def dispatch_custom_allreduce(
         transport = os.environ.get("AITER_AR_TRANSPORT", "ipc").lower()
         if transport == "ipc":
             hf_config = None
-            if is_dcu():
+            if is_hcu():
                 from sglang.srt.arg_groups.model_override_base import model_config_of
                 from sglang.srt.runtime_context import get_server_args
 
@@ -197,7 +197,7 @@ def dispatch_custom_allreduce(
         S.logger.info(
             "[AR] Using AiterCustomAllreduce (%s, transport=%s, "
             "enable_register_for_capturing=%s)",
-            "HCU" if is_dcu() else "AMD",
+            "HCU" if is_hcu() else "AMD",
             transport,
             enable_reg,
         )

@@ -118,7 +118,7 @@ def fused_moe_fp8_w8a8(
         bias=bias,
         expert_mask=None,
         num_local_tokens=None,
-        factor=routed_scaling_factor or 1.0,
+        factor=(routed_scaling_factor if routed_scaling_factor is not None else 1.0),
         expect_m=-1,
     )
     return output

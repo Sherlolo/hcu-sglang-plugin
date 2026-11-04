@@ -7,7 +7,7 @@ from typing import Any, Callable, Sequence
 import torch
 
 from hcu_sglang.compat.aiter import install_aiter_compat
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 install_aiter_compat()
 
@@ -293,7 +293,7 @@ def around_get_mha_host_pool_cls(
     device_pool: Any,
     layout: str | None = None,
 ) -> type:
-    if not is_dcu():
+    if not is_hcu():
         return original(device_pool)
     if layout is None:
         from sglang.srt.runtime_context import get_memory

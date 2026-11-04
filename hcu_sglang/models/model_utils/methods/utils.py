@@ -1,4 +1,4 @@
-"""DCU sglang.srt.models.utils fork methods (auto-extracted for plugin hooks)."""
+"""HCU sglang.srt.models.utils fork methods (auto-extracted for plugin hooks)."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def enable_fused_set_kv_buffer(forward_batch: ForwardBatch):
         and not is_cp_active(forward_batch)
         and getattr(forward_batch, "dcp_kv_mask", None) is None
     )
-    if C._is_dcu:
+    if C._is_hcu:
         return cuda_enabled
     return cuda_enabled or (
         _is_hip and getattr(forward_batch, "dcp_kv_mask", None) is None

@@ -1,4 +1,4 @@
-"""Shared DCU fused RMSNorm + RoPE + KV-store helpers."""
+"""Shared HCU fused RMSNorm + RoPE + KV-store helpers."""
 
 from __future__ import annotations
 
@@ -10,18 +10,18 @@ import torch
 
 from sglang.srt.runtime_context import get_model
 from sglang.srt.utils import get_bool_env_var
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 
 
 _use_fused_qwen_bailing_rotary = get_bool_env_var("SGLANG_USE_FUSED_RMS_ROTARY")
 
-_FUSED_KV_LAYERS_ATTR = "_dcu_fused_rms_rotary_kv_layers"
+_FUSED_KV_LAYERS_ATTR = "_hcu_fused_rms_rotary_kv_layers"
 
 
 def use_fused_rms_rotary() -> bool:
-    return is_dcu() and _use_fused_qwen_bailing_rotary
+    return is_hcu() and _use_fused_qwen_bailing_rotary
 
 
 def mark_fused_kv_store(forward_batch, layer_id: int) -> None:

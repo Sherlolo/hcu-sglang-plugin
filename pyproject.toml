@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hcu-sglang-plugin"
-version = "0.3.2.dev34"
+version = "0.3.2.dev77"
 description = "SGLang HCU runtime plugin and development methods"
 requires-python = ">=3.10"
 dependencies = ["sglang==0.5.22"]
@@ -25,7 +25,7 @@ include = ["hcu_sglang*"]
 exclude = ["hcu_sglang.__pycache__", "hcu_sglang.*.__pycache__"]
 
 [tool.setuptools.package-data]
-hcu_sglang = ["jit_overlay/**/*", "models/deepseek/current_v4/hcu_backend/csrc/*", "models/deepseek/current_v4/execution/aiter_intree_configs/**/*"]
+hcu_sglang = ["mem_cache/cpp_utils/*.cpp", "layers/attention/linear/csrc/*", "mem_cache/rust_tree_core/crate/**/*", "mem_cache/rust_tree_core/crate/.gitignore", "jit_overlay/**/*", "models/deepseek/current_v4/hcu_backend/csrc/*", "models/deepseek/current_v4/execution/aiter_intree_configs/**/*"]
 
 [tool.setuptools.exclude-package-data]
 hcu_sglang = ["**/__pycache__/*", "**/*.pyc"]

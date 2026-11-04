@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_tilelang_act_quant(
@@ -15,7 +15,7 @@ def around_tilelang_act_quant(
     block_size: int = 128,
     scale_fmt: str | None = None,
 ):
-    if not is_dcu():
+    if not is_hcu():
         return original(x, block_size, scale_fmt)
 
     assert x.is_contiguous(), "Input tensor must be contiguous"
@@ -42,27 +42,20 @@ def around_tilelang_act_quant(
 
 
 def before_set_k_and_s_triton(*args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return None
-
-    if kwargs:
-        updated_kwargs = dict(kwargs)
-        index_k = updated_kwargs["index_k"]
-        index_k_scale = updated_kwargs["index_k_scale"]
-        if index_k.dim() > 2:
-            updated_kwargs["index_k"] = index_k.reshape(-1, index_k.size(-1))
-        if index_k_scale.dim() > 2:
-            updated_kwargs["index_k_scale"] = index_k_scale.reshape(
-                -1, index_k_scale.size(-1)
-            )
-        return args, updated_kwargs
-
     updated_args = list(args)
-    if updated_args[2].dim() > 2:
-        updated_args[2] = updated_args[2].reshape(-1, updated_args[2].size(-1))
-    if updated_args[3].dim() > 2:
-        updated_args[3] = updated_args[3].reshape(-1, updated_args[3].size(-1))
-    return tuple(updated_args), kwargs
+    updated_kwargs = dict(kwargs)
+    for index, name in ((2, "index_k"), (3, "index_k_scale")):
+        if name in updated_kwargs:
+            value = updated_kwargs[name]
+            if value.dim() > 2:
+                updated_kwargs[name] = value.reshape(-1, value.size(-1))
+        elif len(updated_args) > index:
+            value = updated_args[index]
+            if value.dim() > 2:
+                updated_args[index] = value.reshape(-1, value.size(-1))
+    return tuple(updated_args), updated_kwargs
 
 
 def register_hooks() -> None:

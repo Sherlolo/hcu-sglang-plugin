@@ -1,9 +1,12 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import torch
 
 from sglang.srt.layers.moe.token_dispatcher import standard as S
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def _map_topk_ids_to_local_experts(
@@ -134,7 +137,7 @@ def _dispatch(
 
 
 def around_dispatch(original, self, hidden_states, topk_output):
-    if not is_dcu():
+    if not is_hcu():
         return original(self, hidden_states, topk_output)
     return _dispatch(self, hidden_states, topk_output)
 

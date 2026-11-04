@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import argparse
@@ -212,7 +215,7 @@ def main() -> None:
     parser.add_argument("--official-repo", required=True)
     parser.add_argument("--fork-repo", required=True)
     parser.add_argument("--plugin-repo", required=True)
-    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_hcu_plugin"))
     parser.add_argument("--hook-targets-file")
     parser.add_argument("--overrides", required=True)
     parser.add_argument("--output-json", required=True)

@@ -2,8 +2,1681 @@
   "python/sglang/srt/layers/moe/token_dispatcher/standard.py": {
     "status": "implemented",
     "rationale": "Port the DAS dispatch method with explicit official module globals and an HCU-only AROUND hook. Preserve negative and out-of-range global expert IDs as the -1 drop sentinel. Keep the effective original callable for non-HCU devices.",
-    "implementation": ["hcu_sglang/layers/moe/standard_dispatcher.py", "hcu_sglang/__init__.py"],
+    "implementation": [
+      "hcu_sglang/layers/moe/standard_dispatcher.py",
+      "hcu_sglang/__init__.py"
+    ],
     "validation_scope": "CPU public dispatcher regression; GPU EP/Graph/model lanes pending.",
-    "tests": ["tests/runtime/standard_dispatcher.py"]
+    "tests": [
+      "tests/runtime/standard_dispatcher.py"
+    ]
+  },
+  "python/sglang/srt/layers/layernorm.py": {
+    "status": "implemented",
+    "rationale": "All reviewed HCU-specific norm differences are wired through public methods/helpers: HIP RMSNorm/Gemma, explicit Gemma FP8 capability, and correctly grouped AR/norm/FP8 handoffs. Existing Gemma AR wrapper differs only by equivalent positional/keyword syntax. Non-HCU Gemma3 XPU/NPU deltas delegate to official and are outside the HCU runtime scope. This is implementation status, not full validation.",
+    "implementation": [
+      "hcu_sglang/layers/norm_current.py",
+      "hcu_sglang/layers/quantization/fp8.py",
+      "hcu_sglang/layers/norm_collectives.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-norm-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-norm-collectives-source-alignment.json"
+    ],
+    "tests": [
+      "tests/runtime/norm_current.py",
+      "tests/runtime/norm_current_gpu.py",
+      "tests/runtime/norm_collectives.py",
+      "tests/runtime/norm_collectives_gpu.py"
+    ],
+    "validation_scope": "Six public norm CPU tests, three real HCU norm/Graph tests, nine collective CPU tests, real eight-rank AITER IPC routing forTP8/attentionTP4/MoETP2, and390/390 isolated wheel Hooks passed. Optional Gemma FP8 kernel, collective Graph, gfx95 quantized fusion, Fabric and other profiles remain unverified."
+  },
+  "python/sglang/srt/distributed/communication_op.py": {
+    "status": "implemented",
+    "rationale": "The only changed Python definitions in the pinned communication_op module are the two fused AR/norm entry points. Port their full group-selection bodies; preserve default tp and reject unsupported groups, update real public aliases with Hook propagation, and reuse unchanged native GroupCoordinator implementations. The parallel_state constructor/backend-selection file is a separate incomplete migration scope.",
+    "implementation": [
+      "hcu_sglang/layers/norm_collectives.py",
+      "hcu_sglang/distributed.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-norm-collectives-source-alignment.json",
+    "tests": [
+      "tests/runtime/norm_collectives.py",
+      "tests/runtime/norm_collectives_gpu.py"
+    ],
+    "validation_scope": "Nine CPU public API/alias/branch tests and real eight-rank IPC fused norm compared with RCCL passed forTP8/attentionTP4/MoETP2. The gfx95-only quantized kernel correctly declines on gfx938. Full collective Graph, Fabric/backend initialization and whole-model dev36 are not validated."
+  },
+  "python/sglang/srt/distributed/parallel_state.py": {
+    "status": "in_progress",
+    "implementation": [
+      "hcu_sglang/distributed_backend.py",
+      "hcu_sglang/config.py",
+      "hcu_sglang/server_args_hooks.py",
+      "hcu_sglang/distributed.py"
+    ],
+    "tests": [
+      "tests/runtime/distributed_backend.py"
+    ],
+    "validation_scope": "13 CPU CLI/record/spawn/bootstrap/public-constructor regressions and394/394 isolated wheel Hooks passed. Original GLM TP8 service is running; Fabric hardware, all CP/topology paths and remaining file deltas remain unvalidated.",
+    "rationale": "Port the full selected HCU constructor, world/model factories and backend accessors; retain native class identity and strict-Fabric failure behavior. Other CP/topology/method differences remain separately incomplete.",
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-custom-allreduce-source-alignment.json"
+  },
+  "python/sglang/srt/distributed/bootstrap.py": {
+    "status": "in_progress",
+    "implementation": [
+      "hcu_sglang/distributed_backend.py",
+      "hcu_sglang/config.py",
+      "hcu_sglang/server_args_hooks.py",
+      "hcu_sglang/distributed.py"
+    ],
+    "tests": [
+      "tests/runtime/distributed_backend.py"
+    ],
+    "validation_scope": "13 CPU CLI/record/spawn/bootstrap/public-constructor regressions and394/394 isolated wheel Hooks passed. Original GLM TP8 service is running; Fabric hardware, all CP/topology paths and remaining file deltas remain unvalidated.",
+    "rationale": "Bridge resolved plugin-owned backend after the existing all-reduce flag initialization. Preserve native disable/other flags and keep remaining bootstrap changes unreviewed.",
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-custom-allreduce-source-alignment.json"
+  },
+  "python/sglang/srt/arg_groups/fields/exec_.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Expose Source load_aware value through existing CLI action choices and canonical native parse/resolution/pickle, without modifying frozen Struct fields. Whole Source field/schema/Literal metadata migration is not claimed.",
+    "implementation": [
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST.",
+    "placement_progress": "Existing Source CLI spelling ep-static-dispatch-policy uses a plugin-only destination and inherited process option until canonical field/schema migration. No new Struct or undeclared seed field; current normal CLI/resolution/pickle verification pending."
+  },
+  "python/sglang/srt/arg_groups/serving_hook.py": {
+    "status": "in_progress",
+    "implementation": [
+      "hcu_sglang/distributed_backend.py",
+      "hcu_sglang/config.py",
+      "hcu_sglang/server_args_hooks.py",
+      "hcu_sglang/distributed.py"
+    ],
+    "tests": [
+      "tests/runtime/distributed_backend.py"
+    ],
+    "validation_scope": "13 CPU CLI/record/spawn/bootstrap/public-constructor regressions and394/394 isolated wheel Hooks passed. Original GLM TP8 service is running; Fabric hardware, all CP/topology paths and remaining file deltas remain unvalidated.",
+    "rationale": "Preserve disable-wins and HCU legacy-auto promotion for the backend bridge; remaining serving/environment behavior is not claimed migrated.",
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-custom-allreduce-source-alignment.json"
+  },
+  "python/sglang/srt/server_args.py": {
+    "status": "in_progress",
+    "implementation": [
+      "hcu_sglang/distributed_backend.py",
+      "hcu_sglang/config.py",
+      "hcu_sglang/server_args_hooks.py",
+      "hcu_sglang/distributed.py"
+    ],
+    "tests": [
+      "tests/runtime/distributed_backend.py"
+    ],
+    "validation_scope": "13 CPU CLI/record/spawn/bootstrap/public-constructor regressions and394/394 isolated wheel Hooks passed. Original GLM TP8 service is running; Fabric hardware, all CP/topology paths and remaining file deltas remain unvalidated.",
+    "rationale": "Add source NSA deprecated aliases and current custom-allreduce CLI handoff without mutating raw ServerArgs fields. Other source-only CLI options remain unreviewed.",
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-custom-allreduce-source-alignment.json"
+  },
+  "python/sglang/srt/layers/activation.py": {
+    "status": "implemented",
+    "rationale": "Review confirms the only changed Python definition is SiluAndMul.forward_cuda plus a module AITER selection gate excluding HCU. Existing CUDA AROUND calls the same LightOp operator with identical tensor shape/dtype/device; constructor AFTER switches a selected AITER method to CUDA on HCU and preserves deterministic/native selection. All other class/function AST definitions match official.",
+    "implementation": [
+      "hcu_sglang/layers/norm_activation.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-activation-source-review-20261101.json",
+    "tests": [
+      "tests/runtime/activation_hcu.py"
+    ],
+    "validation_scope": "Four tests pass including public HCU LightOp BF16/FP16 math across three shapes and GPU Graph replay. Whole global-AITER=1 deployment is not validated because both source and official fp8_utils require an API missing in the current vendor package; no dummy API or gate alteration added."
+  },
+  "python/sglang/kernels/ops/attention/dsv4/c2_decode_pool.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "5cc1a1d3fe0bacbff7bad61d588f48163dc06760",
+      "fork_oid": "75437a2216b3df64b7363f8a034e7c7128e07d88",
+      "ast_sha256": "82161609e11d6667c98df10bcca802a6cab824ba3d8a4d9006e3c92f794bff66"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/kernels/ops/attention/fla/chunk.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "f4b892f68ba115c4182d2a788a5485771664973d",
+      "fork_oid": "bd3cf20d73f9ab080b72ec5a852597dd48c224fb",
+      "ast_sha256": "ed1605388a99699f6811aae64d95ebf66b256be10e0f15e884184bbc2fa0405a"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/kernels/ops/layernorm/minimax_m3_rmsnorm.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "790c3141a0224e9c9d52bafae32c897252d2b52d",
+      "fork_oid": "44384590f2998754efbfab747c7d7f9ba0862510",
+      "ast_sha256": "9fea63631f0467fdc76eefb75e881c1fd602335fe2b7c09a3327413ff85dcc67"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/kernels/ops/quantization/int8_kernel.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "c1daae04a4b4942091c2c7cf435bcfb1ce3edeef",
+      "fork_oid": "c583734a914396260bc44c231ff730826165b75b",
+      "ast_sha256": "0db88fb962447a5f663240e9fc20471209e2abb3f9fbed512957807b60ddec34"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/multimodal_gen/runtime/loader/transformer_load_utils.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "54ed9c033fdaa1c6b7eebbc5252482a49fa50d1b",
+      "fork_oid": "52ce3057ca4ba1299ebe3766179ce398b6fcdcee",
+      "ast_sha256": "7a852be20ade3dbf5637746bfccc9a5cef99de2946c07da1d2ba2bfaed323226"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/multimodal_gen/runtime/models/encoders/gemma_3.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "a4d4c3edf1bc1f7e62a65c00e82a7a7d65f0fb63",
+      "fork_oid": "20593332718905f18d22a7fae8828acb6d7709a4",
+      "ast_sha256": "9a0c5f9de6711931ca2200ca08eac84bdfd20603fb2135d0b45ba4ffee246eb8"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/multimodal_gen/runtime/models/vaes/autoencoder_kl_qwenimage.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "3a729a22cc75142aaa41f579d9b3bb8ae1739c4f",
+      "fork_oid": "37b402075b469aa6a4543bee4aa69deffc9ac082",
+      "ast_sha256": "dbca09dfd24c4022afeedee1d3a07bb0c6e089140d2f14f1322f2dc4ab58fbbc"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/disaggregation/kv_events.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "0597c72dfd7e6e160919f0ba65b9bec0029d3d50",
+      "fork_oid": "84d3855034c710ce8f4cfff47530a168fc731d82",
+      "ast_sha256": "a5380d03da5bf5c6de13faa95c4503f6bd9e92d5c95db8a321e992af6932a6d0"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/hardware_backend/npu/batch_invariant_ops/npu_batch_invariant_ops.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "d25330c5a36b86f6000617719b4f7f884f8425c4",
+      "fork_oid": "5ea872434c4d38f71e8469ef3d54e773d896abac",
+      "ast_sha256": "2bb5622d0b961577610efb3521cbb6673f2fa9695cad1845a7bd138c3c46681f"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/mem_cache/memory_pool_host.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "34067a730ac02e4513d53e3e6518f28530fc4c76",
+      "fork_oid": "b4bf29955ef79c87fc0e8c1f03802c4b495b9bae",
+      "ast_sha256": "845d3301a8b266ec745d80af1f9a2324466d1d298e7c5eb205d2ae8ee2657c7c"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/mem_cache/radix_cache.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "b034e4e9c28262b3714367b21936dcd2b17524d3",
+      "fork_oid": "b447f015cb5bb9c7fdfb9bd1b265891805be7124",
+      "ast_sha256": "f37ebb0059f0bb9116d3f9d8b2f657a4489b70ec94a338dfa733e4d23c250d6d"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/models/apertus.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "d281abe6705512b37c5d5fd897c41fbf4d6b20e2",
+      "fork_oid": "0b3c97305b797c55e139e43c6c1553d6d7d63656",
+      "ast_sha256": "19fbdde0e8884619337b7c6aae6fa73d13130a55e8c7b4a2c6a100c12bab40bb"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/models/deepseek_common/attention_forward_methods/triton_qk_rmsnorm.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "86dab137a1d1b83192eb6bab3ea9152da632cc2a",
+      "fork_oid": "a809bd3d88b3eccdef86252bc1b528adb6ea82f6",
+      "ast_sha256": "8eddde869a9015fc686f0f6ecb3f2d8eef9361da4bb6dc31a7dee5c0b12b3cd6"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/models/mimo_v2_nextn.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "8f4dd5191d3ef7849961481405245d5028a2ff1b",
+      "fork_oid": "cf62e3c672f5b14b9c3d26c88612e244172e5533",
+      "ast_sha256": "22034a38eb8f839e9b684ee74e0f3a5c1fd6d4622b22a42784729884eff4093b"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/models/qwen2_classification.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "a1dc41e08bad5deecc99d7d60dfa16277eafd835",
+      "fork_oid": "a7f2b4fda6d7598fb57c050304401202cd82f71d",
+      "ast_sha256": "05dd75a7901b461cb5aa65c0286b93fd47fbfad8f4a0c56a080c68ddde0ac7e4"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/multimodal/processors/moss_vl.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "3f862f355bc478534330e2d54339e402f7e10831",
+      "fork_oid": "1646dc3654a2f6c90dc8c5b8d4cdf3d1a2c8fb6a",
+      "ast_sha256": "345d8f5160b05dab2515228448ba9d441f2c97521ea64d402c6a47abc22ffcb4"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/sampling/sampling_batch_info.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "fee776bd2b819528c2de6eb18637f62342ad82b0",
+      "fork_oid": "58c433cb1c9501df4196fd5f3bfff48308b0b30e",
+      "ast_sha256": "c972f310aa622b9c3ccf486a9a91eff7fd490e89a382a42eb59a361460928cd0"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/test/kits/attention_unittest/attention_methods/lightning_attention.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "d3d8206a476f345ca3d22fc4b237454926c56dee",
+      "fork_oid": "ae75f2e9d8bbdb4fb5e8fd28da21a34101fb310b",
+      "ast_sha256": "26ebc149c2b1b34e49f753bd3ec4420ebaa54d3908446334c3e7ff698c9bb814"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/manual/ep/test_eplb.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "cce1a29e992a89de19c5c65f6bd9b2a3cdb58a89",
+      "fork_oid": "c49925e803f85fb6eace928ae961fd4a3327d107",
+      "ast_sha256": "0f68fd946531058f7c6e66aeb9537c6567384909d9009d78917b5644a4a1e465"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/manual/test_expert_distribution.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "c3ebd076291ac2d16c0fd20c61cc2da18789d563",
+      "fork_oid": "1c88059fa4a04a0a9512cfb6da20782c82169fd3",
+      "ast_sha256": "50cedf11e1c19e09f9ffa4ba71d0ec0fc0e3326294832efd39c8a74a4179da81"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/core/test_hidden_states.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "86d2a047fd9e11bbb0f67dbf4963ea4dcdaeb609",
+      "fork_oid": "7938edf673f74b6d1638db3e604ad2fb920c0b7a",
+      "ast_sha256": "ec13edc20985fc21d9ee9ca0cfe3d1273f910fb3fca315ca0432100bdb72c602"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/kernels/benchmark/quantization/bench_per_token_group_quant.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "2d190f3a9dbb5bc2960a7ebf5c928e216f5b494e",
+      "fork_oid": "8451976c82e4e55fa63008abc89beeceb3b6f79b",
+      "ast_sha256": "bd236e267c3514bd9f4a70714f5623e2ffa5ad86665b293e33f3077d2fcb702e"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/kernels/benchmark/quantization/bench_per_token_group_quant_masked.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "c9ca5d82411e5768a57c59f2c06e0b1a28e8d354",
+      "fork_oid": "d55a53f3077ec7f10752933449bbf8a631aa3b6e",
+      "ast_sha256": "de6110c1e3d43465c46d776d32ef637d5c692652f275efcf9512f9ab007a9e34"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/pp/test_pp_single_node_extra.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "19f49f65a4c99e468ac6009858b8773d688f5b1a",
+      "fork_oid": "7e3cab846e2506c7c8c4dfe6dd5ca611e69f9add",
+      "ast_sha256": "aa80bf2efc26cdc6cd0e1bb88a30968f04cc0bc99101828e4e387ae25f32d8c3"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/sampling/test_original_logprobs.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "029a8c78499ec5a2b5f68aa3b18ae8864eccb8cd",
+      "fork_oid": "e9b7fe942dc04339163874cb43c138d113cd5b4d",
+      "ast_sha256": "7658c3c940cae33d154ceea7faaa98d348b56ae8160db2eaf48d8f8c18dac81f"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "test/registered/unit/mem_cache/test_paged_free_segment.py": {
+    "status": "upstream",
+    "rationale": "Whole committed Python AST matches the pinned official file, including imports, guards, decorators, values, docstrings and type comments. Reuse official code unchanged; dependencies/other paths remain separate review scopes.",
+    "evidence": {
+      "official_oid": "30bdbac0628cc06011833ae4f4796acbb16b252f",
+      "fork_oid": "5c0335d81d4d533f666176bfab8f9df42ac454ab",
+      "ast_sha256": "3902874c26da1c8b6f4ec9a5735d75a08ea8e6eda39c271791f1d3c560bd935d"
+    },
+    "validation_scope": "Per-file committed Python code equality only; not runtime, dependency equivalence or whole-DAS completion."
+  },
+  "python/sglang/srt/layers/linear.py": {
+    "status": "implemented",
+    "rationale": "All ten changed/new Python definitions are represented in current_linear and row_fusion. Preserve native class identity, exact owner super, epsilon/partition state, explicit quantized carriers and source merged returns; route extended Row positional/keyword calls while retaining effective original for ordinary/old calls. SP/native quantization dependencies remain separate paths.",
+    "implementation": [
+      "hcu_sglang/layers/current_linear.py",
+      "hcu_sglang/layers/row_fusion.py",
+      "hcu_sglang/layers/linear_fusion.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-linear-source-alignment.json",
+    "tests": [
+      "tests/runtime/current_linear.py",
+      "tests/runtime/current_linear_gpu.py"
+    ],
+    "validation_scope": "Ten public CPU calls/consumer tests pass. Isolateddev38 real HCU fused RMS/INT8 GEMM/Graph/packedMLA tests pass;dev39 only adds tested Row call routing. Full deployment/modes, SP and other dependency files are independent validation scopes."
+  },
+  "python/sglang/srt/layers/fused_rms_quant.py": {
+    "status": "implemented",
+    "rationale": "Existing owned full helper is byte-identical to pinned source and is now consumed by actual public linear paths. Preserve capability/alignment/device/dtype/alias/epsilon guards and real LightOp calls without substitute math.",
+    "implementation": [
+      "hcu_sglang/layers/fused_rms_quant.py",
+      "hcu_sglang/layers/current_linear.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-linear-source-alignment.json",
+    "tests": [
+      "tests/runtime/current_linear_gpu.py"
+    ],
+    "validation_scope": "Actual HCU BF16/FP16 RMS/INT8 producer, update semantics, projection/Graph and packedMLA data preservation tested ondev38. This does not validate every downstream model or unsupported input/other hardware mode."
+  },
+  "python/sglang/srt/layers/quantization/fp8_utils.py": {
+    "status": "in_progress",
+    "rationale": "Port the source HCU FP8 apply, selective fallback, auto/explicit dispatch, paired block helpers, dense-mxscale helpers/consumer and opt-in channelwise helper into owned modules. Preserve documented buffer/dtype/fused-bias adaptations and the extra native CK NaN guards. Review now accounts for17 changed top-level definitions,62 unchanged native definitions and7 changed top-level globals. Recursive inspection finds a separate CUDA-only fake registration plus CUDA FlashInfer lazy import still unported; keep this file in_progress rather than equating top-level AST coverage with complete module behavior.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/fp8_fallback.py",
+      "hcu_sglang/layers/quantization/fp8.py",
+      "hcu_sglang/layers/quantization/fp8_scaled_mm.py",
+      "hcu_sglang/layers/quantization/fp8_linear.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py",
+      "hcu_sglang/layers/quantization/fp8_block.py",
+      "hcu_sglang/layers/quantization/fp8_mxscale.py",
+      "hcu_sglang/layers/quantization/compressed_fp8.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-fp8-utils-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-fp8-fallback-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-fp8-linear-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-block-fp8-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-dense-mxscale-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-compressed-fp8-source-alignment.json"
+    ],
+    "tests": [
+      "tests/runtime/fp8_fallback.py",
+      "tests/runtime/fp8_fallback_gpu.py",
+      "tests/runtime/fp8_linear.py",
+      "tests/runtime/fp8_linear_gpu.py",
+      "tests/runtime/fp8_block.py",
+      "tests/runtime/fp8_block_gpu.py",
+      "tests/runtime/fp8_mxscale.py",
+      "tests/runtime/fp8_mxscale_gpu.py",
+      "tests/runtime/compressed_fp8.py",
+      "tests/runtime/compressed_fp8_gpu.py",
+      "tests/runtime/fp8_utils.py",
+      "tests/runtime/fp8_utils_gpu.py",
+      "tests/runtime/compressed_fp8_legacy.py"
+    ],
+    "validation_scope": "Isolateddev44 12 public CPU producer/consumer tests,4 actual DeepGEMM GPU/Graph tests,401/401 Hooks and79 repository tests pass. Paired source HCU quantizer preserves matched q/scale rows; documented flatten/output-buffer adaptations prevent incorrect multidimensional/padded backend calls. Other dispatch/block/post-load/opt-in definitions remain separately incomplete. Source-tree dev45 block route has 7 CPU and 3 real GPU tests passed; other block/mxscale modes are separate. dev46 source-tree 11 CPU mxscale contracts,7 block regressions and3 real fused RMSNorm/e8m0 GPU/Graph tests pass. Installed AITER lacks gemm_a8w8_blockscale; gfx95 optimized GEMM is not validated on gfx938. Isolated dev46 repeats 11 CPU mxscale tests,7 block regressions and3 real fused-producer GPU/Graph tests;404/404 Hooks,585 byte-matched source/site package files and79 local repository tests pass. dev47 compressed CPU counterexample exposes the source tuple dtype allocation bug; corrected dtype and block layout pass14 CPU contracts. Remaining explicit-backend diagnostic and unused source torch_fp8_block_gemm helper stay separately open. dev48 source6 CPU explicit/reference tests,2 real reference GPU/Graph tests and2 real native INT8-scheme CPU routing regressions pass. INT8 numerical backend is mocked in the legacy-routing tests; GLM SlimQuant is independent, so full GLM is integration evidence only. Isolated dev48 repeats6 utility CPU,2 real native legacy-routing CPU and2 reference GPU/Graph tests;408/408 full hooks and79 repository tests pass,586 package files byte-match source/site; conditional CUDA deltas and gfx95 matrix stay open."
+  },
+  "python/sglang/kernels/ops/quantization/fp8_kernel.py": {
+    "status": "in_progress",
+    "rationale": "Port the actual conditional HCU scaled_fp8_quant and three paired source native helpers, preserving unpadded LightOp per-token q/scale and padded static/tensor output writes. Other quantization kernels/flags are independent and unreviewed.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/fp8_quant.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-fp8-linear-source-alignment.json",
+    "tests": [
+      "tests/runtime/fp8_linear.py",
+      "tests/runtime/fp8_linear_gpu.py"
+    ],
+    "validation_scope": "Isolateddev44 public conditional-HCU producer/native-consumer CPU tests and real dynamic/compressed GPU/Graph pass. Full remaining quantization module and all modes are independently unvalidated."
+  },
+  "python/sglang/srt/layers/quantization/fp8.py": {
+    "status": "in_progress",
+    "rationale": "Port source block post-load for paired HCU linear consumers and dense-mxscale preparation, plus all four changed Fp8MoEMethod definitions: FP4 FP32 scale construction, HCU quant-info guard, MegaMoE handoff and block/ASM/FP4 post-load. Reuse16 unchanged native MoE methods, including constructors/create/apply/dequantization. Existing native module remains the provider for common globals; source-only HCU/MXFP4/ASM bindings are owned. Whole-file global/conditional/provider review and non-default profiles remain open.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/fp8_block.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py",
+      "hcu_sglang/layers/quantization/fp8_mxscale.py",
+      "hcu_sglang/layers/quantization/fp8_moe.py",
+      "hcu_sglang/layers/quantization/fp8.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-block-fp8-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-dense-mxscale-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-fp8-moe-source-alignment.json"
+    ],
+    "tests": [
+      "tests/runtime/fp8_block.py",
+      "tests/runtime/fp8_block_gpu.py",
+      "tests/runtime/fp8_mxscale.py",
+      "tests/runtime/fp8_mxscale_gpu.py",
+      "tests/runtime/fp8_moe.py",
+      "tests/runtime/fp8_moe_gpu.py"
+    ],
+    "validation_scope": "Source-tree 7 public CPU tests and 3 real HCU GPU tests passed: native post-load through native apply, BF16/FP16, non-square scales, multidimensional input, live Graph replay. Isolated dev45 repeats 7 CPU and 3 real GPU tests;403/403 Hooks and79 repository tests pass,583 package files match source/site; other backends and whole-model dev45 unvalidated. dev46 source-tree 11 CPU mxscale contracts,7 block regressions and3 real fused RMSNorm/e8m0 GPU/Graph tests pass. Installed AITER lacks gemm_a8w8_blockscale; gfx95 optimized GEMM is not validated on gfx938. Isolated dev46 repeats 11 CPU mxscale tests,7 block regressions and3 real fused-producer GPU/Graph tests;404/404 Hooks,585 byte-matched source/site package files and79 local repository tests pass. dev49 source10 CPU public native-constructor/create/static-descriptor/dispatch/MegaMoE/ASM/FP4 contracts pass. Two real GPU full-load tests pass: installed ASM b8 permutation and independent inverse recover all bytes/storage; packed FP4->FP8 preserves values exactly for the tested positive power-of-two scales. These are layout/conversion, not routed MoE GEMM precision. Global AITER=1 FP8 imports still lack vendor APIs. Isolated wheel/full hooks pending. Additional real nonserialized BF16->FP8 expert quantization passes, bringing GPU source tests to3; reference bounds apply to FP8 quantization, not lossless dequantization. Final isolated dev49 repeats10 CPU and4 real GPU tests including TP1,E2,topk1 native routed FP8 forward with full plugin/HCU alignment, independently stage-checked;412/412 hooks and79 repository tests pass,587 package files match source/site. A partial-test-registration VM fault was reproduced then eliminated by using the already-existing full plugin alignment, not by changing a kernel or disabling an optimized feature."
+  },
+  "python/sglang/kernels/ops/layernorm/rmsnorm_fp8_e8m0.py": {
+    "status": "implemented",
+    "rationale": "Own the complete source fused RMSNorm/e8m0 quantization kernel and public function byte-for-byte; rebind the model producer to this module. Preserve column-major scale bytes and actual token shape. Implementation status does not imply gfx95 GEMM or full-model validation.",
+    "implementation": [
+      "hcu_sglang/kernels/rmsnorm_fp8_e8m0.py",
+      "hcu_sglang/models/deepseek/current_v4/execution/core.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-dense-mxscale-source-alignment.json",
+    "tests": [
+      "tests/runtime/fp8_mxscale_gpu.py"
+    ],
+    "validation_scope": "Three source-tree real gfx938 GPU tests: BF16 norm/FP8/UE8M0 scale bytes for M1/17/8 and K256/384/7168, zero/empty inputs and changed-input/weight Graph replay pass. Isolated dev46 repeats all three GPU tests; package bytes match source/site and404/404 full hooks pass; gfx95 mxscale GEMM not established."
+  },
+  "python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_w8a8_fp8.py": {
+    "status": "in_progress",
+    "rationale": "Port full source channelwise LightOp helper, source scheme capability/post-load/apply and native linear wrapper apply. Preserve opt-in OCP[N,K] versus generic transposed layout, FNUZ conversion, KME retry and per-token tuple/output dtype. Add a paired compressed block hipBLASLt weight+scale orientation adaptation verified against a strict failing native-consumer counterexample. Other schemes/config and broad module review remain separate.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/compressed_fp8.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-compressed-fp8-source-alignment.json",
+    "tests": [
+      "tests/runtime/compressed_fp8.py",
+      "tests/runtime/compressed_fp8_gpu.py"
+    ],
+    "validation_scope": "Source-tree 14 public CPU tests pass, including actual native constructors/create/post-load/apply, kwargs forwarding to owned scheme and legacy scheme signature filtering, capability matrix, primary/KME exception boundaries, opt-out dtype and strict block layout. Six source-tree real GPU/Graph tests pass: opt-in BF16/FP16 and dynamic quant, opt-out tuple dtype, changed activation/weight scales, real KME after fixture primary miss, and native block post-load to actual hipBLASLt. Natural primary calls succeed without KME. Isolated dev47 repeats14 CPU and6 GPU/Graph tests;407/407 full hooks and79 repository tests pass,586 package files match source and actual installed wheel; other compressed schemes/backends are not validated."
+  },
+  "python/sglang/srt/layers/quantization/compressed_tensors/compressed_tensors.py": {
+    "status": "in_progress",
+    "rationale": "Port full source channelwise LightOp helper, source scheme capability/post-load/apply and native linear wrapper apply. Preserve opt-in OCP[N,K] versus generic transposed layout, FNUZ conversion, KME retry and per-token tuple/output dtype. Add a paired compressed block hipBLASLt weight+scale orientation adaptation verified against a strict failing native-consumer counterexample. Other schemes/config and broad module review remain separate.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/compressed_fp8.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py",
+      "hcu_sglang/layers/quantization/compressed_int8.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-compressed-fp8-source-alignment.json",
+    "tests": [
+      "tests/runtime/compressed_fp8.py",
+      "tests/runtime/compressed_fp8_gpu.py",
+      "tests/runtime/compressed_int8.py",
+      "tests/runtime/compressed_int8_gpu.py"
+    ],
+    "validation_scope": "Source-tree 14 public CPU tests pass, including actual native constructors/create/post-load/apply, kwargs forwarding to owned scheme and legacy scheme signature filtering, capability matrix, primary/KME exception boundaries, opt-out dtype and strict block layout. Six source-tree real GPU/Graph tests pass: opt-in BF16/FP16 and dynamic quant, opt-out tuple dtype, changed activation/weight scales, real KME after fixture primary miss, and native block post-load to actual hipBLASLt. Natural primary calls succeed without KME. Isolated dev47 repeats14 CPU and6 GPU/Graph tests;407/407 full hooks and79 repository tests pass,586 package files match source and actual installed wheel; other compressed schemes/backends are not validated. Source INT8 now exposes its own exact supported-argument metadata, so optional prequantized RMS/SiLU inputs reach the migrated scheme through the actual native wrapper. Legacy-signature CPU fixture deliberately registers only the wrapper to keep an unmigrated real native INT8 scheme available for backward-compatibility testing."
+  },
+  "python/sglang/srt/layers/quantization/compressed_tensors/schemes/compressed_tensors_w8a8_int8.py": {
+    "status": "in_progress",
+    "rationale": "Port all four changed source INT8 scheme methods and gfx928 predicate, using actual LightOp producer, existing owned GEMM ops and cache configuration. Pair strategy-specific load layouts with native wrapper optional-argument metadata; normalize BF16 scales toFP32. Fix source-common lost bias in legacy hipBLASLt helper. Non-HCU remains effective native. Other inherited/NPU/ABI/static-AZP cases remain independent validation scopes.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/compressed_int8.py",
+      "hcu_sglang/layers/quantization/w8a8_fp8.py",
+      "hcu_sglang/layers/quantization/quant_ops.py",
+      "hcu_sglang/layers/quantization/cache_config.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-compressed-int8-source-alignment.json",
+    "tests": [
+      "tests/runtime/compressed_int8.py",
+      "tests/runtime/compressed_int8_gpu.py",
+      "tests/runtime/compressed_fp8_legacy.py"
+    ],
+    "validation_scope": "13 source-tree public CPU contracts and4 real GPU tests pass: all four strategy backends, real dynamic/prequantized production, bias preservation, scale normalization and changed scale/bias Graph replay. gfx928 KME packing is a CPU contract fixture only, static/asymmetric is metadata validation only. Isolated dev50 repeats13 CPU and4 GPU tests;2 selected-wrapper legacy signature tests and415/415 full hooks pass,588 package bytes match source/site.79 local repository tests pass. Full dev50 model not yet run."
+  },
+  "python/sglang/srt/layers/quantization/compressed_tensors/quant_ops.py": {
+    "status": "implemented",
+    "rationale": "Own all7 source GEMM helper functions and full source module state/import layout, rebinding only missing native is_hcu to existing owned detection. Preserve source smooth-ASM slide selection, gfx928 fatal-binary exclusion, tuned/bias/layout gates and exception fallback; retain documented dev50 lost-bias fix. This is code implementation, not all-architecture validation.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/quant_ops.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-quant-ops-targets-source-alignment.json",
+    "tests": [
+      "tests/runtime/quant_ops_dispatch.py",
+      "tests/runtime/quant_ops_gpu.py",
+      "tests/runtime/compressed_int8_gpu.py"
+    ],
+    "validation_scope": "Source6 CPU dispatch-policy tests and3 real gfx938 GPU tests pass: actual smooth ASM1/Triton0, bias ASM0/Triton1, scale-changing actual ASM Graph. Source full module AST restored except exact provider import and bias fix. gfx928 exclusion tested as CPU contract, not real gfx928 execution. Isolated dev51 repeats6 CPU dispatch tests,3 actual ASM/Triton GPU tests and4 real compressed INT8 consumer GPU regressions.416/416 full hooks,79 repository tests and589 byte-matched source/site package files pass. All architecture/provider performance profiles remain unvalidated."
+  },
+  "python/sglang/srt/layers/quantization/compressed_tensors/utils.py": {
+    "status": "implemented",
+    "rationale": "Port the sole changed source function find_matched_target through a narrow HCU public hook. Search exact/regex layer path, then leaf and parent classes in Python MRO, then all-components fused mapping; exclude object. All remaining module AST is native/source identical. Non-HCU keeps effective original.",
+    "implementation": [
+      "hcu_sglang/layers/quantization/compressed_targets.py",
+      "hcu_sglang/layers/quantization/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-quant-ops-targets-source-alignment.json",
+    "tests": [
+      "tests/runtime/compressed_targets.py"
+    ],
+    "validation_scope": "7 isolated dev51 public CPU tests pass including real native CompressedTensorsConfig.get_scheme_dict inherited-only resolution and early alias, path/regex/leaf/MRO/fused priorities, empty/object/non-HCU boundaries.416/416 full root hooks pass. Other config/model profiles are not established by these cases."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/c_plan.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/c_plan.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/fused_norm_rope_v2.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/fused_norm_rope_v2.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/main_norm_rope.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/main_norm_rope.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/silu_and_mul_masked_post_quant.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/silu_and_mul_masked_post_quant.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/topk_v2.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/topk_v2.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/fp4_utils.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/deepseek_v4/fp4_utils.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/fp8_utils.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/deepseek_v4/fp8_utils.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/kv_layout.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/deepseek_v4/kv_layout.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/deepseek_v4/topk_impl.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/deepseek_v4/topk_impl.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/runtime.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/runtime.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/tensor.h": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/tensor.h",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/utils.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/utils.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/utils.h": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/utils.h",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/include/sgl_kernel/warp.cuh": {
+    "status": "in_progress",
+    "rationale": "Exact source blob/mode, current owned content and dev51 wheel packaging verified. A validated historical compiler dependency record includes this same content in a leaf containing a library. Existing overlay/native BuildSpec contracts verify source/include routing. Current execution/all templates are not established solely by this record; retain in_progress for full caller/profile review.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/include/sgl_kernel/warp.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json",
+    "validation_scope": "Read-only committed-source and historical dependency-key/content review. No current-run execution inferred. Fresh block-amax validation is a separate resource, not evidence for this file."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/block_amax.cuh": {
+    "status": "implemented",
+    "rationale": "Own the complete source block-amax header with one exact HIP syntax adaptation: parenthesize template-containing launch-bounds expressions so the preprocessor cannot split typename commas. Block size, occupancy and arithmetic unchanged; exact reverse replacement restores source bytes. Native public JIT path cold-compiles and executes it.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/block_amax.cuh",
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/candidate_blocks.py",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-block-amax-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-jit-resource-coverage.json"
+    ],
+    "tests": [
+      "tests/runtime/jit_overlay_contract.py",
+      "tests/runtime/jit_block_amax_gpu.py"
+    ],
+    "validation_scope": "4 native load_jit/BuildSpec/translation-unit CPU contracts and2 actual fresh-cache gfx938 GPU tests pass: all fp32/bf16 input/output combinations, variable/empty/tail rows, topk skips and changed score/length Graph replay. Original Source cold compile failed8 errors; only launch-bounds syntax adapted. Isolated dev52 repeats4 native BuildSpec CPU contracts and2 fresh-cache GPU tests; all4 input/output dtype variants generate validated compiler records and packaged owner hash matches wheel.416/416 hooks and85 repository tests pass,589 package files match source/site; other architectures not established."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/topk_bf16_small.cuh": {
+    "status": "implemented",
+    "rationale": "Own the complete source BF16 radix short-row kernel with explicit HIP portability adapters: width-aware shuffles,256/deviceWarpThreads histogram bins per lane, ordered raw BF16 pair masks and integer flag packing. Preserve CUDA original intrinsics and32-lane8-bin specialization,512-thread/occupancy3 launch, radix selection and page mapping. Exact patch reversal restores source bytes.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/topk_bf16_small.cuh",
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/topk.py",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-bf16-topk-source-alignment.json",
+    "tests": [
+      "tests/runtime/jit_bf16_topk_gpu.py"
+    ],
+    "validation_scope": "5 actual public-entry gfx938 GPU tests pass: cold compilation, empty/partial rows, max16384 width/k2048 signed values, ties/signed zero quota, finite subnormals via integer-rank reference, Graph score/length/page updates. Default CPU float reference flush behavior was diagnosed independently; no tolerance relaxation. Isolated dev53 wheel:589 package files byte-identical,5 GPU tests,416 hooks/3 seams/no errors and85 repository tests pass. Full dev53 model service not run; NVIDIA CUDA32 not run, NaNs unsupported as source."
+  },
+  "python/sglang/kernels/ops/moe/dsv4.py": {
+    "status": "implemented",
+    "rationale": "Own the two changed full Source functions: HCU hash routing selects the source JIT and zero-token noncanonical pre-dispatch strides are normalized. Reuse unchanged native factories and public APIs; non-HCU delegates to the current effective original.",
+    "implementation": [
+      "hcu_sglang/layers/moe/dsv4_ops.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-dsv4-moe-ops-source-alignment.json",
+    "tests": [
+      "tests/runtime/dsv4_ops_cpu.py",
+      "tests/runtime/dsv4_hash_topk_gpu.py"
+    ],
+    "validation_scope": "4 CPU contracts passed and pre-imported mega_moe alias rewrites under full registration; dev55 isolated7 real GPU/Graph tests,418 hooks/3 seams/0 errors,590 matching package files. Full dev55 model service pending."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/hash_topk.cuh": {
+    "status": "implemented",
+    "rationale": "Own full Source hash-routing and mask kernels. Add only two validated-host zero-token returns to avoid invalid zero-grid HIP launches; preserve nonempty math, source logical warp32 bounds, PDL, mask stride and token-count contracts. Exact reverse patch restores pinned Source bytes.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/hash_topk.cuh",
+      "hcu_sglang/jit_overlay_loader.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-dsv4-moe-ops-source-alignment.json",
+    "tests": [
+      "tests/runtime/dsv4_hash_topk_gpu.py"
+    ],
+    "validation_scope": "7 isolated dev55 real gfx938 GPU/Graph tests pass; two actual cold-compile manifests match current owned header and wheel bytes. This is not whole-model or NVIDIA validation."
+  },
+  "python/sglang/kernels/jit/csrc/deepseek_v4/linear_bf16_fp32.cuh": {
+    "status": "implemented",
+    "rationale": "Full Source header retained byte-for-byte; actual HCU normal and split-K MMAC branches execute through owned JIT overlay.",
+    "implementation": [
+      "hcu_sglang/jit_overlay/csrc/deepseek_v4/linear_bf16_fp32.cuh"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-bf16-fp32-source-alignment.json",
+    "tests": [
+      "tests/runtime/linear_bf16_fp32_cpu.py",
+      "tests/runtime/linear_bf16_fp32_gpu.py"
+    ],
+    "validation_scope": "7 Source CPU dispatch cases and6 Source-worktree real gfx938 GPU cases pass, including10 direct shapes/normal/split8/split4, public explicit-sgl Hook, repeated zero-init, Graph and invalid layouts. Current gfx938 auto policy stays unchanged; full-model dev56 results pending. No performance or other-architecture claim. Isolated dev56 confirms7 dispatch CPU and6 GEMM GPU tests,591 byte-identical package files,420 hooks/3 seams/no errors and85 repository tests."
+  },
+  "python/sglang/kernels/ops/attention/dsv4/hcu_linear_bf16_fp32.py": {
+    "status": "implemented",
+    "rationale": "All4 source functions and all non-import module statements match AST; owned platform/helper imports retain supported shapes, alignment, split-K zero-init and JIT public caller.",
+    "implementation": [
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/hcu_linear_bf16_fp32.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-bf16-fp32-source-alignment.json",
+    "tests": [
+      "tests/runtime/linear_bf16_fp32_cpu.py",
+      "tests/runtime/linear_bf16_fp32_gpu.py"
+    ],
+    "validation_scope": "7 Source CPU dispatch cases and6 Source-worktree real gfx938 GPU cases pass, including10 direct shapes/normal/split8/split4, public explicit-sgl Hook, repeated zero-init, Graph and invalid layouts. Current gfx938 auto policy stays unchanged; full-model dev56 results pending. No performance or other-architecture claim. Isolated dev56 confirms7 dispatch CPU and6 GEMM GPU tests,591 byte-identical package files,420 hooks/3 seams/no errors and85 repository tests."
+  },
+  "python/sglang/kernels/ops/gemm/bf16_fp32.py": {
+    "status": "implemented",
+    "rationale": "All17 source functions and all non-import module statements match after relocation of owned helper imports. Preserve source provider ordering, gfx936-only auto profile, explicit HCU sgl and HCU BF16-output-then-FP32 cublas semantics.",
+    "implementation": [
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/bf16_fp32.py",
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/integration.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-bf16-fp32-source-alignment.json",
+    "tests": [
+      "tests/runtime/linear_bf16_fp32_cpu.py",
+      "tests/runtime/linear_bf16_fp32_gpu.py"
+    ],
+    "validation_scope": "7 Source CPU dispatch cases and6 Source-worktree real gfx938 GPU cases pass, including10 direct shapes/normal/split8/split4, public explicit-sgl Hook, repeated zero-init, Graph and invalid layouts. Current gfx938 auto policy stays unchanged; full-model dev56 results pending. No performance or other-architecture claim. Isolated dev56 confirms7 dispatch CPU and6 GEMM GPU tests,591 byte-identical package files,420 hooks/3 seams/no errors and85 repository tests."
+  },
+  "test/registered/unit/test_linear_bf16_fp32_dispatch.py": {
+    "status": "implemented",
+    "rationale": "Port all7 original Source CPU test methods to owned imports and standard unittest; retain method ASTs after one importlib module path-string relocation. External Source CI registration is replaced by this repository explicit runtime-test command.",
+    "implementation": [
+      "tests/runtime/linear_bf16_fp32_cpu.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-bf16-fp32-source-alignment.json",
+    "tests": [
+      "tests/runtime/linear_bf16_fp32_cpu.py"
+    ],
+    "validation_scope": "All7 original dispatch CPU methods pass on isolated dev56; method ASTs retain Source after owned import path relocation and standard unittest integration."
+  },
+  "python/sglang/srt/models/deepseek_v2.py": {
+    "status": "in_progress",
+    "rationale": "Add full Source MoEGate constructor and forward pair to fix the real TP8 producer BF16 to hash FP32 mismatch. Explicit native globals, owned CP predicates, Source configuration dtype field and correct moved-super binding preserve method semantics. This pair does not close the whole model file.",
+    "implementation": [
+      "hcu_sglang/layers/moe/deepseek_gate.py",
+      "hcu_sglang/environ.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-deepseek-gate-source-alignment.json",
+    "tests": [
+      "tests/runtime/deepseek_gate_cpu.py",
+      "tests/runtime/deepseek_gate_gpu.py"
+    ],
+    "validation_scope": "5 CPU and2 actual native-gate-to-public-hash GPU/Graph tests pass in both Source worktree and isolated dev56.420 hooks/3 seams/no errors,591 matching package files and85 repository tests. Original TP8 replay and remaining model-file deltas pending."
+  },
+  "python/sglang/srt/layers/moe/topk.py": {
+    "status": "in_progress",
+    "rationale": "Own the full source routing module and use native identities for unchanged shared types. Wire all changed native functions/methods through HCU-scoped hooks, preserve original non-HCU callables and optimized provider eligibility. Correct only the stale Source remapping-predicate call; retain Source behavior and exact reversible adaptation patch. Actual load-aware solver/collective and global AITER integration remain open.",
+    "implementation": [
+      "hcu_sglang/layers/moe/topk_source.py",
+      "hcu_sglang/layers/moe/routing.py",
+      "hcu_sglang/layers/moe/ep_balance.py",
+      "hcu_sglang/__init__.py",
+      "hcu_sglang/environ.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-topk-routing-source-alignment.json",
+    "tests": [
+      "tests/runtime/routing_cpu.py",
+      "tests/runtime/routing_gpu.py",
+      "tests/runtime/ep_balance_cpu.py"
+    ],
+    "validation_scope": "Source/full import431 hooks; 6 routing CPU and5 independent-oracle EP helper tests pass. Isolated dev57:7 GPU/Graph suite cases plus1 DeepEP shared-slot remap/padding case pass using real LightOP kernels.595 package files match source/site. Single-device fixtures do not prove EP collectives, LP load-aware or full-model accuracy. Isolated431 hooks/3 seams/zero errors and85 repository tests passed. Full dev57 original TP8 recipe pending.",
+    "load_aware_progress": "Actual owned solver/factory/extended metadata and native consumer GPU pipeline now pass. Full load-aware8-GPU service, global AITER and remaining whole-file distributed lanes stay unverified."
+  },
+  "python/sglang/srt/layers/moe/hash_topk.py": {
+    "status": "in_progress",
+    "rationale": "Own the full Source HashTopK module with native class identity preserved at hook targets and compatible direct owned factories. Retain synthetic EP mode validation, shared columns and weights, padding, LP versus load-aware argument dispatch and source remap rules. Source-only EP import uses owned helper and moved super binds to the original parent. Actual load-aware solver/collective and global AITER integration remain open.",
+    "implementation": [
+      "hcu_sglang/layers/moe/hash_topk_source.py",
+      "hcu_sglang/layers/moe/routing.py",
+      "hcu_sglang/layers/moe/ep_balance.py",
+      "hcu_sglang/__init__.py",
+      "hcu_sglang/environ.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-topk-routing-source-alignment.json",
+    "tests": [
+      "tests/runtime/routing_cpu.py",
+      "tests/runtime/routing_gpu.py",
+      "tests/runtime/ep_balance_cpu.py"
+    ],
+    "validation_scope": "Source/full import431 hooks; 6 routing CPU and5 independent-oracle EP helper tests pass. Isolated dev57:7 GPU/Graph suite cases plus1 DeepEP shared-slot remap/padding case pass using real LightOP kernels.595 package files match source/site. Single-device fixtures do not prove EP collectives, LP load-aware or full-model accuracy. Isolated431 hooks/3 seams/zero errors and85 repository tests passed. Full dev57 original TP8 recipe pending.",
+    "load_aware_progress": "Actual owned solver/factory/extended metadata and native consumer GPU pipeline now pass. Full load-aware8-GPU service, global AITER and remaining whole-file distributed lanes stay unverified."
+  },
+  "python/sglang/srt/layers/moe/ep_balance.py": {
+    "status": "implemented",
+    "rationale": "Own source synthetic EP balancing helper byte-for-byte. Preserve destination rotation, rank fanout, unique local experts, layer rotation, validation and benchmark-only scope. Register the missing Source EnvBool(False) without overriding existing fields.",
+    "implementation": [
+      "hcu_sglang/layers/moe/ep_balance.py",
+      "hcu_sglang/environ.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-topk-routing-source-alignment.json",
+    "tests": [
+      "tests/runtime/ep_balance_cpu.py",
+      "tests/runtime/routing_gpu.py"
+    ],
+    "validation_scope": "5 independent Python-oracle CPU tests and actual GPU TopK/HashTopK synthetic-mode tests validate routed IDs and preservation of router weights/shared columns. Synthetic IDs are performance-benchmark inputs, not accuracy evidence."
+  },
+  "python/sglang/srt/eplb/load_aware_dispatch.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "implemented",
+    "rationale": "Own full Source Triton count/water-fill/sample and CPU reference. Controlled bounds/contiguous adapters fix observed sentinel writes and shared-column reads; keep Source16-step greedy solve, deterministic rank/layer seed and local per-source design.",
+    "implementation": [
+      "hcu_sglang/eplb/load_aware_dispatch.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST."
+  },
+  "python/sglang/srt/eplb/lplb_solver.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Own full Source LP/load-aware module and shared resource-registry access. Actual load-aware classes and static-LP probability shortcut validated; Hopper/cuBLASDx dynamic LP execution remains unverified.",
+    "implementation": [
+      "hcu_sglang/eplb/lplb_solver.py",
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST."
+  },
+  "python/sglang/srt/eplb/expert_location_dispatch.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Own full Source dispatch functions and extended dataclass. Reuse native base identity via compatible owned subclass; native init_new produces layer/rank seed metadata. Legacy manual info defaults missing seed fields to0. Static/dynamic/LP code is retained; broad non-load-aware GPU and distributed configurations remain to review.",
+    "implementation": [
+      "hcu_sglang/eplb/expert_location_dispatch.py",
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST."
+  },
+  "python/sglang/srt/model_executor/model_runner_components/moe_ep_setup.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Port the only changed Source function init_lplb_solvers. Fix mismatched static-LP kwargs for load-aware constructor, preserve LP path and model gate. Remaining Source import/global review and actual feature service replay pending.",
+    "implementation": [
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST."
+  },
+  "python/sglang/srt/eplb/eplb_manager.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Wire the Source change that rebuilds replica solvers after either LP or load-aware expert-location recovery. CPU public callback proves rebuild control; actual distributed weight-recovery/rebalance not yet exercised.",
+    "implementation": [
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST."
+  },
+  "python/sglang/srt/arg_groups/parallel_hook.py": {
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-load-aware-source-alignment.json",
+    "tests": [
+      "tests/runtime/load_aware_cpu.py",
+      "tests/runtime/load_aware_gpu.py",
+      "tests/runtime/load_aware_pipeline_gpu.py"
+    ],
+    "status": "in_progress",
+    "rationale": "Preserve current effective native validation and append Source load-aware transport, ROCm and redundant-expert constraints. This is not the remaining static-locality/CP/other whole-file Source delta.",
+    "implementation": [
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "validation_scope": "8 real GPU kernel cases including256x264, bounds/strides and Graph;2 native factory/metadata/solver/TopK-or-Hash GPU pipeline cases;7 CPU contracts and real canonical CLI/ServerArgs resolution/pickle pass on frozen dev58. Latest dev59 differs only by inherited license header; its unchanged kernels and current artifact checks are recorded separately. Explicit load-aware8-GPU service and performance remain pending. Frozen dev59:2 current public GPU pipeline tests,7 CPU contracts,437 hooks/3 seams/no errors,85 repository tests and full canonical CLI/resolution/pickle pass. All kernel/solver/metadata bytes match verified dev58; only inherited license header changes integration.py with identical function AST.",
+    "placement_progress": "Source static-locality rule is now enforced around current native validation: locality_fair only with static. Other parallel/CP deltas remain open."
+  },
+  "python/sglang/srt/model_executor/model_runner.py": {
+    "status": "in_progress",
+    "rationale": "Whole model-runner Source review remains open.",
+    "implementation": [
+      "hcu_sglang/eplb/integration.py"
+    ],
+    "tests": [],
+    "load_aware_delta": "Source maybe_init_lplb_solvers accepts both lp/load_aware and still skips draft workers; public-method CPU control test passes. Other model-runner deltas remain pending."
+  },
+  "python/sglang/srt/eplb/expert_location.py": {
+    "status": "implemented",
+    "rationale": "All4 changed/new Source helpers are owned; other helper/class ASTs unchanged and reused natively. Keep full candidates for load-aware/LP/dynamic; only static+nearest collapses. Add deterministic locality-fair source-rank placement with a process option when the canonical field is absent. No undeclared frozen-seed writes.",
+    "implementation": [
+      "hcu_sglang/eplb/placement.py",
+      "hcu_sglang/config.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-expert-placement-source-alignment.json",
+    "tests": [
+      "tests/runtime/expert_placement_cpu.py",
+      "tests/runtime/expert_placement_gpu.py"
+    ],
+    "validation_scope": "8 CPU contracts and2 isolated dev60 native-builder/solver/public-dispatch GPU tests pass.601 source/site package files identical. Full normal CLI/resolution/pickle succeeds for static/locality_fair+redundant8. 439 hooks/3 seams/zero errors and85 repository tests passed;8-GPU complete-candidate service/performance pending."
+  },
+  "python/sglang/srt/eplb/expert_distribution.py": {
+    "status": "implemented",
+    "rationale": "Own every changed Source method and new auto gatherer; reuse unchanged native classes/buffers. Skip capture-time collection, collect real normal/low-latency dispatch counts for DeepEP auto, locally sum windows to fixed-shape int64 before the collective and retain output/file behavior. All changed function/class ASTs match after explicit native globals/staticmethod relocation.",
+    "implementation": [
+      "hcu_sglang/eplb/recording.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-expert-recording-source-alignment.json",
+    "tests": [
+      "tests/runtime/expert_recording_cpu.py",
+      "tests/runtime/expert_recording_gpu.py",
+      "tests/runtime/expert_recording_gloo.py"
+    ],
+    "validation_scope": "5 CPU contracts and2 real GPU/Graph checks pass. Real2-rank Gloo covers unequal1/3 and0/2 windows; isolated dev61 real8-rank NCCL/RCCL covers1..8 and seven-empty/one-nonempty windows. Fixed1x2 int64 reductions match[480,216] and[2**32,6] exactly on all8 ranks.602 package files match source/site. 443 hooks/3 seams/zero errors and85 repository tests passed; recorder-enabled service pending; no throughput or model-derived balance claim.",
+    "recording_file_branch_fix": "Actual dev61 service generated six correct responses and completed8-rank reduction, but rank0 file dump failed from missing time global qualification. Corrected to N.time; added complete native accumulator file-output and free-global resolution regressions. Keep original failure record; service integration remains pending.",
+    "dev62_service_validation": "Frozen56043f0/dev62 passed6 requests andstart/stop/dump200 on8 GPUs with original DSPARK/DeepEP/Graph plus load-aware/redundant8/stat flags. Actual rank0 int64[43,256] dump is nonnegative and all43 layers positive; full report saved. No dataset accuracy, unique-token count or performance improvement claim."
+  },
+  "python/sglang/srt/model_executor/runner_utils/deepep_adapter.py": {
+    "status": "implemented",
+    "rationale": "Own full Source adapter as native subclass with class-safe replacement. Capture-end snapshots actual low-latency layout; replay restores it before setting capture mode. Full Source capture_one_shape producer is paired, not a replay-only patch.",
+    "implementation": [
+      "hcu_sglang/deepep_graph.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-deepep-graph-layout-source-alignment.json",
+    "tests": [
+      "tests/runtime/deepep_graph_cpu.py"
+    ],
+    "validation_scope": "5 Source protocol CPU tests pass: class/pre-import alias/isinstance, target layout restored after draft change and before mode, normal/non-DeepEP, full native DecodeCudaGraphRunner producer order, non-HCU effective original. Isolated dev62 confirms5 protocol CPU,7 recorder CPU,445 hooks/3 seams/zero errors,603 matching package files and85 repository tests. Real8-GPU graph/recording serving replay pending; no fake RDMA cleanup is claimed.",
+    "dev62_service_validation": "Frozen56043f0/dev62 passed6 requests andstart/stop/dump200 on8 GPUs with original DSPARK/DeepEP/Graph plus load-aware/redundant8/stat flags. Actual rank0 int64[43,256] dump is nonnegative and all43 layers positive; full report saved. No dataset accuracy, unique-token count or performance improvement claim."
+  },
+  "python/sglang/srt/model_executor/runner/decode_cuda_graph_runner.py": {
+    "status": "in_progress",
+    "rationale": "Whole decode graph runner review remains open.",
+    "implementation": [
+      "hcu_sglang/deepep_graph.py"
+    ],
+    "tests": [],
+    "deep_ep_layout_delta": "Full Source capture_one_shape121-line method is AST-identical after qualifying unchanged native globals. Real backend capture is followed by capture_end inside the existing context. Other runner deltas remain unreviewed."
+  },
+  "python/sglang/srt/model_executor/runner/base_cuda_graph_runner.py": {
+    "status": "implemented",
+    "rationale": "Full Source get_batch_sizes_to_capture migrated with real native DllmConfig limit for separate context encoding. Preserve full alignment, TBO and compile-list logic; native unchanged classes and helpers reused, HCU-only AROUND preserves effective fallback. Entire source diff reviewed: added config import and three request-limit lines.",
+    "implementation": [
+      "hcu_sglang/graph_batch.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-graph-batch-source-alignment.json",
+    "tests": [
+      "tests/runtime/graph_batch_cpu.py"
+    ],
+    "validation_scope": "6 CPU control-flow tests passed using real native DllmConfig and algorithms with fixture model metadata; pre-imported decode/runner alias identity checked. Source AST equal after qualifying native helper globals. No real diffusion model GPU or accuracy claim. Isolated dev63:604 identical package files,446 hooks/3 seams,95 repository tests; real8GPU ordinary DeepSeek base recipe passes6 strict requests and cleanup. This service does not exercise separate-context diffusion GPU capture.",
+    "ordinary_model_service_evidence": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-graph-batch-dev63-validation-20261101.json"
+  },
+  "python/sglang/srt/model_executor/model_runner_components/cuda_graph_setup.py": {
+    "status": "implemented",
+    "rationale": "Migrate all six changed/new Source functions: complete hybrid local-layer coverage, global indexing retaining trailing pure-MoE slots, PP-aware DeepGEMM budget refresh with native mutable state, H16 sync/cache release and both full capture callers. Four existing entry points use HCU-only AROUND; unchanged native helpers/types reused.",
+    "implementation": [
+      "hcu_sglang/graph_setup.py",
+      "hcu_sglang/__init__.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-graph-setup-source-alignment.json",
+    "tests": [
+      "tests/runtime/graph_setup_cpu.py",
+      "tests/runtime/graph_setup_gloo.py",
+      "tests/runtime/graph_setup_gpu.py"
+    ],
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-graph-setup-collective-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-graph-setup-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-graph-setup-dev64-validation-20261101.json"
+    ],
+    "validation_scope": "9 CPU contracts pass incl public prefill/capture callers, aliases, native budget setter/state, PP group and lifecycle order; real4-rank Gloo native MIN plus separate earlier-stage collective passes, synthetic memory inquiries only. Isolated dev64 real GPU primitive Graph replays changed inputs after native platform cache release. Actual PP/hybrid/H16 models remain unverified; isolated605-file artifact,450 hooks/3 seams and95 repository tests pass. Frozen4873fea ordinary PP1 model8GPU original recipe passes6 strict requests with24 native budget log lines and owned cleanup. This is not PP/hybrid/H16 model evidence."
+  },
+  "python/sglang/srt/model_executor/runner/prefill_cuda_graph_runner.py": {
+    "status": "implemented",
+    "rationale": "Own all12 changed/new Source methods as native subclass with correct base initialization; pair full constructor, scope, context bounds, replay metadata/prepared IDs, output schema, capture prepare and KV wait. Reuse unchanged native methods/types.",
+    "implementation": [
+      "hcu_sglang/prefill_graph_runner.py",
+      "hcu_sglang/prefill_graph_vote.py",
+      "hcu_sglang/prefill_output.py",
+      "hcu_sglang/mega_moe_graph.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_graph_cpu.py",
+      "tests/runtime/prefill_graph_gpu.py"
+    ],
+    "validation_scope": "13 CPU tests pass incl complete constructor with expensive base/buffer/backend fixtures, public load/execute, shared DP/local policy, nested scope and failures, output dataclass and replay identity. Isolated dev65 GPU executes real primitive Graph through public load/body/trim twice with changed prepared IDs and encoder metadata. Complete model prefill capture/replay and final artifact gates recorded separately, not inferred.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-prefill-bcg-dev66-validation-20261101.json"
+    ],
+    "dev66_model_scope": "Frozenc61fb5c/612 files: original8GPU DSPARK/DeepEP/decodeGraph recipe plus explicit BCG64/128/context256, all8 target prefill captures completed,6 strict requests and cleanup passed. No request-level BCG hit, CP/elastic model or full benchmark claim."
+  },
+  "python/sglang/srt/model_executor/runner_utils/prefill_graph.py": {
+    "status": "implemented",
+    "rationale": "Full Source module copied byte-for-byte into owned policy module; runner capture/replay callers use this one ContextVar owner. Future consumers must import the same owner.",
+    "implementation": [
+      "hcu_sglang/prefill_graph_policy.py",
+      "hcu_sglang/prefill_graph_runner.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_graph_cpu.py",
+      "tests/runtime/prefill_graph_gpu.py"
+    ],
+    "validation_scope": "Scope nesting/exception restoration, compile probe and actual runner context tested; public primitive GPU replay observes raw token count. Does not prove all pending DAS consumers migrated.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-gates-validation-20261101.json"
+    ]
+  },
+  "python/sglang/srt/layers/logits_processor.py": {
+    "status": "in_progress",
+    "rationale": "Only full native-compatible dataclass schema extended with three Source draft fields; producer optimizations and remaining file differences pending.",
+    "implementation": [
+      "hcu_sglang/prefill_output.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_graph_cpu.py"
+    ],
+    "validation_scope": "Targeted13 CPU contracts include affected schema/buffer/caller; partial file scope remains explicit."
+  },
+  "python/sglang/srt/layers/moe/mega_moe.py": {
+    "status": "in_progress",
+    "rationale": "Only complete Source runtime selector and graph valid-token setter migrated against canonical native buffer registry; standalone buffers/kernels and other MegaMoE changes pending.",
+    "implementation": [
+      "hcu_sglang/mega_moe_graph.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-runner-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_graph_cpu.py"
+    ],
+    "validation_scope": "Targeted13 CPU contracts include affected schema/buffer/caller; partial file scope remains explicit."
+  },
+  "python/sglang/srt/managers/scheduler_components/dp_attn.py": {
+    "status": "in_progress",
+    "rationale": "Full Source local Graph vote and producer paired after actualdev65 missing-num_tokens failure; own full MLPSyncBatchInfo methods/CP fields, metadata update, exchange helper and elastic topology check. Remaining SchedulerDPAttnAdapter interface and other full CP/worker consumer migration remain pending.",
+    "implementation": [
+      "hcu_sglang/prefill_graph_vote.py",
+      "hcu_sglang/prefill_graph_sync.py",
+      "hcu_sglang/cp_token_counts.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_graph_cpu.py",
+      "tests/runtime/prefill_sync_cpu.py",
+      "tests/runtime/prefill_sync_gloo.py"
+    ],
+    "validation_scope": "6 CPU tests include old public producer TypeError and fixed real producer,131 folded rows handed to vote and metadata,12-column protocol and dataclass copy/pickle. Real4-rank Gloo pack/reduction/mixed layout and nonzero global-root subgroup pass. New model run pending, not inferred from helper tests.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-dev65-failure-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-collective-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-prefill-bcg-dev66-validation-20261101.json"
+    ],
+    "dev66_model_scope": "Frozenc61fb5c/612 files: original8GPU DSPARK/DeepEP/decodeGraph recipe plus explicit BCG64/128/context256, all8 target prefill captures completed,6 strict requests and cleanup passed. No request-level BCG hit, CP/elastic model or full benchmark claim."
+  },
+  "python/sglang/srt/managers/schedule_batch.py": {
+    "status": "in_progress",
+    "rationale": "Only native-compatible declared global_cp_num_tokens field added for copy/pickle; other Source ScheduleBatch differences and model-worker handoff pending. Source Req AUX property/needs-load-back added as native subtype; native legacy staged plan has no AUX windows so interprets AUX0 without replacing its ABI.",
+    "implementation": [
+      "hcu_sglang/prefill_graph_sync.py",
+      "hcu_sglang/prefill_request.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_sync_cpu.py",
+      "tests/runtime/prefill_sync_gloo.py",
+      "tests/runtime/prefill_admission_cpu.py"
+    ],
+    "validation_scope": "Explicit partial file review; no full CP/elastic/model claim."
+  },
+  "python/sglang/srt/layers/cp/utils.py": {
+    "status": "in_progress",
+    "rationale": "Only full enable_cp_v2, CP physical-token count and mixed-replica normalization helpers used by owned MLP sync; other CP runtime changes pending.",
+    "implementation": [
+      "hcu_sglang/cp_token_counts.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_sync_cpu.py",
+      "tests/runtime/prefill_sync_gloo.py"
+    ],
+    "validation_scope": "Explicit partial file review; no full CP/elastic/model claim."
+  },
+  "python/sglang/srt/layers/cp/zigzag.py": {
+    "status": "in_progress",
+    "rationale": "Only full CPU physical-token geometry helper migrated, not remaining strategy/metadata changes.",
+    "implementation": [
+      "hcu_sglang/cp_token_counts.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_sync_cpu.py",
+      "tests/runtime/prefill_sync_gloo.py"
+    ],
+    "validation_scope": "Explicit partial file review; no full CP/elastic/model claim."
+  },
+  "python/sglang/srt/model_executor/encoder_swa_replay.py": {
+    "status": "implemented",
+    "rationale": "Full Source encoder replay module owned: frozen folded record, batched fallback, window reset, fold/drop, engram history and execution-count contracts. Worker full source method paired; scheduler budget and feature-validator changes remain separate pending scope.",
+    "implementation": [
+      "hcu_sglang/encoder_swa_replay.py",
+      "hcu_sglang/encoder_swa_worker.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-encoder-swa-source-alignment.json",
+    "tests": [
+      "tests/runtime/encoder_swa_cpu.py",
+      "tests/runtime/encoder_swa_gpu.py"
+    ],
+    "validation_scope": "8 CPU contracts retain public worker fold/fallback, original plan identity, hidden/tail row mapping and one batched vs two legacy replay forwards. Isolated67 GPU real tensors and changed-input primitive Graph verify dense/tail output map. Full compatible-model feature validation not inferred.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-encoder-swa-gates-validation-20261101.json"
+    ]
+  },
+  "python/sglang/srt/elastic_ep/topology.py": {
+    "status": "in_progress",
+    "rationale": "Only fixed attention replica-width helper migrated for owned sync topology check; other joining topology helpers pending.",
+    "implementation": [
+      "hcu_sglang/cp_token_counts.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-sync-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_sync_cpu.py",
+      "tests/runtime/prefill_sync_gloo.py"
+    ],
+    "validation_scope": "Explicit partial file review; no full CP/elastic/model claim."
+  },
+  "python/sglang/srt/managers/tp_worker.py": {
+    "status": "in_progress",
+    "rationale": "Only full forward_batch_generation Source method migrated and tested, including hidden-before-norm override, folded FB and original KV-plan readout; tokenizer/GLM seed changes remain pending.",
+    "implementation": [
+      "hcu_sglang/encoder_swa_worker.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-encoder-swa-source-alignment.json",
+    "tests": [
+      "tests/runtime/encoder_swa_cpu.py",
+      "tests/runtime/encoder_swa_gpu.py"
+    ],
+    "validation_scope": "Targeted CPU/GPU row/history/worker contracts, not full file or Engram model acceptance.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-encoder-swa-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-prefill-bcg-dev67-validation-20261101.json"
+    ],
+    "ordinary_model_service_scope": "Frozen cb69307/dev67/614 files passes ordinary8GPU BCG initialization plus6 strict requests and cleanup with encoder flagFalse. Not encoder cache-hit feature validation; currentV4.1 preflight retains CUDA/gfx950 rejection."
+  },
+  "python/sglang/srt/layers/engram.py": {
+    "status": "in_progress",
+    "rationale": "Only full history_row helper migrated with explicit receiver for Source replay history; Engram class/host loading/kernel changes remain pending.",
+    "implementation": [
+      "hcu_sglang/encoder_swa_replay.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-encoder-swa-source-alignment.json",
+    "tests": [
+      "tests/runtime/encoder_swa_cpu.py",
+      "tests/runtime/encoder_swa_gpu.py"
+    ],
+    "validation_scope": "Targeted CPU/GPU row/history/worker contracts, not full file or Engram model acceptance."
+  },
+  "python/sglang/srt/managers/schedule_policy.py": {
+    "status": "implemented",
+    "rationale": "All11 changed/new Source PrefillAdder methods and frozen admission record migrated as native subclass. Replay rows charged to compute budgets only, chunk limits reduced before admission; idle staged deferral and retraction accounting paired. Native unchanged constructor/helpers retained.",
+    "implementation": [
+      "hcu_sglang/prefill_admission.py",
+      "hcu_sglang/prefill_memory_budget.py",
+      "hcu_sglang/prefill_request.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-admission-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_admission_cpu.py"
+    ],
+    "validation_scope": "8 CPU contracts through real constructor/public add_one_req and native memory budget preserve prior overdraw(-10) counterexample,144-token first-page boundary, exact/DLLM charge, capacity defer and AUX legacy readout. Ordinary model and final gates recorded separately; native window-plan production/transport not claimed.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-admission-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-prefill-bcg-dev68-validation-20261101.json"
+    ],
+    "ordinary_model_scope": "Frozen dd88288/dev68/619 files:8GPU BCG initialization and6 strict requests with cleanup passed, encoder flagFalse. Not encoder cache-hit/AUX transfer/BCG request-hit or dataset score."
+  },
+  "python/sglang/srt/mem_cache/prefill_budget.py": {
+    "status": "implemented",
+    "rationale": "All three Source check_prefill signature/method changes migrated; unchanged allocator reservation and budget arithmetic remain native. New auxiliary parameter is accepted with Source semantics, not invented extra reservation math.",
+    "implementation": [
+      "hcu_sglang/prefill_memory_budget.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-admission-source-alignment.json",
+    "tests": [
+      "tests/runtime/prefill_admission_cpu.py"
+    ],
+    "validation_scope": "Actual native Prefill/SWA/SharedSWA object methods accept new parameter; old native signature rejection retained. CPU capacity and public admission contracts, not complete AUX transfer.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-admission-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-prefill-bcg-dev68-validation-20261101.json"
+    ],
+    "ordinary_model_scope": "Frozen dd88288/dev68/619 files:8GPU BCG initialization and6 strict requests with cleanup passed, encoder flagFalse. Not encoder cache-hit/AUX transfer/BCG request-hit or dataset score."
+  },
+  "python/sglang/srt/arg_groups/deepseek_v4_hook.py": {
+    "status": "implemented",
+    "rationale": "All5 changed/new Source functions owned across v4_defaults/replay_validation. Preserve explicit HCU sparse prefill, Source backend defaults and guards, CP declarations and feature/replay budget policy. Existing CP registration re-exports canonical owner; native legacy compatibility exports retained.",
+    "implementation": [
+      "hcu_sglang/replay_validation.py",
+      "hcu_sglang/v4_defaults.py",
+      "hcu_sglang/models/deepseek/current_v4/hcu_backend/arg_groups.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-v4-defaults-source-alignment.json",
+    "tests": [
+      "tests/runtime/replay_validation_cpu.py",
+      "tests/runtime/v4_defaults_cpu.py"
+    ],
+    "validation_scope": "Final70:9 CPU policy/CP/alias contracts,467 hooks/4 seams,620 matching package files and95 repository tests. Actual0731/V4.1 resolve_once preserves sparse env1; old68 actual probe cleared it. Frozen69 prototype127/128 matches saved DAS per-case outcomes with0 invalid; attributed to prototype build, not final70 measurement. CP/SM100/mega actual models remain unverified.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-v4-defaults-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-gsm8k128-sparse-default-dev69-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-sparse-default-dev70-validation-20261101.json"
+    ],
+    "final70_model_scope": "Frozen32fb304/620 files: plain original8GPU recipe,6 strict requests and cleanup pass, actual server log preserves explicit sparse. Prototype69 GSM127/128 remains separate; no actual CP/SM100/mega or full benchmark claim."
+  },
+  "python/sglang/srt/arg_groups/model_hook.py": {
+    "status": "in_progress",
+    "rationale": "Source capability function is identical to native except final replay-budget check. Named seam calls previous then exact Source tail, respecting INSTANCE early return; other model-specific/GLM changes pending.",
+    "implementation": [
+      "hcu_sglang/model_replay_budget.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-prefill-admission-source-alignment.json",
+    "tests": [
+      "tests/runtime/replay_validation_cpu.py"
+    ],
+    "validation_scope": "5 CPU contracts preserve budget/page boundary, source feature guards/default declaration and real named seam dispatch. Actual resolve_once/model checks remain separate."
+  },
+  "python/sglang/srt/mem_cache/unified_cache/unified_tree_core.py": {
+    "status": "in_progress",
+    "rationale": "Only full Source per-component tombstone/attach/segment methods migrated; readonly/full matching and backup policy changes remain pending. Real native tree ctor/components/splits/LRU/ledger retained.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_tree.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-tree-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_tree_cpu.py",
+      "tests/runtime/window_tree_gpu.py",
+      "tests/runtime/window_tree_rust.py"
+    ],
+    "validation_scope": "8 CPU contracts with real Python node splitting/ledgers; isolated GPU clone and actual native Rust CPU factory/window operations passed. No producer/H2D/storage/model-cache hit claim.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-tree-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-sparse-default-dev71-validation-20261101.json"
+    ],
+    "ordinary_model_scope": "Frozen2cb0f1b/dev71/623 files:6 strict ordinary8GPU requests and owned cleanup passed, explicit sparse preserved. No hicache/buffer/storage/cache-hit or dataset rerun claim."
+  },
+  "python/sglang/srt/mem_cache/rust_tree_core/adapter.py": {
+    "status": "in_progress",
+    "rationale": "Full Source raw event converter and Rust event recorder now run on owned compiled binding through native selected factory; existing SWA window methods remain paired. Retention, request replay/other Python adapter changes remain pending.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_rust.py",
+      "hcu_sglang/mem_cache/rust_tree_core/events.py",
+      "hcu_sglang/mem_cache/rust_tree_core/provider.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-tree-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json"
+    ],
+    "tests": [
+      "tests/runtime/window_tree_cpu.py",
+      "tests/runtime/window_tree_gpu.py",
+      "tests/runtime/window_tree_rust.py",
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Actual CPU native factory, owned compiled Source binding, event store/remove tuple and Python parity, existing SWA restoration. Full adapter or GPU model claim not made.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-tree-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-sparse-default-dev71-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-gates-validation-20261101.json"
+    ]
+  },
+  "python/sglang/srt/mem_cache/storage_prefetch.py": {
+    "status": "implemented",
+    "rationale": "All Source changes are two owned window-plan records; complete owned pipeline now produces and consumes these records. Unchanged retry logic and legacy native schema remain for compatibility, without altering old callers ABI.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_plan.py",
+      "hcu_sglang/mem_cache/window_pipeline.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-tree-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_tree_cpu.py",
+      "tests/runtime/window_tree_gpu.py",
+      "tests/runtime/window_tree_rust.py",
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "Actual public pipeline prepares independent SWA/AUX ranges and Req AUX reader; same records consumed by allocation/insert/ACK control. Raw persistence/model cache-hit still unverified.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-gates-validation-20261101.json"
+    ]
+  },
+  "python/sglang/srt/mem_cache/buffer_mode/pipeline.py": {
+    "status": "implemented",
+    "rationale": "Full16 changed/new Source pipeline methods, stack fence and tail-only flag owned. Plan producer and load-back/insert/ACK readers switched together to windows, with Source clipping/ownership and generic release. Native unchanged queue/allocation/ACK methods retained; old transient-size helper remains compatibility surface.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_pipeline.py",
+      "hcu_sglang/mem_cache/window_component.py",
+      "hcu_sglang/mem_cache/window_cache_init.py",
+      "hcu_sglang/mem_cache/window_pool_name.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "9 CPU contracts through public prepare/load/ACK and full cache init/factory, real tree repair/match, explicit allocation/publication facade; allocation failure, fail-stop ownership, sidecar skip, shared reserve and legacy enum pickle. GPU fixture controller uses real pinned H2D stream/event and byte oracle. Not full native controller/L3/cache-hit model acceptance.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-sparse-default-dev72-validation-20261101.json"
+    ],
+    "ordinary_model_scope": "Frozen8e01b89/dev72/627 files:6 strict ordinary8GPU requests and cleanup pass, sparse preserved. No hicache/buffer/storage/cache-hit configuration or dataset rerun claim."
+  },
+  "python/sglang/srt/mem_cache/unified_radix_cache.py": {
+    "status": "in_progress",
+    "rationale": "Only full Source init_hicache caller migrated to pair AUX fence and factory args; other cache ctor/retention/linker/prefetch policy pending.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_cache_init.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "Explicit partial file scope, interface/fixture H2D contracts only; no full storage/controller/model claim.",
+    "evidence": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-gates-validation-20261101.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-tp8-deepseekv4-sparse-default-dev72-validation-20261101.json"
+    ],
+    "ordinary_model_scope": "Frozen8e01b89/dev72/627 files:6 strict ordinary8GPU requests and cleanup pass, sparse preserved. No hicache/buffer/storage/cache-hit configuration or dataset rerun claim."
+  },
+  "python/sglang/srt/mem_cache/unified_cache/components/base.py": {
+    "status": "in_progress",
+    "rationale": "Full Source factory migrated; remaining syntax-equivalent LRU rewrite and other component protocols reviewed separately.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_cache_init.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "Explicit partial file scope, interface/fixture H2D contracts only; no full storage/controller/model claim."
+  },
+  "python/sglang/srt/mem_cache/unified_cache/components/swa.py": {
+    "status": "in_progress",
+    "rationale": "Only full restore_buffer_mapping Source helper available through native SWA protocol view, leaving retention/gating/backup/component changes pending.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_component.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "Explicit partial file scope, interface/fixture H2D contracts only; no full storage/controller/model claim."
+  },
+  "python/sglang/srt/managers/cache_controller.py": {
+    "status": "in_progress",
+    "rationale": "Only full extend_storage_prefix Source helper used by new backup caller, preserving existing controller callback; other controller changes pending.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_component.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py"
+    ],
+    "validation_scope": "Explicit partial file scope, interface/fixture H2D contracts only; no full storage/controller/model claim."
+  },
+  "python/sglang/srt/mem_cache/hicache_storage.py": {
+    "status": "implemented",
+    "rationale": "All reviewed Source changes now implemented: complete PoolName enum plus paired HiCacheFile constructor, TP-specific Mamba key suffix and metadata startup scan. Native lazy backend factory resolves owned subclass;15 unchanged native methods are AST-equal to Source and inherited. This is per-file implementation status, not all storage/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/window_pool_name.py",
+      "hcu_sglang/mem_cache/file_backend.py",
+      "hcu_sglang/mem_cache/file_evictor.py"
+    ],
+    "source_alignment": [
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-window-pipeline-source-alignment.json",
+      "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-file-backend-source-alignment.json"
+    ],
+    "tests": [
+      "tests/runtime/window_pipeline_cpu.py",
+      "tests/runtime/window_pipeline_gpu.py",
+      "tests/runtime/file_backend_cpu.py"
+    ],
+    "validation_scope": "Real CPU filesystem via public factory/get/set/batch-v2: distinct TP state, shared MLA read, owned multi-suffix startup/LRU/metadata, admission/pending/rollback. Host pools in batch test are data fixtures; no native controller threads or model L3-hit claim."
+  },
+  "python/sglang/srt/mem_cache/storage/file/lru_file_evictor.py": {
+    "status": "implemented",
+    "rationale": "Full Source LRU class with owned_suffixes admission/touch/startup scan is paired with all native constructor callers (HiCacheFile); each TP rank owns its state, rank0 additionally owns shared MLA files. Native factory remains lazy.",
+    "implementation": [
+      "hcu_sglang/mem_cache/file_evictor.py",
+      "hcu_sglang/mem_cache/file_backend.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-file-backend-source-alignment.json",
+    "tests": [
+      "tests/runtime/file_backend_cpu.py"
+    ],
+    "validation_scope": "Real temporary files and byte readback, cross-rank eviction isolation, rank0 startup eviction across both owned suffixes, pending/abort/atomic-write failure. No full controller/storage/model validation claim."
+  },
+  "python/sglang/srt/mem_cache/events.py": {
+    "status": "implemented",
+    "rationale": "Complete Source Python events module copied byte-for-byte before hook registration, including all3 classes and persistent selected-namespace names. Source scheduler init/registration helper paired via native public handler and post-namespace seam;6 imported native hash helpers remain AST-equal to Source.",
+    "implementation": [
+      "hcu_sglang/mem_cache/kv_events.py",
+      "hcu_sglang/mem_cache/kv_event_admission.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-kv-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/kv_events_cpu.py"
+    ],
+    "validation_scope": "Python table/recorder/native tree constructor and insert/leaf-eviction, default/Dynamo hashes, parent/store/remove, delayed host event, merge identity. Public native request entry/namespace retained with expensive internal admission as fixture. Rust tagged binding/publisher socket/router/model LoRA remain pending."
+  },
+  "python/sglang/srt/managers/scheduler.py": {
+    "status": "in_progress",
+    "rationale": "Full Source LoRA event table initialization and namespace registration helper integrated around native public generate/embedding entry and existing namespace seam, preserving effective original request processing. Remaining large Source scheduler delta is not claimed.",
+    "implementation": [
+      "hcu_sglang/mem_cache/kv_event_admission.py",
+      "hcu_sglang/mem_cache/kv_events.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-kv-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/kv_events_cpu.py"
+    ],
+    "validation_scope": "Public request entry with explicit admission/elastic namespace data fixtures, real registered native namespace seam without elastic backend, exception/nested context and non-HCU fallback. Ordinary8GPU service separately; full Source scheduler/LoRA model/elastic deployment pending."
+  },
+  "rust/sglang-radix-tree/src/components/mamba.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/node.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/python_bindings.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/tests/components/swa.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/tests/node.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/tests/unified_tree_core.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "rust/sglang-radix-tree/src/unified_tree_core.rs": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "python/sglang/srt/mem_cache/cpp_utils/hash_binding.cpp": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
+  },
+  "python/sglang/srt/mem_cache/cpp_utils/native_hash.py": {
+    "status": "implemented",
+    "rationale": "Complete pinned Source Rust crate and paired Source C++/Python hash are packaged, with all crate files byte-equal and Cargo.lock retained. Native selected factory/public loader and owned namespace pair new raw event ABI with full Source Python decoder. Wide non-negative int64 encoding is paired across Rust and C++, preserving legacy u32 hashes. This is per-file implementation, not full Python adapter/model validation.",
+    "implementation": [
+      "hcu_sglang/mem_cache/rust_tree_core",
+      "hcu_sglang/mem_cache/cpp_utils",
+      "hcu_sglang/mem_cache/window_rust.py"
+    ],
+    "source_alignment": "git:de390225d615381d3fd02b8d3eed639e5ef529b5:docs/hcu-rust-events-source-alignment.json",
+    "tests": [
+      "tests/runtime/rust_provider_cpu.py",
+      "tests/runtime/rust_events_native.py"
+    ],
+    "validation_scope": "Owned source data and actual CPU Rust binding/Source C++/hashlib oracle; raw tuple ABI and event parity with Source Python recorder. Cargo suite separately recorded. Rust GPU/L3/model/retention and remaining Python adapter changes pending."
   }
 }

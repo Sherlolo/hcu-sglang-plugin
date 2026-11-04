@@ -8,7 +8,7 @@ from typing import Any, Callable
 import torch
 import torch.nn.functional as F
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 _FP32GEMM_GATE: Any = None
 
@@ -47,7 +47,7 @@ def gate_fp32gemm(
 def around_forward_normal(
     original: Callable[..., torch.Tensor], model, hidden_states: torch.Tensor
 ) -> torch.Tensor:
-    if not is_dcu():
+    if not is_hcu():
         return original(model, hidden_states)
 
     num_tokens, hidden_dim = hidden_states.shape
@@ -116,7 +116,7 @@ def forward_normal_opt(model, hidden_states: torch.Tensor) -> torch.Tensor:
 
 
 def around_moe_forward(original, model, hidden_states, forward_batch=None):
-    if not is_dcu() or not _minimax_opt_enabled():
+    if not is_hcu() or not _minimax_opt_enabled():
         return original(model, hidden_states, forward_batch)
 
     from sglang.srt.layers.moe import get_moe_a2a_backend
@@ -130,7 +130,7 @@ def around_moe_forward(original, model, hidden_states, forward_batch=None):
 def around_forward_deepep(
     original: Callable[..., torch.Tensor], model, hidden_states, forward_batch
 ) -> torch.Tensor:
-    if not is_dcu():
+    if not is_hcu():
         return original(model, hidden_states, forward_batch)
 
     from sglang.srt.eplb.expert_location_dispatch import ExpertLocationDispatchInfo
@@ -154,7 +154,7 @@ def around_forward_deepep(
 
 
 def around_op_gate(original: Callable[..., Any], model, state) -> Any:
-    if not is_dcu():
+    if not is_hcu():
         return original(model, state)
 
     from sglang.srt.utils import is_non_idle_and_non_empty
@@ -172,7 +172,7 @@ def around_op_gate(original: Callable[..., Any], model, state) -> Any:
 
 
 def around_rmsnorm_init(original, norm, hidden_size, num_heads, eps=1e-6):
-    if not is_dcu() or not _minimax_opt_enabled():
+    if not is_hcu() or not _minimax_opt_enabled():
         result = original(norm, hidden_size, num_heads, eps)
         norm.minimax_opt = False
         return result
@@ -199,7 +199,7 @@ def around_rmsnorm_weight_loader(original, norm, param, loaded_weight):
 
 
 def around_qk_norm_forward(original, qk_norm, q, k):
-    if not is_dcu() or not getattr(qk_norm._q_norm, "minimax_opt", False):
+    if not is_hcu() or not getattr(qk_norm._q_norm, "minimax_opt", False):
         return original(qk_norm, q, k)
 
     from lightop.rmsnorm import fused_rms_norm_contiguous
@@ -224,7 +224,7 @@ def around_qk_norm_forward(original, qk_norm, q, k):
 def around_attention_init(
     original, attention, config, layer_id=0, quant_config=None, prefix=""
 ):
-    if not is_dcu() or not _minimax_opt_enabled():
+    if not is_hcu() or not _minimax_opt_enabled():
         result = original(attention, config, layer_id, quant_config, prefix)
         attention.rms_norm_eps = config.rms_norm_eps
         return result
@@ -391,8 +391,8 @@ def around_attention_forward_prepare(
     rms_weight=None,
     residual=None,
 ):
-    if not is_dcu() or not _minimax_opt_enabled():
-        if is_dcu() and rms_weight is not None:
+    if not is_hcu() or not _minimax_opt_enabled():
+        if is_hcu() and rms_weight is not None:
             from hcu_sglang.layers.linear_fusion import normalize_projection_input
             hidden_states = normalize_projection_input(
                 hidden_states, rms_weight, residual,
@@ -410,7 +410,7 @@ def around_attention_forward_prepare(
 
 
 def around_attention_forward_core(original, attention, intermediate_state):
-    if not is_dcu() or not _minimax_opt_enabled():
+    if not is_hcu() or not _minimax_opt_enabled():
         return original(attention, intermediate_state)
     hidden_states, forward_batch, inner_state = intermediate_state
     if inner_state is None:
@@ -442,8 +442,8 @@ def around_attention_forward(
     rms_weight=None,
     residual=None,
 ):
-    if not is_dcu() or not _minimax_opt_enabled():
-        if is_dcu() and rms_weight is not None:
+    if not is_hcu() or not _minimax_opt_enabled():
+        if is_hcu() and rms_weight is not None:
             from hcu_sglang.layers.linear_fusion import normalize_projection_input
             hidden_states = normalize_projection_input(
                 hidden_states, rms_weight, residual,
@@ -482,7 +482,7 @@ def around_decoder_forward(
     original, layer, positions, hidden_states, forward_batch,
     captured_last_layer_outputs=None,
 ):
-    if not is_dcu():
+    if not is_hcu():
         return original(layer, positions, hidden_states, forward_batch,
                         captured_last_layer_outputs)
     if not _minimax_opt_enabled() and not _fused_rms_quant_enabled():
@@ -497,7 +497,7 @@ def around_model_forward(
     original, model, input_ids, positions, forward_batch,
     input_embeds=None, pp_proxy_tensors=None,
 ):
-    if not is_dcu() or not _minimax_opt_enabled():
+    if not is_hcu() or not _minimax_opt_enabled():
         return original(model, input_ids, positions, forward_batch,
                         input_embeds, pp_proxy_tensors)
     from hcu_sglang.models.minimax_m2_methods import model_forward
@@ -510,7 +510,7 @@ def around_cuda_graph_batch_size_alignment(
 ):
     # Keep overlap/CP alignment owned by the official implementation. HCU's
     # MiniMax optimization additionally requires TP-aligned graph batches.
-    if is_dcu() and _minimax_opt_enabled():
+    if is_hcu() and _minimax_opt_enabled():
         gathered_buffer_required = True
     return original(gathered_buffer_required=gathered_buffer_required)
 

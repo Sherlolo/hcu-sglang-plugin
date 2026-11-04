@@ -24,7 +24,7 @@ from typing import Optional
 import torch
 from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 from sglang.srt.utils import get_bool_env_var
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 _use_fused_topk_softmax = get_bool_env_var("SGLANG_USE_FUSED_TOPK_SOFTMAX")
@@ -53,7 +53,7 @@ def replacement_fused_topk(
     """Replacement for sglang.srt.layers.moe.topk.fused_topk."""
     from sglang.srt.layers.moe import topk as source
 
-    if is_dcu() and scoring_func == "softmax" and _use_fused_topk_softmax:
+    if is_hcu() and scoring_func == "softmax" and _use_fused_topk_softmax:
         assert hidden_states.shape[0] == gating_output.shape[0], "Number of tokens mismatch"
         use_rocm_triton = source._use_rocm_triton_softmax_topk(
             hidden_states, gating_output, topk, correction_bias,

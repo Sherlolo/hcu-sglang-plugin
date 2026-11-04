@@ -1,4 +1,4 @@
-"""DCU quantization adaptations."""
+"""HCU quantization adaptations."""
 
 import logging
 
@@ -26,3 +26,6 @@ def register_hooks() -> None:
     w8a8_aiter.register_hooks()
     w8a8_lightop.register_hooks()
     logger.debug("[hcu_sglang] quantization hooks registered")
+
+    from . import compressed_targets
+    compressed_targets.register_hooks()

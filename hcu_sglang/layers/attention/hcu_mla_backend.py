@@ -1,3 +1,18 @@
+# Copyright 2026 Hygon Information Technology Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -5,34 +20,46 @@ from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union
 
 import torch
 import triton
+from sgl_kernel.flash_mla import hcu_create_flashmla_kv_indices
 
-from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
 from sglang.kernels.ops.kvcache.kv_indices import create_flashmla_kv_indices_triton
+from hcu_sglang.layers.attention.hcu_mla_utils import (
+    get_hcu_mla_fp8_kv_cache_dim,
+    should_pad_hcu_mla_fp8_kv_cache,
+)
+from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
 from sglang.srt.model_executor.forward_batch_info import ForwardBatch, ForwardMode
 from sglang.srt.model_executor.forward_context import get_token_to_kv_pool
 from sglang.srt.runtime_context import get_parallel
-from sgl_kernel.flash_mla import hcu_create_flashmla_kv_indices
-from sglang.srt.utils import get_bool_env_var, direct_register_custom_op
+from sglang.srt.utils import get_bool_env_var
 
 _use_fused_mla_cat = get_bool_env_var("SGLANG_USE_FUSED_MLA_CAT")
 _use_fused_rmsnorm_rope = get_bool_env_var("SGLANG_USE_FUSED_RMSNORM_ROPE")
 import inspect
 import logging
+
 logger = logging.getLogger(__name__)
-from hcu_sglang.utils.detection import is_dcu
-_is_hcu = is_dcu()
+from hcu_sglang.utils.detection import is_hcu
+
+_is_hcu = is_hcu()
+try:
+    from flash_mla.flash_mla_interface import FlashMLASchedMeta
+except Exception:
+    FlashMLASchedMeta = None
 is_fp8 = False
 try:
-
     if _is_hcu:
         try:
+            from flash_mla import flash_mla_with_kvcache_fp8  # only support fp8_e4m3
             from flash_mla import (
                 flash_mla_with_kvcache,
                 flash_mla_with_kvcache_quantization,
-                # get_mla_metadata,
-                get_mla_decoding_metadata_dense_fp8 as get_mla_metadata,
-                flash_mla_with_kvcache_fp8, # only support fp8_e4m3
+                flash_mla_with_kvcache_fp8_with_cat,
             )
+            from flash_mla import (
+                get_mla_decoding_metadata_dense_fp8 as get_mla_metadata,  # get_mla_metadata,
+            )
+
             is_fp8 = True
         except Exception:
             from flash_mla import (
@@ -57,8 +84,9 @@ except Exception:  # TODO: need remove
         from vllm.attention.ops.flashmla import (
             flash_mla_with_kvcache,
             flash_mla_with_kvcache_quantization,
-            get_mla_metadata
+            get_mla_metadata,
         )
+
         _has_flash_mla = False
     except Exception:
         raise ImportError(
@@ -68,11 +96,8 @@ except Exception:  # TODO: need remove
             "  pip install vllm"
         )
 
-PAGE_SIZE = 64 # 强制64
+PAGE_SIZE = 64  # 强制64
 
-
-def get_attention_tp_size() -> int:
-    return get_parallel().attn_tp_size
 
 def is_bmz_fp8(kv_cache: torch.Tensor) -> bool:
     if not (kv_cache.is_cuda and kv_cache.dtype == torch.float8_e5m2):
@@ -87,32 +112,59 @@ def is_bmz_fp8(kv_cache: torch.Tensor) -> bool:
     return False
 
 
+def _pad_last_dim(x: torch.Tensor, target_dim: int) -> torch.Tensor:
+    if x.shape[-1] >= target_dim:
+        return x
+    out = x.new_zeros(*x.shape[:-1], target_dim)
+    out[..., : x.shape[-1]] = x
+    return out
+
+
+def _dense_flashmla_sched_meta(
+    flashmla_metadata,
+    num_splits,
+):
+    if FlashMLASchedMeta is None:
+        return flashmla_metadata, num_splits
+    if isinstance(flashmla_metadata, FlashMLASchedMeta):
+        return flashmla_metadata, None
+
+    # BF16 dense FlashMLA computes scheduler metadata internally. The HCU
+    # precomputed metadata here is for the fp8 path and can have a different
+    # num_sm_parts shape.
+    return FlashMLASchedMeta(), None
+
+
 if TYPE_CHECKING:
     from sglang.srt.layers.radix_attention import RadixAttention
     from sglang.srt.model_executor.model_runner import ModelRunner
     from sglang.srt.speculative.spec_info import SpecInput
+
 
 @dataclass
 class VllmMLADecodeMetadata:
     flashmla_metadata: Optional[Tuple[torch.Tensor, torch.Tensor]] = None
     num_splits: Optional[torch.Tensor] = None
     block_kv_indices: Optional[torch.Tensor] = None
+    cache_seqlens: Optional[torch.Tensor] = None
 
     def __init__(
         self,
         flashmla_metadata: Optional[Tuple[torch.Tensor, torch.Tensor]] = None,
         num_splits: Optional[torch.Tensor] = None,
         block_kv_indices: Optional[torch.Tensor] = None,
+        cache_seqlens: Optional[torch.Tensor] = None,
     ):
         self.flashmla_metadata = flashmla_metadata
         self.num_splits = num_splits
         self.block_kv_indices = block_kv_indices
+        self.cache_seqlens = cache_seqlens
+
 
 class HCUMLABackend(AttentionBackend):
-
     def __init__(
         self,
-        model_runner: "ModelRunner",
+        model_runner: ModelRunner,
         skip_prefill: bool = False,
         kv_indptr_buf: Optional[torch.Tensor] = None,
         kv_last_page_len_buf: Optional[torch.Tensor] = None,
@@ -126,18 +178,30 @@ class HCUMLABackend(AttentionBackend):
             )
 
         self.num_q_heads = (
-            model_runner.model_config.num_attention_heads // get_attention_tp_size()
+            model_runner.model_config.num_attention_heads // get_parallel().attn_tp_size
         )
-        self.req_to_token = model_runner.req_to_token_pool.req_to_token
+        # Original HCU MLA initialization kept for Kimi K3 bring-up comparison:
+        # self.req_to_token = model_runner.req_to_token_pool.req_to_token
+
+        # HybridLinearAttnBackend requires the full-attention backend to expose
+        # both pools; retain req_to_token as the existing fast tensor alias.
+        self.req_to_token_pool = model_runner.req_to_token_pool
+        self.token_to_kv_pool = model_runner.token_to_kv_pool
+        self.req_to_token = self.req_to_token_pool.req_to_token
 
         self.kv_lora_rank = model_runner.model_config.kv_lora_rank
         self.qk_nope_head_dim = model_runner.model_config.qk_nope_head_dim
         self.qk_rope_head_dim = model_runner.model_config.qk_rope_head_dim
         self.v_head_dim = model_runner.model_config.v_head_dim
-        self.kv_cache_dim = self.kv_lora_rank + self.qk_rope_head_dim
 
         self.data_type = model_runner.kv_cache_dtype
         self.q_data_type = model_runner.dtype
+        self.kv_cache_dim = get_hcu_mla_fp8_kv_cache_dim(
+            self.kv_lora_rank + self.qk_rope_head_dim,
+            self.qk_rope_head_dim,
+            self.data_type,
+            uses_hcu_mla=True,
+        )
 
         self.device = model_runner.device
         # self.k_scale = torch.tensor(1.0, dtype=torch.float32, device=self.device)
@@ -147,26 +211,30 @@ class HCUMLABackend(AttentionBackend):
         self.num_draft_tokens = model_runner.server_args.speculative_num_draft_tokens
 
         self.forward_metadata: Union[VllmMLADecodeMetadata] = None
-        self.metadata_interface_arguments = len(list(inspect.signature(get_mla_metadata).parameters.keys())) #获取get_mla_metadata参数个数
+        self.metadata_interface_arguments = len(
+            list(inspect.signature(get_mla_metadata).parameters.keys())
+        )  # 获取get_mla_metadata参数个数
         self.skip_prefill = skip_prefill
         if not skip_prefill:
-            from sglang.srt.layers.attention.flashattention_backend import FlashAttentionBackend
+            from sglang.srt.layers.attention.flashattention_backend import (
+                FlashAttentionBackend,
+            )
+
             self.flashattn_backend = FlashAttentionBackend(
                 model_runner,
                 skip_prefill=False,
             )
 
     def init_forward_metadata(self, forward_batch: ForwardBatch):
-        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var("SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true")
+        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var(
+            "SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true"
+        )
         bs = forward_batch.batch_size
         if forward_batch.forward_mode.is_decode_or_idle():
-            # Match forward_decode cache_seqlens (seq_lens + draft when spec enabled).
-            if self.num_draft_tokens:
-                seq_lens_cpu = forward_batch.seq_lens_cpu + self.num_draft_tokens
-                seq_lens_for_kv = forward_batch.seq_lens + self.num_draft_tokens
-            else:
-                seq_lens_cpu = forward_batch.seq_lens_cpu
-                seq_lens_for_kv = forward_batch.seq_lens
+            # Decode has one query token. seq_lens already covers the written
+            # KV; adding speculative_num_draft_tokens reads uninitialized slots.
+            seq_lens_cpu = forward_batch.seq_lens_cpu
+            seq_lens_for_kv = forward_batch.seq_lens
 
             max_seqlen_pad = triton.cdiv(seq_lens_cpu.max().item(), PAGE_SIZE)
 
@@ -174,17 +242,17 @@ class HCUMLABackend(AttentionBackend):
                 (bs, max_seqlen_pad),
                 -1,
                 dtype=torch.int32,
-                device=forward_batch.seq_lens.device
+                device=forward_batch.seq_lens.device,
             )
             if use_sglang_create_flashmla_kv_indices_triton:
                 hcu_create_flashmla_kv_indices(
-                    req_to_token_ptr = self.req_to_token.to(torch.int32),
-                    req_pool_indices_ptr = forward_batch.req_pool_indices.to(torch.int32),
-                    page_kernel_lens_ptr = seq_lens_for_kv.to(torch.int32),
-                    kv_start_idx = None,
-                    kv_indices_ptr = block_kv_indices.to(torch.int32),
-                    req_to_token_ptr_stride = self.req_to_token.stride(0),
-                    kv_indices_ptr_stride = max_seqlen_pad,
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=forward_batch.req_pool_indices.to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens_for_kv.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=block_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=max_seqlen_pad,
                 )
 
             else:
@@ -197,21 +265,7 @@ class HCUMLABackend(AttentionBackend):
                     self.req_to_token.stride(0),
                     max_seqlen_pad,
                 )
-            if self.num_draft_tokens:
-                if self.metadata_interface_arguments == 4:
-                    mla_metadata, num_splits = get_mla_metadata(
-                        seq_lens_for_kv.to(torch.int32),
-                        self.num_draft_tokens * self.num_q_heads,
-                        1,
-                        self.num_q_heads,
-                    )
-                else:
-                    mla_metadata, num_splits = get_mla_metadata(
-                        seq_lens_for_kv.to(torch.int32),
-                        self.num_draft_tokens * self.num_q_heads,
-                        1,
-                    )
-            elif self.metadata_interface_arguments == 4:
+            if self.metadata_interface_arguments == 4:
                 mla_metadata, num_splits = get_mla_metadata(
                     forward_batch.seq_lens.to(torch.int32),
                     self.num_q_heads,
@@ -227,11 +281,21 @@ class HCUMLABackend(AttentionBackend):
             self.forward_metadata = VllmMLADecodeMetadata(
                 mla_metadata,
                 num_splits,
-                block_kv_indices
+                block_kv_indices,
+                seq_lens_for_kv.to(torch.int32),
             )
-        elif forward_batch.forward_mode.is_target_verify() or forward_batch.forward_mode.is_draft_extend_v2()  or forward_batch.forward_mode.is_draft_extend() :
-            seq_lens_cpu = forward_batch.seq_lens_cpu + self.num_draft_tokens
-            seq_lens = forward_batch.seq_lens + self.num_draft_tokens
+        elif (
+            forward_batch.forward_mode.is_target_verify()
+            or forward_batch.forward_mode.is_draft_extend_v2()
+        ):
+            # Target verify seq_lens is the prefix; draft-extend already includes
+            # the fixed q window (prepare_for_draft_extend adds num_draft_tokens).
+            if forward_batch.forward_mode.is_target_verify():
+                seq_lens_cpu = forward_batch.seq_lens_cpu + self.num_draft_tokens
+                seq_lens = forward_batch.seq_lens + self.num_draft_tokens
+            else:
+                seq_lens_cpu = forward_batch.seq_lens_cpu
+                seq_lens = forward_batch.seq_lens
 
             max_seqlen_pad = triton.cdiv(seq_lens_cpu.max().item(), PAGE_SIZE)
             block_kv_indices = torch.full(
@@ -242,13 +306,13 @@ class HCUMLABackend(AttentionBackend):
             )
             if use_sglang_create_flashmla_kv_indices_triton:
                 hcu_create_flashmla_kv_indices(
-                    req_to_token_ptr = self.req_to_token.to(torch.int32),
-                    req_pool_indices_ptr = forward_batch.req_pool_indices.to(torch.int32),
-                    page_kernel_lens_ptr = seq_lens.to(torch.int32),
-                    kv_start_idx = None,
-                    kv_indices_ptr = block_kv_indices.to(torch.int32),
-                    req_to_token_ptr_stride = self.req_to_token.stride(0),
-                    kv_indices_ptr_stride = max_seqlen_pad,
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=forward_batch.req_pool_indices.to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=block_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=max_seqlen_pad,
                 )
 
             else:
@@ -277,7 +341,8 @@ class HCUMLABackend(AttentionBackend):
             self.forward_metadata = VllmMLADecodeMetadata(
                 mla_metadata,
                 num_splits,
-                block_kv_indices
+                block_kv_indices,
+                seq_lens.to(torch.int32),
             )
         else:
             if not self.skip_prefill:
@@ -298,13 +363,15 @@ class HCUMLABackend(AttentionBackend):
                     # 调用 Triton kernel 生成 block_kv_indices
                     if use_sglang_create_flashmla_kv_indices_triton:
                         hcu_create_flashmla_kv_indices(
-                            req_to_token_ptr = self.req_to_token.to(torch.int32),
-                            req_pool_indices_ptr = forward_batch.req_pool_indices.to(torch.int32),
-                            page_kernel_lens_ptr = forward_batch.seq_lens.to(torch.int32),
-                            kv_start_idx = None,
-                            kv_indices_ptr = block_kv_indices.to(torch.int32),
-                            req_to_token_ptr_stride = self.req_to_token.stride(0),
-                            kv_indices_ptr_stride = max_seqlen_pad,
+                            req_to_token_ptr=self.req_to_token.to(torch.int32),
+                            req_pool_indices_ptr=forward_batch.req_pool_indices.to(
+                                torch.int32
+                            ),
+                            page_kernel_lens_ptr=forward_batch.seq_lens.to(torch.int32),
+                            kv_start_idx=None,
+                            kv_indices_ptr=block_kv_indices.to(torch.int32),
+                            req_to_token_ptr_stride=self.req_to_token.stride(0),
+                            kv_indices_ptr_stride=max_seqlen_pad,
                         )
 
                     else:
@@ -338,10 +405,10 @@ class HCUMLABackend(AttentionBackend):
                         mla_metadata,
                         num_splits,
                         block_kv_indices,
+                        seq_lens.to(torch.int32),
                     )
 
                 self.flashattn_backend.init_forward_metadata(forward_batch)
-
 
     def init_cuda_graph_state(
         self,
@@ -359,65 +426,109 @@ class HCUMLABackend(AttentionBackend):
         else:
             cuda_graph_kv_indices = block_kv_indices
 
+        # Decode uses num_q_heads; verify / draft-extend use
+        # num_draft_tokens * num_q_heads. Those calls return different metadata
+        # row counts, so the static graph buffer must cover the larger one.
+        seq_lens_placeholder = torch.ones(
+            max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device
+        )
+        head_counts = [self.num_q_heads]
         if self.num_draft_tokens:
+            head_counts.append(self.num_draft_tokens * self.num_q_heads)
+        mla_metadata = None
+        num_splits = None
+        for num_heads in head_counts:
             if self.metadata_interface_arguments == 4:
-                mla_metadata, num_splits = get_mla_metadata(
-                    torch.ones(max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device),
-                    self.num_draft_tokens * self.num_q_heads,
-                    1,
-                    self.num_q_heads,
+                meta, splits = get_mla_metadata(
+                    seq_lens_placeholder, num_heads, 1, self.num_q_heads
                 )
             else:
-                mla_metadata, num_splits = get_mla_metadata(
-                    torch.ones(max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device),
-                    self.num_draft_tokens * self.num_q_heads,
-                    1,
-                )
-        else:
-            if self.metadata_interface_arguments == 4:
-                mla_metadata, num_splits = get_mla_metadata(
-                    torch.ones(max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device),
-                    self.num_q_heads,
-                    1,
-                    self.num_q_heads,
-                )
-            else:
-                mla_metadata, num_splits = get_mla_metadata(
-                    torch.ones(max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device),
-                    self.num_q_heads,
-                    1,
-                )
+                meta, splits = get_mla_metadata(seq_lens_placeholder, num_heads, 1)
+            if mla_metadata is None or meta.shape[0] > mla_metadata.shape[0]:
+                mla_metadata = meta
+            if num_splits is None or splits.numel() > num_splits.numel():
+                num_splits = splits
 
         self.cuda_graph_mla_metadata = mla_metadata
         self.cuda_graph_num_splits = num_splits
         self.cuda_graph_kv_indices = cuda_graph_kv_indices
+        # Static int32 lens. The decode graph captures this storage; replay
+        # copies the real lengths in before the graph runs. An in-graph
+        # seq_lens.to(int32) would freeze the capture-time fill value.
+        self.cuda_graph_cache_seqlens = torch.ones(
+            max_bs, dtype=torch.int32, device=cuda_graph_kv_indices.device
+        )
 
-    def init_forward_metadata_capture_cuda_graph(
+    def init_forward_metadata_out_graph(
+        self, forward_batch: ForwardBatch, in_capture: bool = False
+    ):
+        mode = forward_batch.forward_mode
+        if not (
+            mode.is_decode_or_idle()
+            or mode.is_target_verify()
+            or mode.is_draft_extend_v2()
+        ):
+            if not self.skip_prefill:
+                self.flashattn_backend.init_forward_metadata_out_graph(
+                    forward_batch, in_capture=in_capture
+                )
+            return
+
+        if in_capture:
+            self._capture_cuda_graph_metadata(
+                bs=forward_batch.batch_size,
+                req_pool_indices=forward_batch.req_pool_indices,
+                seq_lens=forward_batch.seq_lens,
+                encoder_lens=forward_batch.encoder_lens,
+                forward_mode=mode,
+                spec_info=forward_batch.spec_info,
+            )
+        else:
+            self._replay_cuda_graph_metadata(
+                bs=forward_batch.batch_size,
+                req_pool_indices=forward_batch.req_pool_indices,
+                seq_lens=forward_batch.seq_lens,
+                seq_lens_sum=forward_batch.seq_lens_sum,
+                encoder_lens=forward_batch.encoder_lens,
+                forward_mode=mode,
+                spec_info=forward_batch.spec_info,
+                seq_lens_cpu=forward_batch.seq_lens_cpu,
+            )
+
+    def init_forward_metadata_in_graph(self, forward_batch: ForwardBatch):
+        mode = forward_batch.forward_mode
+        if not self.skip_prefill and not (
+            mode.is_decode_or_idle()
+            or mode.is_target_verify()
+            or mode.is_draft_extend_v2()
+        ):
+            self.flashattn_backend.init_forward_metadata_in_graph(forward_batch)
+
+    def _capture_cuda_graph_metadata(
         self,
         bs: int,
-        num_tokens: int,
         req_pool_indices: torch.Tensor,
         seq_lens: torch.Tensor,
         encoder_lens: Optional[torch.Tensor],
         forward_mode: ForwardMode,
-        spec_info: Optional["SpecInput"],
+        spec_info: Optional[SpecInput],
     ):
-        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var("SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true")
+        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var(
+            "SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true"
+        )
         if forward_mode.is_decode_or_idle():
-            seq_lens_for_kv = (
-                seq_lens + self.num_draft_tokens if self.num_draft_tokens else seq_lens
-            )
+            seq_lens_for_kv = seq_lens
             max_seqlen_pad = triton.cdiv(seq_lens_for_kv.max().item(), PAGE_SIZE)
             if use_sglang_create_flashmla_kv_indices_triton:
-                        hcu_create_flashmla_kv_indices(
-                            req_to_token_ptr = self.req_to_token.to(torch.int32),
-                            req_pool_indices_ptr = req_pool_indices.to(torch.int32),
-                            page_kernel_lens_ptr = seq_lens_for_kv.to(torch.int32),
-                            kv_start_idx = None,
-                            kv_indices_ptr = self.cuda_graph_kv_indices.to(torch.int32),
-                            req_to_token_ptr_stride =  self.req_to_token.stride(0),
-                            kv_indices_ptr_stride = self.cuda_graph_kv_indices.stride(0),
-                        )
+                hcu_create_flashmla_kv_indices(
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=req_pool_indices.to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens_for_kv.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=self.cuda_graph_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=self.cuda_graph_kv_indices.stride(0),
+                )
 
             else:
                 create_flashmla_kv_indices_triton[(bs,)](
@@ -429,35 +540,46 @@ class HCUMLABackend(AttentionBackend):
                     self.req_to_token.stride(0),
                     self.cuda_graph_kv_indices.stride(0),
                 )
-            num_q_heads = self.num_q_heads * (self.num_draft_tokens or 1)
+            num_q_heads = self.num_q_heads
             if self.metadata_interface_arguments == 4:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens_for_kv.to(torch.int32), num_q_heads, 1, self.num_q_heads,
+                    seq_lens_for_kv.to(torch.int32),
+                    num_q_heads,
+                    1,
+                    self.num_q_heads,
                 )
             else:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens_for_kv.to(torch.int32), num_q_heads, 1,
+                    seq_lens_for_kv.to(torch.int32),
+                    num_q_heads,
+                    1,
                 )
-            self.cuda_graph_mla_metadata.copy_(mla_metadata)
+            self.cuda_graph_mla_metadata[: mla_metadata.shape[0]].copy_(mla_metadata)
             self.cuda_graph_num_splits[: bs + 1].copy_(num_splits)
+            cache_seqlens = self.cuda_graph_cache_seqlens[:bs]
+            cache_seqlens.copy_(seq_lens_for_kv.to(torch.int32))
+            # Row prefix is contiguous. A column slice is not, and flash_mla
+            # copies it during capture, freezing the warmup block table.
             self.forward_metadata = VllmMLADecodeMetadata(
-                self.cuda_graph_mla_metadata,
+                self.cuda_graph_mla_metadata[: mla_metadata.shape[0]],
                 self.cuda_graph_num_splits[: bs + 1],
-                self.cuda_graph_kv_indices[:bs, :max_seqlen_pad],
+                self.cuda_graph_kv_indices[:bs],
+                cache_seqlens,
             )
-        elif forward_mode.is_target_verify() or forward_mode.is_draft_extend_v2()  or forward_mode.is_draft_extend():
-            seq_lens = seq_lens + self.num_draft_tokens
+        elif forward_mode.is_target_verify() or forward_mode.is_draft_extend_v2():
+            if forward_mode.is_target_verify():
+                seq_lens = seq_lens + self.num_draft_tokens
             max_seqlen_pad = triton.cdiv(seq_lens.max().item(), PAGE_SIZE)
 
             if use_sglang_create_flashmla_kv_indices_triton:
                 hcu_create_flashmla_kv_indices(
-                    req_to_token_ptr = self.req_to_token.to(torch.int32),
-                    req_pool_indices_ptr = req_pool_indices.to(torch.int32),
-                    page_kernel_lens_ptr = seq_lens.to(torch.int32),
-                    kv_start_idx = None,
-                    kv_indices_ptr = self.cuda_graph_kv_indices.to(torch.int32),
-                    req_to_token_ptr_stride =  self.req_to_token.stride(0),
-                    kv_indices_ptr_stride = self.cuda_graph_kv_indices.stride(0),
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=req_pool_indices.to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=self.cuda_graph_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=self.cuda_graph_kv_indices.stride(0),
                 )
 
             else:
@@ -469,35 +591,32 @@ class HCUMLABackend(AttentionBackend):
                     self.cuda_graph_kv_indices,
                     self.req_to_token.stride(0),
                     self.cuda_graph_kv_indices.stride(0),
-            )
+                )
             if self.metadata_interface_arguments == 4:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), self.num_draft_tokens * self.num_q_heads, 1, self.num_q_heads,
+                    seq_lens.to(torch.int32),
+                    self.num_draft_tokens * self.num_q_heads,
+                    1,
+                    self.num_q_heads,
                 )
             else:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), self.num_draft_tokens * self.num_q_heads, 1,
+                    seq_lens.to(torch.int32),
+                    self.num_draft_tokens * self.num_q_heads,
+                    1,
                 )
-            self.cuda_graph_mla_metadata.copy_(mla_metadata)
+            self.cuda_graph_mla_metadata[: mla_metadata.shape[0]].copy_(mla_metadata)
             self.cuda_graph_num_splits[: bs + 1].copy_(num_splits)
+            cache_seqlens_buf = self.cuda_graph_cache_seqlens[:bs]
+            cache_seqlens_buf.copy_(seq_lens.to(torch.int32))
             self.forward_metadata = VllmMLADecodeMetadata(
-                self.cuda_graph_mla_metadata,
+                self.cuda_graph_mla_metadata[: mla_metadata.shape[0]],
                 self.cuda_graph_num_splits[: bs + 1],
-                self.cuda_graph_kv_indices[:bs, :max_seqlen_pad],
+                self.cuda_graph_kv_indices[:bs],
+                cache_seqlens_buf,
             )
-        else:
-            if not self.skip_prefill:
-                self.flashattn_backend.init_forward_metadata_capture_cuda_graph(
-                    bs,
-                    num_tokens,
-                    req_pool_indices,
-                    seq_lens,
-                    encoder_lens,
-                    forward_mode,
-                    spec_info,
-                )
 
-    def init_forward_metadata_replay_cuda_graph(
+    def _replay_cuda_graph_metadata(
         self,
         bs: int,
         req_pool_indices: torch.Tensor,
@@ -505,28 +624,79 @@ class HCUMLABackend(AttentionBackend):
         seq_lens_sum: int,
         encoder_lens: Optional[torch.Tensor],
         forward_mode: ForwardMode,
-        spec_info: Optional["SpecInput"],
+        spec_info: Optional[SpecInput],
         seq_lens_cpu: Optional[torch.Tensor],
     ):
-        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var("SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true")
+        use_sglang_create_flashmla_kv_indices_triton = get_bool_env_var(
+            "SGLANG_CREATE_FLASHMLA_KV_INDICES_TRITON", default="true"
+        )
         if forward_mode.is_decode_or_idle():
             assert seq_lens_cpu is not None
             seq_lens = seq_lens[:bs]
             seq_lens_cpu = seq_lens_cpu[:bs]
-            if self.num_draft_tokens:
+            max_seqlen_pad = triton.cdiv(seq_lens_cpu.max().item(), PAGE_SIZE)
+            if use_sglang_create_flashmla_kv_indices_triton:
+                hcu_create_flashmla_kv_indices(
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=req_pool_indices[:bs].to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=self.cuda_graph_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=self.cuda_graph_kv_indices.stride(0),
+                )
+
+            else:
+                create_flashmla_kv_indices_triton[(bs,)](
+                    self.req_to_token,
+                    req_pool_indices[:bs],
+                    seq_lens,
+                    None,
+                    self.cuda_graph_kv_indices,
+                    self.req_to_token.stride(0),
+                    self.cuda_graph_kv_indices.stride(0),
+                )
+
+            num_q_heads = self.num_q_heads
+            if self.metadata_interface_arguments == 4:
+                mla_metadata, num_splits = get_mla_metadata(
+                    seq_lens.to(torch.int32),
+                    num_q_heads,
+                    1,
+                    self.num_q_heads,
+                )
+            else:
+                mla_metadata, num_splits = get_mla_metadata(
+                    seq_lens.to(torch.int32),
+                    num_q_heads,
+                    1,
+                )
+            self.cuda_graph_mla_metadata[: mla_metadata.shape[0]].copy_(mla_metadata)
+            self.cuda_graph_num_splits[: bs + 1].copy_(num_splits)
+            self.cuda_graph_cache_seqlens[:bs].copy_(seq_lens.to(torch.int32))
+            self.forward_metadata.flashmla_metadata = self.cuda_graph_mla_metadata[
+                : mla_metadata.shape[0]
+            ]
+            self.forward_metadata.num_splits = self.cuda_graph_num_splits[: bs + 1]
+            self.forward_metadata.block_kv_indices = self.cuda_graph_kv_indices[:bs]
+            self.forward_metadata.cache_seqlens = self.cuda_graph_cache_seqlens[:bs]
+        elif forward_mode.is_target_verify() or forward_mode.is_draft_extend_v2():
+            seq_lens = seq_lens[:bs]
+            seq_lens_cpu = seq_lens_cpu[:bs]
+            if forward_mode.is_target_verify():
                 seq_lens = seq_lens + self.num_draft_tokens
                 seq_lens_cpu = seq_lens_cpu + self.num_draft_tokens
             max_seqlen_pad = triton.cdiv(seq_lens_cpu.max().item(), PAGE_SIZE)
             if use_sglang_create_flashmla_kv_indices_triton:
-                        hcu_create_flashmla_kv_indices(
-                            req_to_token_ptr = self.req_to_token.to(torch.int32),
-                            req_pool_indices_ptr = req_pool_indices[:bs].to(torch.int32),
-                            page_kernel_lens_ptr = seq_lens.to(torch.int32),
-                            kv_start_idx = None,
-                            kv_indices_ptr = self.cuda_graph_kv_indices.to(torch.int32),
-                            req_to_token_ptr_stride =  self.req_to_token.stride(0),
-                            kv_indices_ptr_stride = self.cuda_graph_kv_indices.stride(0),
-                        )
+                hcu_create_flashmla_kv_indices(
+                    req_to_token_ptr=self.req_to_token.to(torch.int32),
+                    req_pool_indices_ptr=req_pool_indices[:bs].to(torch.int32),
+                    page_kernel_lens_ptr=seq_lens.to(torch.int32),
+                    kv_start_idx=None,
+                    kv_indices_ptr=self.cuda_graph_kv_indices.to(torch.int32),
+                    req_to_token_ptr_stride=self.req_to_token.stride(0),
+                    kv_indices_ptr_stride=self.cuda_graph_kv_indices.stride(0),
+                )
 
             else:
                 create_flashmla_kv_indices_triton[(bs,)](
@@ -537,95 +707,52 @@ class HCUMLABackend(AttentionBackend):
                     self.cuda_graph_kv_indices,
                     self.req_to_token.stride(0),
                     self.cuda_graph_kv_indices.stride(0),
-            )
-
-            num_q_heads = self.num_q_heads * (self.num_draft_tokens or 1)
+                )
             if self.metadata_interface_arguments == 4:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), num_q_heads, 1, self.num_q_heads,
+                    seq_lens.to(torch.int32),
+                    self.num_draft_tokens * self.num_q_heads,
+                    1,
+                    self.num_q_heads,
                 )
             else:
                 mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), num_q_heads, 1,
+                    seq_lens.to(torch.int32),
+                    self.num_draft_tokens * self.num_q_heads,
+                    1,
                 )
-            self.cuda_graph_mla_metadata.copy_(mla_metadata)
+            self.cuda_graph_mla_metadata[: mla_metadata.shape[0]].copy_(mla_metadata)
             self.cuda_graph_num_splits[: bs + 1].copy_(num_splits)
-            self.forward_metadata.flashmla_metadata = self.cuda_graph_mla_metadata
-            self.forward_metadata.num_splits = self.cuda_graph_num_splits[: bs + 1]
-            self.forward_metadata.block_kv_indices = self.cuda_graph_kv_indices[
-                :bs, :max_seqlen_pad
+            self.cuda_graph_cache_seqlens[:bs].copy_(seq_lens.to(torch.int32))
+            self.forward_metadata.flashmla_metadata = self.cuda_graph_mla_metadata[
+                : mla_metadata.shape[0]
             ]
-        elif forward_mode.is_target_verify():
-            seq_lens = seq_lens[:bs] + self.num_draft_tokens
-            seq_lens_cpu = seq_lens_cpu[:bs] + self.num_draft_tokens
-            max_seqlen_pad = triton.cdiv(seq_lens_cpu.max().item(), PAGE_SIZE)
-            if use_sglang_create_flashmla_kv_indices_triton:
-                        hcu_create_flashmla_kv_indices(
-                            req_to_token_ptr = self.req_to_token.to(torch.int32),
-                            req_pool_indices_ptr = req_pool_indices[:bs].to(torch.int32),
-                            page_kernel_lens_ptr = seq_lens.to(torch.int32),
-                            kv_start_idx = None,
-                            kv_indices_ptr = self.cuda_graph_kv_indices.to(torch.int32),
-                            req_to_token_ptr_stride =  self.req_to_token.stride(0),
-                            kv_indices_ptr_stride = self.cuda_graph_kv_indices.stride(0),
-                        )
-
-            else:
-                create_flashmla_kv_indices_triton[(bs,)](
-                    self.req_to_token,
-                    req_pool_indices[:bs],
-                    seq_lens,
-                    None,
-                    self.cuda_graph_kv_indices,
-                    self.req_to_token.stride(0),
-                    self.cuda_graph_kv_indices.stride(0),
-            )
-            if self.metadata_interface_arguments == 4:
-                mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), self.num_draft_tokens * self.num_q_heads, 1, self.num_q_heads,
-                )
-            else:
-                mla_metadata, num_splits = get_mla_metadata(
-                    seq_lens.to(torch.int32), self.num_draft_tokens * self.num_q_heads, 1,
-                )
-            self.cuda_graph_mla_metadata.copy_(mla_metadata)
-            self.cuda_graph_num_splits[: bs + 1].copy_(num_splits)
-            self.forward_metadata.flashmla_metadata = self.cuda_graph_mla_metadata
             self.forward_metadata.num_splits = self.cuda_graph_num_splits[: bs + 1]
-            self.forward_metadata.block_kv_indices = self.cuda_graph_kv_indices[
-                :bs, :max_seqlen_pad
-            ]
-        else:
-            if not self.skip_prefill:
-                self.flashattn_backend.init_forward_metadata_replay_cuda_graph(
-                    bs,
-                    req_pool_indices,
-                    seq_lens,
-                    seq_lens_sum,
-                    encoder_lens,
-                    forward_mode,
-                    spec_info,
-                    seq_lens_cpu,
-                )
+            self.forward_metadata.block_kv_indices = self.cuda_graph_kv_indices[:bs]
+            self.forward_metadata.cache_seqlens = self.cuda_graph_cache_seqlens[:bs]
 
     def get_cuda_graph_seq_len_fill_value(self):
         return 1
 
-
     @torch._dynamo.disable()  # TODO: register custom op
-    def _call_decode(self, q: torch.Tensor,
-                     k_cache: torch.Tensor,
-                     cache_seqlens: torch.Tensor,
-                     bs: int,
-                     layer: "RadixAttention",
-                     q_rope: Optional[torch.Tensor] = None):
+    def _call_decode(
+        self,
+        q: torch.Tensor,
+        k_cache: torch.Tensor,
+        cache_seqlens: torch.Tensor,
+        bs: int,
+        layer: RadixAttention,
+        q_rope: Optional[torch.Tensor] = None,
+    ):
         k_cache_reshaped = k_cache.view(-1, PAGE_SIZE, 1, self.kv_cache_dim)
         block_table = self.forward_metadata.block_kv_indices[:bs]
         scaling = layer.scaling
         if q_rope is not None:  # mla
-             # fix_with_mtp
+            # fix_with_mtp
             reshaped_q_nope = q.view(bs, -1, layer.tp_q_head_num, self.kv_lora_rank)
-            reshaped_q_rope = q_rope.view(bs, -1, layer.tp_q_head_num, self.qk_rope_head_dim)
+            reshaped_q_rope = q_rope.view(
+                bs, -1, layer.tp_q_head_num, self.qk_rope_head_dim
+            )
             o, _ = flash_mla_with_kvcache_q_nope_pe(
                 q_nope=reshaped_q_nope,
                 q_pe=reshaped_q_rope,
@@ -640,27 +767,38 @@ class HCUMLABackend(AttentionBackend):
             )
         else:
             reshape_q = q.view(bs, -1, layer.tp_q_head_num, layer.head_dim)
+            if _is_hcu and self.qk_rope_head_dim == 0 and reshape_q.shape[-1] == 512:
+                reshape_q = _pad_last_dim(reshape_q, 576)
+                k_cache_reshaped = _pad_last_dim(k_cache_reshaped, 576)
+            flashmla_metadata, num_splits = _dense_flashmla_sched_meta(
+                self.forward_metadata.flashmla_metadata,
+                self.forward_metadata.num_splits,
+            )
             o, _ = flash_mla_with_kvcache(
                 q=reshape_q,
                 k_cache=k_cache_reshaped,
                 block_table=block_table,
                 cache_seqlens=cache_seqlens,
                 head_dim_v=self.kv_lora_rank,
-                tile_scheduler_metadata=self.forward_metadata.flashmla_metadata,
-                num_splits=self.forward_metadata.num_splits,
+                tile_scheduler_metadata=flashmla_metadata,
+                num_splits=num_splits,
                 softmax_scale=scaling,
                 causal=True,
             )
         return o
 
     @torch._dynamo.disable()  # TODO: register custom op
-    def _call_fp8_decode(self, q: torch.Tensor,
-                           k_cache: torch.Tensor,
-                           cache_seqlens: torch.Tensor,
-                           bs: int,
-                           layer: "RadixAttention",
-                           q_rope: Optional[torch.Tensor] = None,
-                           k_scale=None, kv_cache_dtype=None):
+    def _call_fp8_decode(
+        self,
+        q: torch.Tensor,
+        k_cache: torch.Tensor,
+        cache_seqlens: torch.Tensor,
+        bs: int,
+        layer: RadixAttention,
+        q_rope: Optional[torch.Tensor] = None,
+        k_scale=None,
+        kv_cache_dtype=None,
+    ):
         assert _has_flash_mla, "FP8 KV cache 需要flash_mla包"
         # reshape_q = q.view(bs, -1, layer.tp_q_head_num, layer.head_dim)  # head_dim = 512 + rope_dim
         k_cache_reshaped = k_cache.view(-1, PAGE_SIZE, 1, self.kv_cache_dim)
@@ -669,7 +807,9 @@ class HCUMLABackend(AttentionBackend):
         if q_rope is not None:
             # fix_with_mtp
             reshaped_q_nope = q.view(bs, -1, layer.tp_q_head_num, self.kv_lora_rank)
-            reshaped_q_rope = q_rope.view(bs, -1, layer.tp_q_head_num, self.qk_rope_head_dim)
+            reshaped_q_rope = q_rope.view(
+                bs, -1, layer.tp_q_head_num, self.qk_rope_head_dim
+            )
             o, _ = flash_mla_with_kvcache_quantization_q_nope_pe(
                 q_nope=reshaped_q_nope,
                 q_pe=reshaped_q_rope,
@@ -686,10 +826,39 @@ class HCUMLABackend(AttentionBackend):
             )
         else:
             reshape_q = q.view(bs, -1, layer.tp_q_head_num, layer.head_dim)
+            if should_pad_hcu_mla_fp8_kv_cache(
+                reshape_q.shape[-1],
+                self.qk_rope_head_dim,
+                self.data_type,
+                uses_hcu_mla=True,
+            ):
+                reshape_q = _pad_last_dim(reshape_q, self.kv_cache_dim)
             if is_fp8 and not is_bmz_fp8(k_cache):
-                reshape_q = reshape_q.to(k_cache_reshaped.dtype)
-                o, _ = flash_mla_with_kvcache_fp8(
-                    q=reshape_q,
+                # K3 post fusion already supplies packed Q in the cache dtype.
+                # Keep it packed: the with_cat FP8 path assumes dense components.
+                if _is_hcu and reshape_q.dtype == k_cache_reshaped.dtype:
+                    o, _ = flash_mla_with_kvcache_fp8(
+                        q=reshape_q,
+                        k_cache=k_cache_reshaped,
+                        block_table=block_table,
+                        cache_seqlens=cache_seqlens,
+                        head_dim_v=self.kv_lora_rank,
+                        tile_scheduler_metadata=self.forward_metadata.flashmla_metadata,
+                        num_splits=self.forward_metadata.num_splits,
+                        softmax_scale=scaling,
+                        causal=True,
+                        descale_k=self.k_scale,
+                        descale_q=self.q_scale,  # 不能传torch.tensor(1.0)，只能传torch.ones((1))，而且不能和descale_k使用同一个张量
+                    )
+                    return o
+                # gfx938 e4m3 accepts bf16 q_nope/q_pe against an fp8 KV cache.
+                # Casting the absorbed query (dim 576) to fp8 with scale 1
+                # saturates it, so later tokens no longer match the prefill logit.
+                q_nope = reshape_q[..., : self.kv_lora_rank]
+                q_pe = reshape_q[..., self.kv_lora_rank :]
+                o, _ = flash_mla_with_kvcache_fp8_with_cat(
+                    q_nope=q_nope,
+                    q_pe=q_pe,
                     k_cache=k_cache_reshaped,
                     block_table=block_table,
                     cache_seqlens=cache_seqlens,
@@ -699,7 +868,7 @@ class HCUMLABackend(AttentionBackend):
                     softmax_scale=scaling,
                     causal=True,
                     descale_k=self.k_scale,
-                    descale_q=self.q_scale,# 不能传torch.tensor(1.0)，只能传torch.ones((1))，而且不能和descale_k使用同一个张量
+                    descale_q=self.q_scale,  # 不能传torch.tensor(1.0)，只能传torch.ones((1))，而且不能和descale_k使用同一个张量
                 )
             else:
                 o, _ = flash_mla_with_kvcache_quantization(
@@ -722,7 +891,7 @@ class HCUMLABackend(AttentionBackend):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        layer: "RadixAttention",
+        layer: RadixAttention,
         forward_batch: ForwardBatch,
         save_kv_cache: bool = True,
         # For multi-head latent attention
@@ -732,8 +901,10 @@ class HCUMLABackend(AttentionBackend):
         cache_loc = forward_batch.out_cache_loc
 
         if k is not None:
-            if k_rope is not None:  # cat in save kv cache; when enable fused rmsnorm_rope, skip this cat
-                if save_kv_cache and not _use_fused_rmsnorm_rope:
+            if (
+                k_rope is not None
+            ):  # cat in save kv cache; when enable fused rmsnorm_rope, skip this cat
+                if save_kv_cache:
                     get_token_to_kv_pool().set_kv_buffer_opt(
                         layer,
                         cache_loc,
@@ -742,7 +913,7 @@ class HCUMLABackend(AttentionBackend):
                     )
             else:
                 assert v is not None
-                if save_kv_cache and not _use_fused_rmsnorm_rope:
+                if save_kv_cache:
                     get_token_to_kv_pool().set_kv_buffer(
                         layer,
                         cache_loc,
@@ -752,18 +923,18 @@ class HCUMLABackend(AttentionBackend):
 
         bs = forward_batch.batch_size
         k_cache = get_token_to_kv_pool().get_key_buffer(layer.layer_id)
-        num_draft_tokens = self.num_draft_tokens if self.num_draft_tokens is not None else 0
-        if num_draft_tokens == 0:
-            cache_seqlens = forward_batch.seq_lens.to(torch.int32)
-        else:
-            cache_seqlens = (forward_batch.seq_lens + num_draft_tokens).to(torch.int32)
+        cache_seqlens = self.forward_metadata.cache_seqlens
 
-        if self.data_type in (torch.float8_e4m3fn, torch.float8_e4m3fnuz,
-                              torch.float8_e5m2, torch.float8_e5m2fnuz):
+        if self.data_type in (
+            torch.float8_e4m3fn,
+            torch.float8_e4m3fnuz,
+            torch.float8_e5m2,
+            torch.float8_e5m2fnuz,
+        ):
             if self.data_type in (torch.float8_e4m3fnuz, torch.float8_e4m3fn):
-                kv_cache_dtype="fp8_e4m3"
+                kv_cache_dtype = "fp8_e4m3"
             else:
-                kv_cache_dtype="fp8_e5m2"
+                kv_cache_dtype = "fp8_e5m2"
             k_scale = layer.k_scale if layer.k_scale is not None else self.k_scale
             o = self._call_fp8_decode(
                 q,
@@ -792,29 +963,32 @@ class HCUMLABackend(AttentionBackend):
         q: torch.Tensor,
         k: torch.Tensor,
         v: torch.Tensor,
-        layer: "RadixAttention",
+        layer: RadixAttention,
         forward_batch: ForwardBatch,
         save_kv_cache: bool = True,
         # For multi-head latent attention
         q_rope: Optional[torch.Tensor] = None,
         k_rope: Optional[torch.Tensor] = None,
     ):
-        if ((
-            forward_batch.forward_mode == ForwardMode.EXTEND
-            or forward_batch.forward_mode == ForwardMode.DRAFT_EXTEND
-            )
-        ):
+        # True prefill uses FlashAttention (MHA head_dim <= 256). Draft extend
+        # is absorbed MLA (head_dim = kv_lora + rope = 576) and must use flash_mla.
+        if forward_batch.forward_mode == ForwardMode.EXTEND:
             if not self.skip_prefill:
                 return self.flashattn_backend.forward_extend(
-                            q, k, v, layer, forward_batch, save_kv_cache,
-                        )
+                    q,
+                    k,
+                    v,
+                    layer,
+                    forward_batch,
+                    save_kv_cache,
+                )
             else:
                 raise RuntimeError("skip prefill but use forward_extend")
 
         cache_loc = forward_batch.out_cache_loc
         if k is not None:
             if k_rope is not None:  # mla maybe better
-                if save_kv_cache and not _use_fused_rmsnorm_rope:  # TODO: handwrite kernel, maybe triton is enough
+                if save_kv_cache:  # TODO: handwrite kernel, maybe triton is enough
                     get_token_to_kv_pool().set_mla_kv_buffer(
                         layer,
                         cache_loc,
@@ -823,7 +997,7 @@ class HCUMLABackend(AttentionBackend):
                     )
             else:
                 assert v is not None
-                if save_kv_cache and not _use_fused_rmsnorm_rope:
+                if save_kv_cache:
                     get_token_to_kv_pool().set_kv_buffer(
                         layer,
                         cache_loc,
@@ -833,18 +1007,17 @@ class HCUMLABackend(AttentionBackend):
 
         bs = forward_batch.batch_size
         k_cache = get_token_to_kv_pool().get_key_buffer(layer.layer_id)
-        # 入图+去除非mtp的冗余操作
-        num_draft_tokens = self.num_draft_tokens if self.num_draft_tokens is not None else 0
-        if num_draft_tokens == 0:
-            cache_seqlens = forward_batch.seq_lens.to(torch.int32)
-        else:
-            cache_seqlens = (forward_batch.seq_lens + num_draft_tokens).to(torch.int32)
-        if self.data_type in (torch.float8_e4m3fn, torch.float8_e4m3fnuz,
-                              torch.float8_e5m2, torch.float8_e5m2fnuz):
+        cache_seqlens = self.forward_metadata.cache_seqlens
+        if self.data_type in (
+            torch.float8_e4m3fn,
+            torch.float8_e4m3fnuz,
+            torch.float8_e5m2,
+            torch.float8_e5m2fnuz,
+        ):
             if self.data_type in (torch.float8_e4m3fnuz, torch.float8_e4m3fn):
-                kv_cache_dtype="fp8_e4m3"
+                kv_cache_dtype = "fp8_e4m3"
             else:
-                kv_cache_dtype="fp8_e5m2"
+                kv_cache_dtype = "fp8_e5m2"
             k_scale = layer.k_scale if layer.k_scale is not None else self.k_scale
             o = self._call_fp8_decode(
                 q,
@@ -867,6 +1040,7 @@ class HCUMLABackend(AttentionBackend):
             )
 
         return o.view(-1, layer.tp_q_head_num * layer.v_head_dim)
+
 
 class HCUMLAMultiStepDraftBackend:
     """
@@ -930,33 +1104,19 @@ class HCUMLAMultiStepDraftBackend:
                 max_bs, max_num_tokens, block_kv_indices=None
             )
 
-    def init_forward_metadata_capture_cuda_graph(self, forward_batch: ForwardBatch):
-        def call_fn(i, forward_batch):
-            self.attn_backends[i].init_forward_metadata_capture_cuda_graph(
-                forward_batch.batch_size,
-                forward_batch.batch_size * self.topk,
-                forward_batch.req_pool_indices,
-                forward_batch.seq_lens,
-                encoder_lens=None,
-                forward_mode=ForwardMode.DECODE,
-                spec_info=forward_batch.spec_info,
-            )
-
-        self.common_template(forward_batch, call_fn)
-
-    def init_forward_metadata_replay_cuda_graph(
-        self, forward_batch: ForwardBatch, bs: int
+    def init_forward_metadata_out_graph(
+        self, forward_batch: ForwardBatch, in_capture: bool = False
     ):
-        def call_fn(i, forward_batch):
-            self.attn_backends[i].init_forward_metadata_replay_cuda_graph(
-                bs,
-                forward_batch.req_pool_indices,
-                forward_batch.seq_lens,
-                seq_lens_sum=-1,
-                encoder_lens=None,
-                forward_mode=ForwardMode.DECODE,
-                spec_info=forward_batch.spec_info,
-                seq_lens_cpu=forward_batch.seq_lens_cpu,
-            )
+        from sglang.srt.model_executor.forward_batch_info import build_inner_fb_view
 
-        self.common_template(forward_batch, call_fn)
+        inner_fb = build_inner_fb_view(
+            forward_batch,
+            bs=forward_batch.batch_size,
+            forward_mode=ForwardMode.DECODE,
+        )
+        for backend in self.attn_backends:
+            backend.init_forward_metadata_out_graph(inner_fb, in_capture=in_capture)
+
+    def init_forward_metadata_in_graph(self, forward_batch: ForwardBatch):
+        for backend in self.attn_backends:
+            backend.init_forward_metadata_in_graph(forward_batch)

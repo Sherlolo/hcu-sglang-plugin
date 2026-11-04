@@ -26,7 +26,7 @@ from sglang.srt.model_executor.runner import get_is_capture_mode
 from sglang.srt.runtime_context import get_disagg, get_schedule, get_exec, get_parallel, get_platform
 from sglang.srt.state_capturer.indexer_topk import get_global_indexer_capturer
 from sglang.srt.utils import add_prefix, is_cuda, is_gfx95_supported, is_hip, is_xpu
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils.common import is_gfx942_supported
 if TYPE_CHECKING:
     from sglang.srt.layers.attention.base_attn_backend import AttentionBackend

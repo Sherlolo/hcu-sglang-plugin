@@ -54,7 +54,7 @@ python3 tools/verify_reconstruction.py --help
 | [hcu-plugin-scaffold](../skills/hcu-plugin-scaffold/SKILL.md) | 官方版本、外部工程路径、命名与首项功能 | 插件工程、入口映射及启停验证 |
 | [hcu-plugin-install](../skills/hcu-plugin-install/SKILL.md) | 指定产物、目标环境、用户和安装目录 | 安装记录、入口与来源、分层加载结果 |
 | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) | 能力需求、版本、涉及仓库、支持范围 | 接口方案、注册与回退契约、验证计划 |
-| [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) | official/fork/外部 plugin/产物路径 | 基线、差异清单、处置与缺口 |
+| [sglang-hcu-plugin-migration](../skills/sglang-hcu-plugin-migration/SKILL.md) | official/fork/外部 plugin/产物路径 | 基线、差异清单、处置与缺口 |
 | [upgrading-sglang-hcu-upstream-first](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md) | 实际已验证基线、指定 official 目标、范围与交付形态 | 接管处置、验收矩阵、产物来源与 last-good |
 | [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md) | 干净 official/plugin、新输出路径 | 内嵌树、清单核验、未验证运行项 |
 | [hcu-plugin-triage](../skills/hcu-plugin-triage/SKILL.md) | 可复现配置、启停对比、日志 | 首次分叉/根因、最小复现和回归 |

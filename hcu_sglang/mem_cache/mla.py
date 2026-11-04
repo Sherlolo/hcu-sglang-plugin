@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def get_key_buffer_deepseek_v2(pool: Any, layer_id: int):
@@ -80,7 +80,7 @@ def around_write_mla_kv_buffer(
     cache_k_nope: torch.Tensor,
     cache_k_rope: torch.Tensor,
 ) -> None:
-    if not is_dcu():
+    if not is_hcu():
         return original(pool, dst_buffer, loc, cache_k_nope, cache_k_rope)
     if pool.dsa_kv_cache_store_fp8:
         _write_lightop(cache_k_nope, cache_k_rope, dst_buffer, loc)
@@ -105,6 +105,32 @@ def _install_missing_methods() -> None:
         MLATokenToKVPool.set_kv_buffer_opt = set_kv_buffer_opt
 
 
+def around_calculate_mla_kv_cache_dim(original, *, model_config, kv_cache_dtype):
+    if not is_hcu():
+        return original(model_config=model_config, kv_cache_dtype=kv_cache_dtype)
+    from sglang.srt.configs.model_config import is_deepseek_dsa
+
+    if is_deepseek_dsa(model_config.hf_config):
+        return original(model_config=model_config, kv_cache_dtype=kv_cache_dtype)
+    from sglang.srt.runtime_context import get_exec
+    from hcu_sglang.layers.attention.hcu_mla_utils import get_hcu_mla_fp8_kv_cache_dim
+
+    kernel = get_exec().kernel
+    return get_hcu_mla_fp8_kv_cache_dim(
+        model_config.kv_lora_rank + model_config.qk_rope_head_dim,
+        model_config.qk_rope_head_dim,
+        kv_cache_dtype,
+        uses_hcu_mla=any(
+            getattr(kernel, name, None) == "hcu_mla"
+            for name in (
+                "attention_backend",
+                "prefill_attention_backend",
+                "decode_attention_backend",
+            )
+        ),
+    )
+
+
 def register_hooks() -> None:
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 
@@ -112,5 +138,11 @@ def register_hooks() -> None:
     HookRegistry.register(
         "sglang.srt.mem_cache.memory_pool.MLATokenToKVPool._write_mla_kv_buffer",
         around_write_mla_kv_buffer,
+        HookType.AROUND,
+    )
+
+    HookRegistry.register(
+        "sglang.srt.mem_cache.kv_cache_configurator.calculate_mla_kv_cache_dim",
+        around_calculate_mla_kv_cache_dim,
         HookType.AROUND,
     )

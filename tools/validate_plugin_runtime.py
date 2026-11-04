@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Verify real SGLang loading, source identities and complete Hook application."""
 from __future__ import annotations
 
@@ -23,7 +26,7 @@ class PluginErrors(logging.Handler):
 
 
 def validate(official_python, plugin_root, *, disable_entry_points=False,
-             expected_targets=None, plugin_package="sglang_dcu_plugin"):
+             expected_targets=None, plugin_package="sglang_hcu_plugin"):
     import sglang
     runtime_plugin = importlib.import_module(plugin_package)
     import sglang.srt.plugins as plugins
@@ -71,7 +74,7 @@ def validate(official_python, plugin_root, *, disable_entry_points=False,
                 "handle_attention_backend_compatibility"}
     if not required <= set(named):
         errors.append("Missing named resolution seams: " + str(sorted(required-set(named))))
-    if plugin_package == "hcu_sglang" and any(name == "sglang_dcu_plugin" or name.startswith("sglang_dcu_plugin.") for name in sys.modules):
+    if plugin_package == "hcu_sglang" and any(name == "sglang_hcu_plugin" or name.startswith("sglang_hcu_plugin.") for name in sys.modules):
         errors.append("Legacy namespace was imported during current-package validation")
     return {
         "plugin_package": plugin_package,
@@ -91,7 +94,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--disable-entry-points", action="store_true")
     parser.add_argument("--expected-targets", type=Path)
-    parser.add_argument("--plugin-package", choices=["sglang_dcu_plugin", "hcu_sglang"], default="sglang_dcu_plugin")
+    parser.add_argument("--plugin-package", choices=["sglang_hcu_plugin", "hcu_sglang"], default="sglang_hcu_plugin")
     args = parser.parse_args()
     expected = (json.loads(args.expected_targets.read_text())
                 if args.expected_targets else None)

@@ -6,7 +6,7 @@ from typing import Optional, Union
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu, is_dcu_native_fp8_supported
+from hcu_sglang.utils.detection import is_hcu, is_hcu_native_fp8_supported
 
 
 def _layout_enabled() -> bool:
@@ -16,7 +16,7 @@ def _layout_enabled() -> bool:
 
 
 def is_native_fp8(dtype: torch.dtype) -> bool:
-    return is_dcu_native_fp8_supported() and dtype in (
+    return is_hcu_native_fp8_supported() and dtype in (
         torch.float8_e4m3fn,
         torch.float8_e5m2,
     )
@@ -217,12 +217,12 @@ def flash_attn_varlen_func(
 
 
 def around_flash_attn_with_kvcache(original, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(*args, **kwargs)
     return flash_attn_with_kvcache(*args, **kwargs)
 
 
 def around_flash_attn_varlen_func(original, *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(*args, **kwargs)
     return flash_attn_varlen_func(*args, **kwargs)

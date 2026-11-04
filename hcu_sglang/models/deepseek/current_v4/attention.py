@@ -4,7 +4,7 @@
 from __future__ import annotations
 import functools
 import sglang.srt.models.deepseek_v4 as upstream
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 from hcu_sglang.mem_cache.cp_cache_layer_split.deepseek_v4_helpers import (
     is_cp_cache_layer_split_deepseek_v4_pool, maybe_prefetch_cp_kv_extra,
     maybe_prefetch_cp_kv_swa, maybe_wait_cp_kv_swa_prefetch,
@@ -16,7 +16,7 @@ from hcu_sglang.models.deepseek.current_v4.replay_scope import bcg_tail_kv_store
 # Framework class replacements propagate imported aliases after apply_hooks.
 globals().update({name:value for name,value in vars(upstream).items()
                   if not name.startswith('__')})
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 _use_aiter = _use_aiter and not _is_hcu
 if _is_hcu:
     _is_cuda = False

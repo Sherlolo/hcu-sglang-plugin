@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """DeepSeek-V4.1's decoder-replay tail layers (``late_layer_start`` on), replayed
 from `RowBucketGraphRunner` graphs on eager prefill steps. The SWA KV store, the
 attention and the low-ratio sources stay eager breaks of those graphs.

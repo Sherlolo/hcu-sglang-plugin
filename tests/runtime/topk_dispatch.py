@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from contextlib import ExitStack, contextmanager
 from types import ModuleType, SimpleNamespace
 from unittest.mock import patch
@@ -63,7 +66,7 @@ class TopKDispatchTests(unittest.TestCase):
         light=ModuleType('lightop');light.op=SimpleNamespace(topk_softmax=lightop)
         pack=ModuleType('sglang.kernels.ops.lora.moe.trtllm_lora_temp.topk_softmax_pack');pack.topk_softmax_pack=packed
         with ExitStack() as stack:
-            stack.enter_context(patch.object(plugin,'is_dcu',return_value=hcu,create=True))
+            stack.enter_context(patch.object(plugin,'is_hcu',return_value=hcu,create=True))
             stack.enter_context(patch.object(plugin,'_use_fused_topk_softmax',fused,create=True))
             stack.enter_context(patch.object(S,'_use_aiter',aiter))
             stack.enter_context(patch.object(S,'_is_cuda',False))

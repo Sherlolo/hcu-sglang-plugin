@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Verify files listed in a source-embedded reconstruction manifest."""
 from __future__ import annotations
 
@@ -7,8 +10,8 @@ import hashlib
 import json
 from pathlib import Path
 
-MANIFEST_NAME = ".sglang-dcu-embedded.json"
-MANIFEST_KIND = "sglang-dcu-embedded-source"
+MANIFEST_NAME = ".sglang-hcu-embedded.json"
+MANIFEST_KIND = "sglang-hcu-embedded-source"
 
 
 def verify(output: Path) -> dict:

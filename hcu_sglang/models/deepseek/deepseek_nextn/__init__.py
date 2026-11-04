@@ -1,4 +1,4 @@
-"""DCU deepseek_nextn plugin package."""
+"""HCU deepseek_nextn plugin package."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_hooks() -> None:
-    """Register hooks for deepseek_nextn DCU fork delta."""
+    """Register hooks for deepseek_nextn HCU fork delta."""
     n = nextn_hooks.register_hooks()
 
     logger.info(

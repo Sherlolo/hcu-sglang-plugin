@@ -26,10 +26,10 @@ import sglang.srt.layers.cp.utils as P
 
 
 def enable_cp_v2() -> bool:
-    from hcu_sglang.utils.detection import is_dcu
+    from hcu_sglang.utils.detection import is_hcu
     from sglang.srt.utils import get_bool_env_var, is_musa, is_npu
 
-    if is_dcu():
+    if is_hcu():
         return get_bool_env_var("SGLANG_ENABLE_CP_V2")
     return not (is_npu() or is_musa())
 

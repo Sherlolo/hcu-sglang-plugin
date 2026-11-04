@@ -1,6 +1,6 @@
 """HCU DeepSeek V4.1 checkpoint normalization for the pinned official API."""
 from __future__ import annotations
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 def _per_channel_fp8_as_compressed_tensors(quant_config):
     """FP8-Channel checkpoints declare {"quant_method": "fp8", "is_per_channel": true}
@@ -45,7 +45,7 @@ def _per_channel_fp8_as_compressed_tensors(quant_config):
     }
 
 def after_normalize_deepseek_v41_config(result, values):
-    if is_dcu() and "quantization_config" in result:
+    if is_hcu() and "quantization_config" in result:
         result = dict(result)
         result["quantization_config"] = _per_channel_fp8_as_compressed_tensors(
             result["quantization_config"]

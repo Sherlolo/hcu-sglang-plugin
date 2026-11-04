@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextvars
 from typing import Any, Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 _local_blocks = contextvars.ContextVar("wan_sla_local_blocks", default=0)
@@ -82,7 +82,7 @@ def resolve_skip_linear(value: bool, attention_type: str, config: Any) -> bool:
 def around_wan_model_init(
     original: Callable[..., None], model, config, hf_config, quant_config=None
 ) -> None:
-    if not is_dcu():
+    if not is_hcu():
         return original(model, config, hf_config, quant_config)
 
     from sglang.multimodal_gen.runtime.server_args.server_args import (
@@ -121,7 +121,7 @@ def around_wan_model_init(
 
 def after_minimal_a2a_init(result: Any, attention_op, *args, **kwargs) -> Any:
     local_attn = getattr(attention_op, "local_attn", None)
-    if is_dcu() and local_attn is not None:
+    if is_hcu() and local_attn is not None:
         from hcu_sglang.multimodal_gen.rocm_sparse_linear_attn import (
             RocmSparseLinearAttentionImpl,
         )

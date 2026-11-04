@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import argparse
@@ -125,7 +128,7 @@ def classify(path: str, content: str) -> tuple[str, list[str]]:
     lower = content.lower()
     signals = [
         word
-        for word in ("dcu", "hcu", "hygon", "lightop", "aiter", "hip", "rocm", "gfx")
+        for word in ("hcu", "hcu", "hygon", "lightop", "aiter", "hip", "rocm", "gfx")
         if word in lower
     ]
     if lower_path.startswith(("test/", "tests/")) or "/test" in lower_path:
@@ -188,7 +191,7 @@ def added_hardware_signals(
         added_lines.append(lower)
     signals = {
         word
-        for word in ("dcu", "hcu", "hygon", "lightop", "aiter", "hip", "rocm", "gfx")
+        for word in ("hcu", "hcu", "hygon", "lightop", "aiter", "hip", "rocm", "gfx")
         if any(word in line for line in added_lines)
     }
     added_text = "\n".join(added_lines)
@@ -216,7 +219,7 @@ def main() -> None:
     parser.add_argument("--official-repo", required=True)
     parser.add_argument("--fork-repo", required=True)
     parser.add_argument("--plugin-repo", required=True)
-    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_dcu_plugin"))
+    parser.add_argument("--plugin-package", choices=("hcu_sglang", "sglang_hcu_plugin"))
     parser.add_argument("--official-ref", default="refs/remotes/github-official/main")
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()

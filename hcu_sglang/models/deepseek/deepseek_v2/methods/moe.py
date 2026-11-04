@@ -1,4 +1,4 @@
-"""DCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
+"""HCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
 
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
@@ -615,7 +615,7 @@ def forward_normal(
     if (
         not N0._is_cuda
         and not N0._is_musa
-        and not C._is_dcu
+        and not C._is_hcu
         and not N0._is_xpu
         and not N0._use_aiter
         or isinstance(self.experts.quant_method, N0.KTEPWrapperMethod)

@@ -53,3 +53,13 @@ def around_validate_peer_state_layout(original,manager,peer):
         return True,None
     except (RuntimeError,KeyError,IndexError,TypeError,ValueError) as error:
         return False,'LayerSplit peer layout rejected: '+str(error)
+
+
+def validate_remote_peer_state_abis(manager, peer):
+    formats = []
+    sizes = []
+    for i, state_type in enumerate(manager.kv_args.state_types):
+        j = resolve_state_component_dst_index(manager.kv_args.state_types, peer.dst_state_types, i)
+        formats.append(peer.dst_state_data_formats[j] if j < len(peer.dst_state_data_formats) else "")
+        sizes.append(peer.dst_state_item_lens[j] if j < len(peer.dst_state_item_lens) else [])
+    manager.validate_remote_state_transfer_abis(formats, sizes)

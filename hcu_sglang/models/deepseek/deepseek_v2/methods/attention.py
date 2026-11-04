@@ -1,4 +1,4 @@
-"""DCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
+"""HCU DeepSeek V2 fork methods (auto-extracted for plugin hooks)."""
 
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
@@ -194,7 +194,7 @@ def __init__(
     )
 
     self.use_lightop_mla_qkv_a_rms_quant = (
-        C._is_dcu
+        C._is_hcu
         and self.q_lora_rank is not None
         and U.get_bool_env_var("SGLANG_USE_FUSED_RMS_QUANT")
         and is_lightop_sglang_mla_qkv_a_rms_quant_available()

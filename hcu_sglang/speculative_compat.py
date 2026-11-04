@@ -6,11 +6,11 @@ from typing import Any, Callable
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_handle_dspark(original: Callable[..., None], server_args: Any) -> None:
-    if not is_dcu():
+    if not is_hcu():
         return original(server_args)
     from hcu_sglang.speculative_dspark import _handle_dspark
 
@@ -18,7 +18,7 @@ def around_handle_dspark(original: Callable[..., None], server_args: Any) -> Non
 
 
 def around_inference_only(original: Callable[..., Any], *args, **kwargs):
-    if not is_dcu():
+    if not is_hcu():
         return original(*args, **kwargs)
     with torch.inference_mode():
         return original(*args, **kwargs)
@@ -26,7 +26,7 @@ def around_inference_only(original: Callable[..., Any], *args, **kwargs):
 
 def around_dspark_dequant_supported(original: Callable[..., bool], linear: Any) -> bool:
     if (
-        is_dcu()
+        is_hcu()
         and getattr(getattr(linear, "weight", None), "dtype", None)
         == torch.float8_e4m3fn
         and not hasattr(linear, "weight_scale_inv")
@@ -51,7 +51,7 @@ def _get_dspark_ragged_settings():
 
 def before_dspark_verify_planner_init(*args, **kwargs) -> None:
     del args, kwargs
-    if not is_dcu():
+    if not is_hcu():
         return None
 
     ragged_verify_mode, static_mode, prep_in_cuda_graph = _get_dspark_ragged_settings()
@@ -88,7 +88,7 @@ def around_tbo_filter_batch(
     original: Callable[..., Any], cls: type, batch: Any, *args, **kwargs
 ):
     child_batch = original(cls, batch, *args, **kwargs)
-    if is_dcu() and getattr(batch, "return_hidden_states_before_norm", False):
+    if is_hcu() and getattr(batch, "return_hidden_states_before_norm", False):
         child_batch.return_hidden_states_before_norm = True
     return child_batch
 

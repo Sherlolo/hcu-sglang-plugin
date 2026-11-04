@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from sglang.srt.arg_groups.arg_utils import is_record
-from hcu_sglang.config import minimax_opt_enabled
+from hcu_sglang.config import minimax_opt_enabled, hy3_sp_enabled, register_parallel_options
 from hcu_sglang.layers.quantization.registry import (
     QUANTIZATION_NAME,
     SLIMQUANT_NAME,
@@ -11,9 +11,10 @@ from hcu_sglang.layers.quantization.registry import (
 )
 
 HCU_ATTENTION_BACKEND = "hcu_mla"
-HCU_QUANTIZATION_METHODS = (QUANTIZATION_NAME, SLIMQUANT_NAME, SLIMQUANT_MARLIN_NAME)
+HCU_QUANTIZATION_METHODS = (QUANTIZATION_NAME, SLIMQUANT_NAME, SLIMQUANT_MARLIN_NAME, "slimquant_marlin")
 HCU_SERVER_ARG_DEFAULTS = {
     "minimax_opt": False,
+    "hy3_sp": False,
 }
 
 
@@ -34,6 +35,8 @@ def ensure_choices(server_args) -> bool:
         if name == "minimax_opt" and is_record(server_args.ServerArgs):
             # A compatibility read view, not an undeclared write to frozen inputs.
             setattr(server_args.ServerArgs, name, property(lambda _record: minimax_opt_enabled()))
+        elif name == "hy3_sp" and is_record(server_args.ServerArgs):
+            setattr(server_args.ServerArgs, name, property(lambda _record: hy3_sp_enabled()))
         elif not hasattr(server_args.ServerArgs, name):
             setattr(server_args.ServerArgs, name, default)
 
@@ -61,4 +64,5 @@ def ensure_choices(server_args) -> bool:
 def register() -> None:
     from sglang.srt import server_args
 
+    register_parallel_options()
     ensure_choices(server_args)

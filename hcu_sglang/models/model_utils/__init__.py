@@ -1,1 +1,1 @@
-"""DCU adaptations for sglang.srt.models.utils."""
+"""HCU adaptations for sglang.srt.models.utils."""

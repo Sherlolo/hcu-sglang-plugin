@@ -69,7 +69,7 @@ from sglang.srt.utils import get_bool_env_var, is_cuda, is_hip, make_layers
 from sglang.srt.utils.common import LazyValue
 from sglang.srt.utils.hf_transformers_utils import get_rope_config
 
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 _is_hcu = is_hcu()
 _use_fused_hunyuan_rotary = get_bool_env_var("SGLANG_USE_FUSED_RMS_ROTARY")

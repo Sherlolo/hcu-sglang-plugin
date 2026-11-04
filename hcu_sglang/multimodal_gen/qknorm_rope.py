@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_can_use_fused_inplace_qknorm_rope(
     original: Callable[..., bool], *args: Any, **kwargs: Any
 ) -> bool:
-    if is_dcu():
+    if is_hcu():
         return False
     return original(*args, **kwargs)
 

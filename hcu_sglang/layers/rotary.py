@@ -8,7 +8,7 @@ The canonical FP32 cache remains owned by the upstream layer and its indexers.
 from __future__ import annotations
 from typing import Optional
 import torch
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 _HCU_ROPE_MAX_THREADS = 256
 
@@ -80,7 +80,7 @@ def _launch_rotary_embedding(
         _launch(q[:, q_start:q_end], k[:, q_start // group : q_end // group])
 
 
-class DcuRotaryFallback:
+class HcuRotaryFallback:
     def __init__(self, original):
         self.original = original
         self._cache_memo = None
@@ -99,10 +99,10 @@ class DcuRotaryFallback:
 
 
 def after_rotary_init(result, layer, *args, **kwargs):
-    if is_dcu() and getattr(layer, 'use_fallback_kernel', False):
+    if is_hcu() and getattr(layer, 'use_fallback_kernel', False):
         current = layer.fallback_rotary_embedding
-        if not isinstance(current, DcuRotaryFallback):
-            layer.fallback_rotary_embedding = DcuRotaryFallback(current)
+        if not isinstance(current, HcuRotaryFallback):
+            layer.fallback_rotary_embedding = HcuRotaryFallback(current)
     return result
 
 

@@ -5,7 +5,7 @@ import torch
 from sglang.kernels.jit.utils import cache_once, is_arch_support_pdl, load_jit, make_cpp_args
 from sglang.srt.layers.attention.dsa.utils import INDEXER_K_CACHE_PRESHUFFLE_TILE, aiter_can_use_preshuffle_paged_mqa
 from sglang.srt.utils import is_gfx95_supported, is_hip, is_xpu
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.kernels.ops.attention.dsv4.kv_layout import KVLayout
 from sglang.kernels.ops.attention.dsv4.utils import make_name
 _is_hcu = is_hcu()

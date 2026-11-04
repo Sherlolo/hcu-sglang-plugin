@@ -1,4 +1,4 @@
-"""DCU MLA attention backend registration."""
+"""HCU MLA attention backend registration."""
 
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 _REGISTERED = False
 
 
-def register_attention_dcu_mla_backend() -> None:
-    """Add handle_attention_dcu_mla and register the dcu_mla backend."""
+def register_attention_hcu_mla_backend() -> None:
+    """Add handle_attention_hcu_mla and register the hcu_mla backend."""
     global _REGISTERED
     if _REGISTERED:
         return
@@ -24,17 +24,17 @@ def register_attention_dcu_mla_backend() -> None:
         attention_backend_handler,
     )
 
-    handler_mod.handle_attention_dcu_mla = (
-        attention_backend_handler.handle_attention_dcu_mla
+    handler_mod.handle_attention_hcu_mla = (
+        attention_backend_handler.handle_attention_hcu_mla
     )
     AttentionBackendRegistry.register(
-        "dcu_mla",
-        attention_backend_handler.handle_attention_dcu_mla,
+        "hcu_mla",
+        attention_backend_handler.handle_attention_hcu_mla,
     )
     _REGISTERED = True
-    logger.debug("[hcu_sglang] Registered dcu_mla attention backend")
+    logger.debug("[hcu_sglang] Registered hcu_mla attention backend")
 
 
 def register_hooks() -> int:
-    register_attention_dcu_mla_backend()
+    register_attention_hcu_mla_backend()
     return 0

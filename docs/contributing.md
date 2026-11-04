@@ -59,6 +59,15 @@ flowchart TB
 
 评审检查新 capability 是否完整接入入口；文档和代码是否同变更；性能结论是否有同环境预热 A/B；日志是否证明所声称的分支实际命中。合入及推送按用户授权和仓库现有流程执行，文档中的流程不自动授权外部发布。
 
+### 4.1 合入方式（2026-11-03 定，两仓一致，对齐协作规范 PPT 06）
+
+**一律 squash 合并**：main 上一颗 commit = 一个完整 PR（标题即 PR 标题，
+描述即 PR body）。分支内的多 commit、与 main 的同步合并、冲突解法属于
+过程痕迹，留在 PR 页（GitHub 永久可查），不进 main 的 git log。跨仓联动
+（adapter/plugin 同笔裁定、对账单）用 squash 后的 commit hash 互指，不指
+作者分支的中间态。本地拉取建议 `git pull --rebase`；撤销一个 PR = revert
+main 上那一颗。history 中 squash 政策生效前的 merge commit 不追改。
+
 ## 5. 共享节点与产物管理
 
 来源仓库只读审计，回溯输出放新的、不与输入重叠的目录。测试和探针默认仅操作本任务资源，不自行停止其他服务来制造空闲。用户明确授权处理某个 GPU 冲突时，以 GPU→宿主 PID→cgroup→完整容器 ID 核实归属，并遵守节点权限；权限拒绝记录为未完成，不绕过控制。实际等待/重试与清理见 [资源排障](../skills/hcu-plugin-triage/references/distributed-and-performance.md)。大体积日志、模型数据、dump 与生成仓库不纳入本方法库；使用 `.gitignore` 已覆盖的 `artifacts/`、`outputs/` 或专用输出目录。

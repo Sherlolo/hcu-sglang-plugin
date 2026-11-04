@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_forward(
@@ -20,7 +20,7 @@ def around_forward(
     *args,
     **kwargs,
 ) -> Any:
-    if is_dcu() and forward_batch.forward_mode.is_idle():
+    if is_hcu() and forward_batch.forward_mode.is_idle():
         return query.new_empty(
             query.shape[0],
             layer.tp_q_head_num * layer.v_head_dim,
@@ -38,8 +38,25 @@ def around_forward(
     )
 
 
+def get_fused_kv_write_buffers(
+    self, layer: RadixAttention, forward_batch: ForwardBatch
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor] | None:
+    """Return token-major K/V buffers and physical slots for a fused writer."""
+    return None
+
+def late_layer_num_tokens(self, forward_batch: ForwardBatch) -> Optional[int]:
+    """Rows this rank runs from a late-layer row switch on (DeepSeek-V4.1
+    decoder SWA bounded replay); None for backends without one."""
+    return None
+
+
 def register_hooks() -> None:
     from sglang.srt.plugins.hook_registry import HookRegistry, HookType
+    if is_hcu():
+        from sglang.srt.layers.attention.base_attn_backend import AttentionBackend
+        for name in ("get_fused_kv_write_buffers", "late_layer_num_tokens"):
+            if not hasattr(AttentionBackend, name):
+                setattr(AttentionBackend, name, globals()[name])
 
     HookRegistry.register(
         "sglang.srt.layers.attention.base_attn_backend.AttentionBackend.forward",

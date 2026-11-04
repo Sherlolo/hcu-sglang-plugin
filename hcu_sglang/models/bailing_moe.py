@@ -1,4 +1,4 @@
-"""Bailing-MoE model hooks for DCU fused RMSNorm + RoPE KV-store."""
+"""Bailing-MoE model hooks for HCU fused RMSNorm + RoPE KV-store."""
 
 import logging
 
@@ -7,11 +7,12 @@ from torch import nn
 
 from sglang.srt.plugins.hook_registry import HookRegistry, HookType
 from sglang.srt.runtime_context import get_exec
+from sglang.srt.utils import get_bool_env_var
 from hcu_sglang.models.fused_rotary import (
     fused_rms_rotary_kv_store,
     use_fused_rms_rotary,
 )
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 from hcu_sglang.utils.module_patch import get_original_attr
 
 logger = logging.getLogger(__name__)
@@ -38,11 +39,11 @@ def register() -> None:
 
 
 def _use_fused_bailing_silu_mul_fp8_quant() -> bool:
-    return is_dcu()
+    return is_hcu() and get_bool_env_var("SGLANG_USE_FUSED_BAILING_SILU_MUL_FP8_QUANT")
 
 
 def _num_fused_shared_experts(config) -> int:
-    if not is_dcu():
+    if not is_hcu():
         return 0
     try:
         from sglang.srt.layers.moe.utils import get_moe_a2a_backend
@@ -60,48 +61,17 @@ def _num_fused_shared_experts(config) -> int:
     return getattr(config, "num_shared_experts", 0) or 0
 
 
-def replacement_mlp_forward(
-    original_fn,
-    self,
-    hidden_states,
-    forward_batch=None,
-    should_allreduce_fusion=False,
-    use_reduce_scatter=False,
-):
+def replacement_mlp_forward(original_fn, self, hidden_states, forward_batch=None):
     if not _use_fused_bailing_silu_mul_fp8_quant():
-        return original_fn(
-            self,
-            hidden_states,
-            forward_batch,
-            should_allreduce_fusion,
-            use_reduce_scatter,
-        )
-
-    hidden_states_tensor = (
-        hidden_states[0] if isinstance(hidden_states, tuple) else hidden_states
-    )
-    if (self.tp_size == 1) and hidden_states_tensor.shape[0] == 0:
+        return original_fn(self, hidden_states, forward_batch)
+    hidden_states_tensor = hidden_states[0] if isinstance(hidden_states, tuple) else hidden_states
+    if self.is_replicated and hidden_states_tensor.shape[0] == 0:
         return hidden_states
-
     gate_up, _ = self.gate_up_proj(hidden_states)
-    try:
-        hidden_states, _ = self.down_proj(
-            gate_up,
-            skip_all_reduce=should_allreduce_fusion or use_reduce_scatter,
-            use_fused_silu_mul_fp8_quant=True,
-        )
-        return hidden_states
-    except TypeError:
-        logger.warning(
-            "[hcu_sglang] bailing fused silu mul fp8 quant is unavailable, fallback"
-        )
-        return original_fn(
-            self,
-            hidden_states,
-            forward_batch,
-            should_allreduce_fusion,
-            use_reduce_scatter,
-        )
+    hidden_states, _ = self.down_proj(
+        gate_up, forward_batch=forward_batch, use_fused_silu_mul_fp8_quant=True,
+    )
+    return hidden_states
 
 
 def replacement_gate_init(original_fn, self, *args, **kwargs):
@@ -109,7 +79,7 @@ def replacement_gate_init(original_fn, self, *args, **kwargs):
     config = kwargs.get("config", args[0] if args else None)
     if config is None:
         return
-    if is_dcu() and self.params_dtype == torch.float32:
+    if is_hcu() and self.params_dtype == torch.float32:
         self.weight = nn.Parameter(
             torch.empty(
                 (config.num_experts, config.hidden_size),
@@ -233,6 +203,7 @@ def replacement_forward(self, positions, hidden_states, forward_batch):
     can_fuse_set_kv = (
         self.head_dim == self.rotary_emb.rotary_dim
         and enable_fused_set_kv_buffer(forward_batch)
+        and not self.is_mrope_enabled
     )
 
     if self.use_qk_norm:

@@ -74,9 +74,9 @@
       ],
       "depends_on": [],
       "destinations": [
-        "sglang_dcu_plugin/__init__.py",
-        "sglang_dcu_plugin/server_args*.py",
-        "sglang_dcu_plugin/compat/"
+        "sglang_hcu_plugin/__init__.py",
+        "sglang_hcu_plugin/server_args*.py",
+        "sglang_hcu_plugin/compat/"
       ]
     },
     {
@@ -106,8 +106,8 @@
         "kv-cache"
       ],
       "destinations": [
-        "sglang_dcu_plugin/models/",
-        "sglang_dcu_plugin/configs.py"
+        "sglang_hcu_plugin/models/",
+        "sglang_hcu_plugin/configs.py"
       ]
     },
     {
@@ -138,8 +138,8 @@
         "quantization"
       ],
       "destinations": [
-        "sglang_dcu_plugin/models/",
-        "sglang_dcu_plugin/layers/quantization/"
+        "sglang_hcu_plugin/models/",
+        "sglang_hcu_plugin/layers/quantization/"
       ]
     },
     {
@@ -169,8 +169,8 @@
         "quantization"
       ],
       "destinations": [
-        "sglang_dcu_plugin/layers/attention/",
-        "sglang_dcu_plugin/models/deepseek/current_v4/"
+        "sglang_hcu_plugin/layers/attention/",
+        "sglang_hcu_plugin/models/deepseek/current_v4/"
       ]
     },
     {
@@ -197,7 +197,7 @@
         "native"
       ],
       "destinations": [
-        "sglang_dcu_plugin/mem_cache/"
+        "sglang_hcu_plugin/mem_cache/"
       ]
     },
     {
@@ -227,7 +227,7 @@
         "native"
       ],
       "destinations": [
-        "sglang_dcu_plugin/layers/quantization/"
+        "sglang_hcu_plugin/layers/quantization/"
       ]
     },
     {
@@ -257,7 +257,7 @@
         "models"
       ],
       "destinations": [
-        "sglang_dcu_plugin/layers/moe/"
+        "sglang_hcu_plugin/layers/moe/"
       ]
     },
     {
@@ -284,7 +284,7 @@
         "native"
       ],
       "destinations": [
-        "sglang_dcu_plugin/layers/"
+        "sglang_hcu_plugin/layers/"
       ]
     },
     {
@@ -318,8 +318,8 @@
         "kv-cache"
       ],
       "destinations": [
-        "sglang_dcu_plugin/distributed.py",
-        "sglang_dcu_plugin/mem_cache/cp_cache_layer_split/"
+        "sglang_hcu_plugin/distributed.py",
+        "sglang_hcu_plugin/mem_cache/cp_cache_layer_split/"
       ]
     },
     {
@@ -348,7 +348,7 @@
         "execution"
       ],
       "destinations": [
-        "sglang_dcu_plugin/disagg/"
+        "sglang_hcu_plugin/disagg/"
       ]
     },
     {
@@ -377,7 +377,7 @@
         "kv-cache"
       ],
       "destinations": [
-        "sglang_dcu_plugin/models/deepseek/current_v4/"
+        "sglang_hcu_plugin/models/deepseek/current_v4/"
       ]
     },
     {
@@ -408,8 +408,8 @@
         "kv-cache"
       ],
       "destinations": [
-        "sglang_dcu_plugin/models/",
-        "sglang_dcu_plugin/distributed.py"
+        "sglang_hcu_plugin/models/",
+        "sglang_hcu_plugin/distributed.py"
       ]
     },
     {
@@ -438,7 +438,7 @@
         "sampling"
       ],
       "destinations": [
-        "sglang_dcu_plugin/models/deepseek/"
+        "sglang_hcu_plugin/models/deepseek/"
       ]
     },
     {
@@ -471,7 +471,7 @@
         "base-layers"
       ],
       "destinations": [
-        "sglang_dcu_plugin/layers/"
+        "sglang_hcu_plugin/layers/"
       ]
     },
     {
@@ -498,8 +498,8 @@
         "bootstrap"
       ],
       "destinations": [
-        "sglang_dcu_plugin/jit_overlay/",
-        "sglang_dcu_plugin/kernels/"
+        "sglang_hcu_plugin/jit_overlay/",
+        "sglang_hcu_plugin/kernels/"
       ]
     },
     {
@@ -553,7 +553,7 @@
         "quantization"
       ],
       "destinations": [
-        "sglang_dcu_plugin/multimodal_gen/"
+        "sglang_hcu_plugin/multimodal_gen/"
       ]
     },
     {
@@ -724,7 +724,7 @@
       ],
       "destinations": [
         "pyproject.toml",
-        "sglang_dcu_plugin/"
+        "sglang_hcu_plugin/"
       ]
     },
     {

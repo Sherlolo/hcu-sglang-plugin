@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Callable
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_enable_combine_down_gemm(original: Callable[..., bool], cls: type) -> bool:
-    if is_dcu():
+    if is_hcu():
         from sglang.srt.layers.moe.utils import is_sbo_enabled
 
         return is_sbo_enabled()

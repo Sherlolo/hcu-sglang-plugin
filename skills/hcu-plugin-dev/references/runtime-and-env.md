@@ -8,7 +8,7 @@
 
 ## 2. 环境与覆盖
 
-SGLang 自有 `SGLANG_*` 使用其版本支持的 Envs/typed descriptor API，读取 `.get()`，测试用 `.override()` 恢复状态；不要新增 legacy `SGL_*` 别名或在 plugin 热路径散落 raw getenv。外部驱动/launcher 的 NCCL、RANK、PATH 等变量仍由其所有者定义。plugin 自有开关在外部实现仓集中定义，登记名称/类型/默认/优先级/生效阶段/关闭路径，不在本库假造运行时配置。
+SGLang 自有 `SGLANG_*` 使用其版本支持的 Envs/typed descriptor API，读取 `.get()`，测试用 `.override()` 恢复状态；不要新增 legacy `SGL_*` 别名或在 plugin 热路径散落 raw getenv。外部驱动/launcher 的 NCCL、RANK、PATH 等变量仍由其所有者定义。plugin 自有开关在实现所属仓集中定义；当前本仓入口为 `hcu_sglang/config.py` / `hcu_sglang/environ.py`，登记名称、类型、默认、优先级、生效阶段及关闭路径，未实现接口不写成可用配置。
 
 显式用户值优先；日志要说明最终值与来源。不要为注入一个配置字段改写 official 源码；如果当前 seam 不足，台账记录 integration gap。
 
@@ -25,3 +25,12 @@ Python 启动兼容层只安装轻量注册/延迟 finder；不要在 usercustom
 按 pinned 源码选择构建工具链，在真实 builder 的环境中检查 `sys.executable`/realpath、PATH、cargo/rustc 等版本。某些 builder 会前置解释器目录，shell 的版本输出不足为证。先预编译真实 bindings，再加载大模型；仅设置任务级 wrapper/cache，保留全局工具、HOME、源码和 lock。
 
 记录扩展 fingerprint、解释器/平台和 Torch ABI；已编译缓存只在兼容条件满足时复用，不自动宣称进入 wheel 或可跨 ABI 分发。失败保留原日志，不通过切换实现或删依赖绕过。V3 的锁递归与 Cargo 选择案例见 [历史经验](../../../docs/development-methodology.md#6-构建进程环境与工具链一致性)。
+
+
+## 5. 缺少上游输入字段时的进程配置
+
+来源DAS比固定官方版本多一个CLI字段时，先核对原始记录和发布后的namespace是否都具有该字段。不能只添加 argparse 选项后让记录构造丢弃它，也不能向冻结seed补写属性。若采用插件进程配置桥接，必须连接CLI消费、明确的覆盖/禁用规则、spawn继承、bootstrap及实际组构造，并声明程序化调用入口与每进程配置边界。
+
+用真实CLI parser/record、冷子进程、公共bootstrap和真实组构造检查整条链，验证显式选项、默认、禁用优先级及失败传播；参数成功不代表传输后端命中。严格后端策略应保留来源异常或拒绝条件，不以回落到另一个communicator伪装完成。当前例子与限制见[后端参数](../../../docs/configuration.md#当前-custom-all-reduce-参数)。
+
+固定版本的ServerArgs.__post_init__可能只构造未解析seed；CLI预检须检查实际launcher是否调用resolve_once，并显式执行同一阶段。resolved_view可读取seed，不能据此自称validated/effective配置；Node/平台/模型约束的拒绝结果需保存。旧快照phase说明错误时修正共享分析范围，保留原始产物，不修改原始模型响应或重新评分标签。

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import json
@@ -64,35 +67,49 @@ class ReconstructionTest(unittest.TestCase):
         _init_repo(self.upstream)
 
         _write(
-            self.plugin / "sglang_dcu_plugin/__init__.py",
+            self.plugin / "sglang_hcu_plugin/__init__.py",
             "def register():\n    return None\n",
         )
         _write(
-            self.plugin / "sglang_dcu_plugin/compat/aiter.py",
+            self.plugin / "sglang_hcu_plugin/compat/aiter.py",
             "def bootstrap_aiter_compat():\n    return False\n",
         )
-        _write(self.plugin / "sglang_dcu_plugin/jit_overlay/include/example.h", "x\n")
+        _write(self.plugin / "sglang_hcu_plugin/jit_overlay/include/example.h", "x\n")
         _write(self.plugin / "ignored.txt", "not vendored\n")
         _write(self.plugin / "LICENSE", "license\n")
-        _write(self.plugin / "requirements-dcu.txt", "vendor-package\n")
+        _write(self.plugin / "requirements-hcu.txt", "vendor-package\n")
         _init_repo(self.plugin)
 
     def test_current_hcu_namespace_executes_embedded_loader_and_preserves_native_data(self):
         import runpy
         import sys
         from tools.verify_reconstruction import verify
-        old = self.plugin / "sglang_dcu_plugin"
+        old = self.plugin / "sglang_hcu_plugin"
         old.rename(self.plugin / "hcu_sglang")
         _write(self.plugin / "hcu_sglang/models/deepseek/current_v4/hcu_backend/csrc/kernel.cu", "native data\n")
+        resources = {
+            "mem_cache/cpp_utils/hash.cpp": "int value = 1;\n",
+            "mem_cache/rust_tree_core/crate/src/lib.rs": "pub fn value() {}\n",
+            "mem_cache/rust_tree_core/crate/.gitignore": "target/\n",
+            "models/deepseek/current_v4/execution/aiter_intree_configs/tuned.csv": "m,n\n1,1\n",
+            "layers/attention/linear/csrc/state.cu": "native state data\n",
+        }
+        for relative, content in resources.items():
+            _write(self.plugin / "hcu_sglang" / relative, content)
         _run("git", "add", "-A", cwd=self.plugin)
         _run("git", "commit", "-qm", "hcu namespace", cwd=self.plugin)
         reconstruct_sglang_das(self.upstream, self.plugin, self.output)
         self.assertEqual(verify(self.output)["status"], "passed")
         manifest = json.loads((self.output / MANIFEST_NAME).read_text())
         self.assertEqual(manifest["plugin"]["package"], "hcu_sglang")
-        self.assertFalse((self.output / "python/sglang_dcu_plugin").exists())
+        self.assertFalse((self.output / "python/sglang_hcu_plugin").exists())
         metadata = (self.output / "python/pyproject.toml").read_text()
         self.assertIn('"models/deepseek/current_v4/hcu_backend/csrc/*"', metadata)
+        patterns = json.loads(metadata.split('"hcu_sglang" = ', 1)[1].splitlines()[0])
+        for relative, content in resources.items():
+            self.assertEqual((self.output / "python/hcu_sglang" / relative).read_text(), content)
+            package_root = self.output / "python/hcu_sglang"
+            self.assertTrue(any(package_root / relative in package_root.glob(pattern) for pattern in patterns), relative)
         subprocess.run(
             [sys.executable, "-c",
              "import runpy,sys; from pathlib import Path; "
@@ -113,34 +130,34 @@ class ReconstructionTest(unittest.TestCase):
 
         self.assertEqual(result.vendored_files, 3)
         self.assertTrue((self.output / ".git").is_dir())
-        self.assertTrue((self.output / "python/sglang_dcu_plugin/__init__.py").is_file())
+        self.assertTrue((self.output / "python/sglang_hcu_plugin/__init__.py").is_file())
         self.assertFalse((self.output / "python/ignored.txt").exists())
         loader = (self.output / "python/sglang/srt/plugins/__init__.py").read_text()
         package_init = (self.output / "python/sglang/__init__.py").read_text()
-        self.assertIn("register_embedded_dcu", loader)
-        self.assertIn("_bootstrap_dcu_aiter_compat", package_init)
+        self.assertIn("register_embedded_hcu", loader)
+        self.assertIn("_bootstrap_hcu_aiter_compat", package_init)
         self.assertNotIn(LOADER_BEGIN, loader)
         self.assertNotIn(BOOTSTRAP_BEGIN, package_init)
         self.assertEqual(package_init.count('"""SGLang public API."""'), 1)
         self.assertTrue(package_init.startswith('"""SGLang public API."""'))
         self.assertLess(
             package_init.index("_redirect_third_party_caches()"),
-            package_init.index("from sglang_dcu_plugin.compat.aiter import"),
+            package_init.index("from sglang_hcu_plugin.compat.aiter import"),
         )
         self.assertIn(
-            '"sglang_dcu_plugin"',
+            '"sglang_hcu_plugin"',
             (self.output / "python/pyproject.toml").read_text(),
         )
 
         manifest = json.loads((self.output / MANIFEST_NAME).read_text())
         self.assertEqual(manifest["kind"], MANIFEST_KIND)
         self.assertEqual(manifest["vendored_file_count"], 3)
-        self.assertIn("python/sglang_dcu_plugin/__init__.py", manifest["files"])
+        self.assertIn("python/sglang_hcu_plugin/__init__.py", manifest["files"])
 
     def test_source_indexes_preserved_when_stat_cache_is_stale(self) -> None:
         indexes = {}
         for repo, relative in [(self.upstream, "README.md"),
-                               (self.plugin, "sglang_dcu_plugin/__init__.py")]:
+                               (self.plugin, "sglang_hcu_plugin/__init__.py")]:
             index = repo / ".git/index"
             indexes[index] = index.read_bytes()
             source = repo / relative

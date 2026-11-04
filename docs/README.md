@@ -12,14 +12,16 @@
 | 当前运行时代码与迁入进展 | [hcu_sglang 开发迁移记录](hcu-sglang-development.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
 | 插件能力开发 | [能力开发指南](plugins.md) | [hcu-plugin-dev](../skills/hcu-plugin-dev/SKILL.md) |
 | 故障诊断与回归修复 | [故障诊断指南](troubleshooting.md) | [hcu-plugin-triage](../skills/hcu-plugin-triage/SKILL.md) |
-| 研发模块盘点与开发计划 | [迁移规划指南](sglang-das-migration-plan.md) / [网页](../migration-plan.html) | [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) |
-| 三方差异审计与迁移 | [三方迁移指南](migration.md) | [sglang-dcu-plugin-migration](../skills/sglang-dcu-plugin-migration/SKILL.md) |
+| 研发模块盘点与开发计划 | [迁移规划指南](sglang-das-migration-plan.md) / [网页](../migration-plan.html) | [sglang-hcu-plugin-migration](../skills/sglang-hcu-plugin-migration/SKILL.md) |
+| 三方差异审计与迁移 | [三方迁移指南](migration.md) | [sglang-hcu-plugin-migration](../skills/sglang-hcu-plugin-migration/SKILL.md) |
 | 官方版本升级与发版 | [版本升级与发版指南](upgrading.md) | [upgrading-sglang-hcu-upstream-first](../skills/upgrading-sglang-hcu-upstream-first/SKILL.md) |
 | 内嵌源码生成与核验 | [源码回溯指南](backtracking.md) | [hcu-plugin-backtrack](../skills/hcu-plugin-backtrack/SKILL.md) |
 
 每份操作文档包含本任务的输入要求、Skill 调用示例、执行范围和验收标准。[任务与 Skill 使用指南](reading-guide.md) 负责选择与衔接；下列目录用于按需查询设计、规则与历史证据。
 
 当前阶段已包含 `hcu_sglang` 与打包入口；历史文档中“仅方法库、运行时位于外部”的描述按记录日期理解，当前安装和开发以 [迁移记录](hcu-sglang-development.md) 为准。
+
+本轮源码对齐、测试范围和限制见 [2026-11-02 对齐记录](hcu-sglang-development.md#das-分支逻辑对齐2026-11-02)。
 
 ## 1. 文档组织
 
@@ -59,8 +61,8 @@ flowchart TB
 | [验证与排障](validation.md) | 接线/数值/graph/服务/性能、组合矩阵 | 验收或定位问题 | 新 lane、阈值或证据要求 |
 | [任务与路线](board.md) | 后续实施条件与任务字段 | 领取下一项工作 | 负责人/状态/接受条件变化 |
 | [来源地图](extraction-map.md) | 固定来源、抽取取舍、V1/V2 关系 | 审核来源或更新方法 | 新来源或方法重写 |
-| [V3 方法库入口实施记录](v3-20261027-development.md) | 网页阅读器、统一 Skill、使用案例及验证限制 | 使用或维护本轮方法库入口 | 导航、输入补全或网页构建方式变化 |
-| [V3 2026-10-26 实施记录](v3-20261026-development.md) | 当前输入、已实现模块、逻辑对照与本轮验证 | 接手本轮交付或复核 HCU 逻辑差异 | 当前来源、实现或验证结果变化 |
+| [V3 方法库入口实施记录](hcu-sglang-development.md#2026-10-27-v3-方法库导览与统一任务入口实施记录) | 网页阅读器、统一 Skill、使用案例及验证限制 | 使用或维护本轮方法库入口 | 导航、输入补全或网页构建方式变化 |
+| [V3 2026-10-26 实施记录](hcu-sglang-development.md#2026-10-26-v3-2026-10-26-实施与验证记录) | 当前输入、已实现模块、逻辑对照与本轮验证 | 接手本轮交付或复核 HCU 逻辑差异 | 当前来源、实现或验证结果变化 |
 | [V3 实践](v3-runtime-validation.md) | 指定源码/容器上的输出、问题和可复现验证 | 运行本次或相同 profile | 源码/接口/实际结果变化 |
 | [版本升级与发版](upgrading.md) | 升级工作流、Skill 调用、补丁处置与验收 | 指定官方目标升级或发布交付 | 升级流程或验收契约变化 |
 | [vLLM Skill 迁移](vllm-skill-migration.md) | 方法取舍、SGLang 改写和新增升级发版入口 | 升级/发版、维护来源与能力边界 | 来源或方法迁入变化 |
@@ -72,8 +74,8 @@ flowchart TB
 
 | 资源 | 作用 | 使用边界 |
 |---|---|---|
-| [source-inventory.json](source-inventory.json) | V1 中 DAS 25 项 Skill 的原始描述、源哈希、取舍和目的地 | 历史抽取索引；不是运行时能力清单 |
-| [source-manifest.json](source-manifest.json) | V1 来源 SHA 与抽取时的源/目标文件哈希 | V1 快照；目标文件未来修改后不能当当前全仓完整性清单 |
+| [source-inventory.json](hcu-sglang-development.md#历史-json-快照)（`source-inventory.json`） | V1 中 DAS 25 项 Skill 的原始描述、源哈希、取舍和目的地 | 历史抽取索引；不是运行时能力清单 |
+| [source-manifest.json](hcu-sglang-development.md#历史-json-快照)（`source-manifest.json`） | V1 来源 SHA 与抽取时的源/目标文件哈希 | V1 快照；目标文件未来修改后不能当当前全仓完整性清单 |
 | [skills/](../skills) | 1 个统一入口、7 个专项入口、agents 元信息和按需参考 | 保留共享相对路径 |
 | [tools/](../tools) | 审计、开发和交付工具源码 | 用 `--help` 和对应操作手册 |
 | [templates/](../templates) | 人工处置、历史和验证记录 | 复制后填写真实证据，不复用旧 verified |
@@ -103,4 +105,4 @@ flowchart TB
 
 操作细节与示例维护在对应文档，Skill 保留任务决策、约束和引用；二者互相链接。新增 Skill 同步任务导航、元信息、数量与结构检查，保持完整仓库的共享相对路径。
 
-当前逐路径差异处置见 [迁移执行台账](../plans/sglang-das-execution.json)，维护规则见 [三方迁移](migration.md#全量差异执行台账)；当前 Hook 合同见 [目标清单](hcu-sglang-targets.json)。
+当前逐路径差异处置见 [迁移执行台账](../plans/sglang-das-execution.json)，维护规则见 [三方迁移](migration.md#全量差异执行台账)；当前 Hook 合同见 [目标清单](hcu-sglang-development.md#历史-json-快照)（`hcu-sglang-targets.json`）。

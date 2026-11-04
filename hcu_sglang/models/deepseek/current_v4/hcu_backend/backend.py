@@ -51,7 +51,7 @@ from sglang.srt.runtime_context import get_disagg, get_exec, get_parallel, get_p
 from sglang.srt.speculative.eagle_utils import per_step_draft_out_cache_loc
 from sglang.srt.speculative.ragged_verify import RaggedVerifyMode, compute_target_verify_graph_key, compute_uniform_extend_lengths, read_ragged_verify_mode, resolve_ragged_verify_layout
 from sglang.srt.utils import ceil_align, get_bool_env_var, is_cuda, is_xpu
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils.common import is_sm120_supported
 _is_hcu = is_hcu()
 _is_sm120 = is_sm120_supported()
@@ -2350,7 +2350,7 @@ class DeepseekV4AttnBackend(AttentionBackend, C4IndexerBackendMixin, CompressorB
         topk_transform_paged_from_metadata(logits, metadata, page_indices, raw_indices)
 
     def _low_ratio_index_topk_sm90_decode(self, layer, x, q_lora, req, pos) -> None:
-        """Hopper/DCU decode or verify indexer: one query per row, all rows scored at
+        """Hopper/HCU decode or verify indexer: one query per row, all rows scored at
         once against its visible compressed positions straight off the fp4 page
         table using LightOp when SGLANG_USE_LIGHTOP_PAGED_MQA_LOGITS_FP4
         is enabled and supported, or the Triton BF16 fallback,

@@ -9,7 +9,7 @@ from typing import Optional
 
 import torch
 from sglang.srt.utils import get_bool_env_var
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 
 from hcu_sglang.mem_cache.cp_cache_layer_split.broadcast import (
     BroadcastSlots,

@@ -6,7 +6,7 @@ from typing import Any, Callable, Optional
 
 import torch
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 
 def around_configure_kv_cache_dtype(
@@ -27,7 +27,7 @@ def around_configure_kv_cache_dtype(
         if effective_dtype != "auto":
             resolved_dtype = effective_dtype
 
-    if not is_dcu() or effective_dtype != "fp8_e5m2":
+    if not is_hcu() or effective_dtype != "fp8_e5m2":
         return original(
             server_args_kv_cache_dtype=server_args_kv_cache_dtype,
             model=model,

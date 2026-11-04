@@ -1,4 +1,4 @@
-"""DCU DeepSeek V4 plugin package."""
+"""HCU DeepSeek V4 plugin package."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def register_hooks() -> None:
-    """Register method-level REPLACE hooks for DCU DeepSeek V4 fork delta."""
+    """Register method-level REPLACE hooks for HCU DeepSeek V4 fork delta."""
     n = v4_hooks.register_hooks()
     ensure_post_apply_module_patch()
 

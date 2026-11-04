@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, List, Tuple
 
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 
 logger = logging.getLogger(__name__)
 
 
 def after_prefill_bootstrap_queue_init(result: Any, queue: Any, *args, **kwargs) -> Any:
     del args, kwargs
-    if not is_dcu():
+    if not is_hcu():
         return result
 
     tp_worker = queue.scheduler.tp_worker
@@ -20,7 +20,7 @@ def after_prefill_bootstrap_queue_init(result: Any, queue: Any, *args, **kwargs)
         return result
 
     model_runner = tp_worker.model_runner
-    from sglang.srt import environ as envs
+    from sglang.srt.environ import envs
 
     use_full_token_pool = (
         any(
@@ -30,7 +30,7 @@ def after_prefill_bootstrap_queue_init(result: Any, queue: Any, *args, **kwargs)
         and envs.SGLANG_DSV4_PD_PREFILL_USE_FULL_TOKEN_POOL.get()
     )
     if use_full_token_pool:
-        queue.max_total_num_tokens = model_runner.max_token_pool_size
+        queue.max_total_num_tokens = model_runner.full_max_total_num_tokens
         logger.info(
             "DeepSeek-V4 PD prefill admission uses full token pool capacity: %d",
             queue.max_total_num_tokens,
@@ -321,7 +321,7 @@ def around_get_mha_kv_ptrs_with_pp(
     src_kv_ptrs: List[int],
     dst_kv_ptrs: List[int],
 ):
-    if not is_dcu():
+    if not is_hcu():
         return original(self, src_kv_ptrs, dst_kv_ptrs)
     if not hasattr(self, "model_config"):
         from sglang.srt.configs.model_config import ModelConfig

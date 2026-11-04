@@ -69,7 +69,7 @@ from sglang.srt.mem_cache.memory_pool import KVCache
 from sglang.srt.model_executor.cuda_graph_config import Backend
 from sglang.srt.runtime_context import get_exec, get_platform, get_spec
 from sglang.srt.utils import ceil_div, is_gfx95_supported, is_hip
-from hcu_sglang.utils.detection import is_dcu as is_hcu
+from hcu_sglang.utils.detection import is_hcu as is_hcu
 from sglang.srt.utils.common import get_cuda_graph_max_batch_size
 
 logger = logging.getLogger(__name__)

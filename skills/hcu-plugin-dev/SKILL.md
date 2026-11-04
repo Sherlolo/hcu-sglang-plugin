@@ -58,4 +58,12 @@ V3 实践要点：按官方 is_record 支持 msgspec/dataclass 输入，额外�
 
 Attention 类图、CP 空查询或 native/JIT 迁移按 [测试契约](references/test-contract.md#attention-类图与原生构建边界) 选择针对性回归：核对实际继承和通信顺序、最终编译输入及 provider 的数据载体契约；局部原语通过不能代替完整模型验收。
 
-分阶段 DAS 迁移时关联 [逐路径执行台账](../../docs/migration.md#全量差异执行台账)，新增 Hook 同步 [当前目标合同](../../docs/hcu-sglang-targets.json)。保留迁入 manifest 的历史语义；消费者反例、Hook 加载、CPU 张量测试与 GPU/Graph/服务分别验收。
+分阶段 DAS 迁移时关联 [逐路径执行台账](../../docs/migration.md#全量差异执行台账)，新增 Hook 同步 [当前目标合同](../../tests/contracts/hcu_source_alignment_targets.json)。保留迁入 manifest 的历史语义；消费者反例、Hook 加载、CPU 张量测试与 GPU/Graph/服务分别验收。
+
+归一化、residual 原地更新或 FP8 输出迁移时，按[归一化契约](references/test-contract.md#归一化的-residual-与量化返回契约)检查实际生产/消费与别名，分开记录 CPU 数据流、vendor 数学和完整服务结果。
+
+FileIO key/LRU 接口迁移按 [分片状态与淘汰归属](references/test-contract.md#fileio-分片状态与淘汰归属) 成对验证生产、读回、metadata 和容量所有权；共享 MLA 数据可读与本 rank 可淘汰范围分别断言。
+
+KV 事件/LoRA 名称迁移按 [namespace 的生产与消费](references/test-contract.md#kv-事件-namespace-的生产与消费) 验证最终 namespace、延迟写回和事件合并；Python、Rust binding 与发布端分别提供证据。
+
+Rust crate 或 token hash 迁移按 [provider、事件 ABI 与宽 token hash](references/test-contract.md#rust-provider事件-abi-与宽-token-hash) 配对预检/loader、编译资产与真实 tuple 生产消费，并验证跨语言编码和 eviction ownership。

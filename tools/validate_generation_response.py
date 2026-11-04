@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Validate one saved OpenAI chat completion against a deterministic text oracle.
 
 This offline check does not prove HTTP status, listener ownership, cache hits,

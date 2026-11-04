@@ -1,9 +1,12 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from pathlib import Path
 
 
-PACKAGES = ('hcu_sglang', 'sglang_dcu_plugin')
+PACKAGES = ('hcu_sglang', 'sglang_hcu_plugin')
 
 
 def resolve_plugin_package(root: Path, package: str | None = None) -> str:

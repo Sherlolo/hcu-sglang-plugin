@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -58,7 +61,7 @@ class QwenFusionGateTests(unittest.TestCase):
     def test_das_default_and_explicit_gate(self):
         from hcu_sglang.models import fused_rotary as F
         for hcu,flag,expected in [(True,False,False),(True,True,True),(False,True,False)]:
-            with patch.object(F,'is_dcu',return_value=hcu),patch.object(F,'_use_fused_qwen_bailing_rotary',flag):
+            with patch.object(F,'is_hcu',return_value=hcu),patch.object(F,'_use_fused_qwen_bailing_rotary',flag):
                 self.assertEqual(F.use_fused_rms_rotary(),expected)
 
     def test_native_fused_branch_keeps_priority(self):

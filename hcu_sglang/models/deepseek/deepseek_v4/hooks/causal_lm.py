@@ -1,9 +1,9 @@
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 from hcu_sglang.models.deepseek.hook_utils import register_method_replaces_from_path
 
 
 def register_hooks():
-    if not is_dcu():
+    if not is_hcu():
         return 0
     from sglang.srt.models.deepseek_v4 import DeepseekV4ForCausalLM
     from hcu_sglang.models.deepseek.current_v4.execution import core

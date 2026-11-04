@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 """Saved responses must distinguish correct answers from incidental tokens."""
 import hashlib
 import json

@@ -2,14 +2,14 @@
 from __future__ import annotations
 import sglang.srt.layers.attention.deepseek_v4_backend as upstream
 globals().update({name:value for name,value in vars(upstream).items() if not name.startswith('__')})
-from hcu_sglang.utils.detection import is_dcu
+from hcu_sglang.utils.detection import is_hcu
 from hcu_sglang.mem_cache.cp_cache_layer_split.deepseek_v4_helpers import (
     maybe_prepare_cp_cache_layer_split_forward, is_cp_cache_layer_split_deepseek_v4_pool,
 )
 from sglang.srt.layers.attention.hip_flash_mla import flash_mla_with_kvcache_entrypoint
 from hcu_sglang.mem_cache.hcu_v4_pool import DeepSeekV4TokenToKVPool
 from .dequant import gather_upconvert_k_cache_paged
-_is_hcu = is_dcu()
+_is_hcu = is_hcu()
 _is_sm120 = bool(get_platform().is_sm120)
 
 def _forward_attention(

@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Hygon Information Technology Co., Ltd.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 import json
@@ -20,20 +23,20 @@ class AdditionalReconstructionTests(unittest.TestCase):
     tearDown = reconstruction_fixture.ReconstructionTest.tearDown
 
     def test_cpp_and_hpp_resources_survive_reconstruction_packaging(self):
-        _write(self.plugin / "sglang_dcu_plugin/jit_overlay/csrc/test.cpp", "int value = 1;\n")
-        _write(self.plugin / "sglang_dcu_plugin/jit_overlay/include/test.hpp", "#pragma once\n")
+        _write(self.plugin / "sglang_hcu_plugin/jit_overlay/csrc/test.cpp", "int value = 1;\n")
+        _write(self.plugin / "sglang_hcu_plugin/jit_overlay/include/test.hpp", "#pragma once\n")
         reconstruction_fixture._run("git", "add", ".", cwd=self.plugin)
         reconstruction_fixture._run("git", "commit", "-qm", "native fixtures", cwd=self.plugin)
         reconstruct_sglang_das(self.upstream, self.plugin, self.output)
-        self.assertTrue((self.output / "python/sglang_dcu_plugin/jit_overlay/csrc/test.cpp").is_file())
-        self.assertTrue((self.output / "python/sglang_dcu_plugin/jit_overlay/include/test.hpp").is_file())
+        self.assertTrue((self.output / "python/sglang_hcu_plugin/jit_overlay/csrc/test.cpp").is_file())
+        self.assertTrue((self.output / "python/sglang_hcu_plugin/jit_overlay/include/test.hpp").is_file())
         self.assertIn('"jit_overlay/**/*"', (self.output / "python/pyproject.toml").read_text())
         self.assertEqual(verify(self.output)["status"], "passed")
 
     def test_hash_verification_detects_tamper_and_missing(self):
         reconstruct_sglang_das(self.upstream, self.plugin, self.output)
         self.assertEqual(verify(self.output)["status"], "passed")
-        source = self.output / "python/sglang_dcu_plugin/__init__.py"
+        source = self.output / "python/sglang_hcu_plugin/__init__.py"
         source.write_text("tampered = True\n")
         self.assertTrue(any(e["error"] == "SHA256 mismatch" for e in verify(self.output)["errors"]))
         source.unlink()
@@ -82,7 +85,7 @@ class MigrationPipelineTests(unittest.TestCase):
         _write(self.fork / "python/sglang/runtime.py", "def run(x):\n    return x + 1\n")
         self.git(self.fork, "commit", "-qam", "new fork behavior")
         _write(self.fork / "dirty.py", "VALUE = 42\n")
-        _write(self.plugin / "sglang_dcu_plugin/__init__.py",
+        _write(self.plugin / "sglang_hcu_plugin/__init__.py",
                "def register():\n    Registry.register('sglang.runtime.run', hook)\n")
         _init_repo(self.plugin)
         self.sha = self.git(self.official, "rev-parse", "HEAD").strip()
